@@ -19,7 +19,7 @@ This is a Next.js 16 application with a Convex backend and WorkOS AuthKit authen
 
 ### Authentication Flow
 
-- **Middleware** (`src/proxy.ts`): WorkOS AuthKit middleware protects routes. Unauthenticated paths: `/`, `/sign-in`, `/sign-up`
+- **Middleware** (`src/proxy.ts`): WorkOS AuthKit middleware protects routes. Unauthenticated paths: `/`, `/login`, `/sign-in`, `/sign-up`
 - **Auth routes**: `/sign-in`, `/sign-up`, `/callback` handle WorkOS OAuth flow
 - **Convex auth**: JWT tokens from WorkOS are validated by Convex via config in `convex/auth.config.ts`
 - **Client integration**: `ConvexClientProvider` bridges WorkOS AuthKit with Convex's auth system using `ConvexProviderWithAuth`
@@ -47,3 +47,27 @@ pnpm dlx shadcn@latest add <component-name>
 ```
 
 Components use Tailwind CSS v4 with CSS variables for theming.
+
+#### Nested Button Pitfall
+
+Base-UI trigger components (`DropdownMenuTrigger`, `DialogTrigger`, etc.) render a `<button>` by default. Many sidebar/menu button components also render `<button>`. Nesting these causes hydration errors:
+
+```
+In HTML, <button> cannot be a descendant of <button>.
+```
+
+**Fix:** Use the `render` prop to make the inner component render as a `<div>`:
+
+```tsx
+// BAD - nested buttons
+<DropdownMenuTrigger>
+    <SidebarMenuButton>...</SidebarMenuButton>
+</DropdownMenuTrigger>
+
+// GOOD - inner component renders as div
+<DropdownMenuTrigger>
+    <SidebarMenuButton render={<div />}>...</SidebarMenuButton>
+</DropdownMenuTrigger>
+```
+
+This applies to any component using `useRender` with `defaultTagName: "button"` when placed inside a Base-UI trigger.

@@ -17,31 +17,27 @@ const jetbrains_mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LPRD",
-  description: "LPRD Core Application",
+    title: "LPRD",
+    description: "LPRD Core Application",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased`}
-      >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ConvexClientProvider>
-            {children}
-          </ConvexClientProvider>
-        </ThemeProvider>
-      </body>
-    </html>
-  );
+export default function RootLayout({children}: Readonly<{children: React.ReactNode}>) {
+    return (
+        <html lang="en" suppressHydrationWarning>
+            <body
+                className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased`}
+            >
+                <ThemeProvider
+                    attribute="class"
+                    defaultTheme="system"
+                    enableSystem
+                    disableTransitionOnChange
+                >
+                    <ConvexClientProvider>
+                        {children}
+                    </ConvexClientProvider>
+                </ThemeProvider>
+            </body>
+        </html>
+    );
 }

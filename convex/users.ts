@@ -1,5 +1,5 @@
 import {v} from 'convex/values';
-import {mutation, type MutationCtx, query, type QueryCtx} from './_generated/server';
+import {internalMutation, mutation, type MutationCtx, query, type QueryCtx} from './_generated/server';
 import type {Id} from './_generated/dataModel';
 import {userRole} from './schema';
 import {getPermissions} from './lib/acl';
@@ -31,44 +31,92 @@ export async function getMembership(ctx: Ctx, userId: Id<'users'>, orgId: Id<'or
 }
 
 /**
- * Create or update user from authenticated identity.
- * Called on first login to sync WorkOS user to Convex.
+ * Create user from WorkOS webhook (idempotent).
+ * Called when user.created event is received.
  */
-export const getOrCreate = mutation({
-    args: {},
-    handler: async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) throw new Error('Not authenticated');
+export const createFromWebhook = internalMutation({
+	args: {
+		authId: v.string(),
+		email: v.string(),
+		name: v.optional(v.string()),
+		avatarUrl: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		// Check if already exists (idempotency)
+		const existing = await ctx.db
+			.query('users')
+			.withIndex('by_authId', (q) => q.eq('authId', args.authId))
+			.unique();
 
-        const existing = await ctx.db
-            .query('users')
-            .withIndex('by_authId', (q) => q.eq('authId', identity.subject))
-            .unique();
+		if (existing) return existing._id;
 
-        if (existing) {
-            const updates: Record<string, unknown> = {};
-            if (identity.email && identity.email !== existing.email) updates.email = identity.email;
-            if (identity.name && identity.name !== existing.name) updates.name = identity.name;
-            if (identity.pictureUrl && identity.pictureUrl !== existing.avatarUrl) updates.avatarUrl = identity.pictureUrl;
+		const now = Date.now();
+		return ctx.db.insert('users', {
+			authId: args.authId,
+			email: args.email,
+			name: args.name,
+			avatarUrl: args.avatarUrl,
+			role: 'user',
+			createdAt: now,
+			updatedAt: now,
+		});
+	},
+});
 
-            if (Object.keys(updates).length > 0) {
-                updates.updatedAt = Date.now();
-                await ctx.db.patch(existing._id, updates);
-            }
-            return existing._id;
-        }
+/**
+ * Update user from WorkOS webhook.
+ * Called when user.updated event is received.
+ */
+export const updateFromWebhook = internalMutation({
+	args: {
+		authId: v.string(),
+		email: v.optional(v.string()),
+		name: v.optional(v.string()),
+		avatarUrl: v.optional(v.string()),
+	},
+	handler: async (ctx, args) => {
+		const user = await ctx.db
+			.query('users')
+			.withIndex('by_authId', (q) => q.eq('authId', args.authId))
+			.unique();
 
-        const now = Date.now();
-        return ctx.db.insert('users', {
-            authId: identity.subject,
-            email: identity.email ?? '',
-            name: identity.name,
-            avatarUrl: identity.pictureUrl,
-            role: 'user',
-            createdAt: now,
-            updatedAt: now,
-        });
-    },
+		if (!user) throw new Error('User not found');
+
+		const updates: Record<string, unknown> = {updatedAt: Date.now()};
+		if (args.email !== undefined) updates.email = args.email;
+		if (args.name !== undefined) updates.name = args.name;
+		if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
+
+		await ctx.db.patch(user._id, updates);
+	},
+});
+
+/**
+ * Delete user from WorkOS webhook (cascade to memberships).
+ * Called when user.deleted event is received.
+ */
+export const deleteFromWebhook = internalMutation({
+	args: {authId: v.string()},
+	handler: async (ctx, args) => {
+		const user = await ctx.db
+			.query('users')
+			.withIndex('by_authId', (q) => q.eq('authId', args.authId))
+			.unique();
+
+		if (!user) return; // Already deleted - idempotent
+
+		// Delete memberships first
+		const memberships = await ctx.db
+			.query('organizationMembers')
+			.withIndex('by_user', (q) => q.eq('userId', user._id))
+			.collect();
+
+		for (const membership of memberships) {
+			await ctx.db.delete(membership._id);
+		}
+
+		await ctx.db.delete(user._id);
+	},
 });
 
 /**
@@ -85,22 +133,6 @@ export const me = query({
 export const getById = query({
     args: {id: v.id('users')},
     handler: async (ctx, args) => ctx.db.get(args.id),
-});
-
-/**
- * Update current user's profile.
- */
-export const update = mutation({
-    args: {
-        name: v.optional(v.string()),
-        avatarUrl: v.optional(v.string()),
-    },
-    handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
-
-        await ctx.db.patch(user._id, {...args, updatedAt: Date.now()});
-    },
 });
 
 /**

@@ -9,9 +9,11 @@
  */
 
 import type * as devices from "../devices.js";
+import type * as http from "../http.js";
 import type * as lib_acl from "../lib/acl.js";
 import type * as organizations from "../organizations.js";
 import type * as users from "../users.js";
+import type * as workos from "../workos.js";
 
 import type {
   ApiFromModules,
@@ -21,9 +23,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   devices: typeof devices;
+  http: typeof http;
   "lib/acl": typeof lib_acl;
   organizations: typeof organizations;
   users: typeof users;
+  workos: typeof workos;
 }>;
 
 /**
