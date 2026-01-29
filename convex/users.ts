@@ -21,6 +21,20 @@ export async function getCurrentUser(ctx: Ctx) {
 }
 
 /**
+ * Helper to add avatarUrl to a user object by resolving storage ID.
+ */
+export async function withAvatarUrl<T extends {avatarStorageId?: Id<'_storage'>}>(
+    ctx: QueryCtx,
+    user: T,
+): Promise<T & {avatarUrl: string | null}> {
+    let avatarUrl: string | null = null;
+    if (user.avatarStorageId) {
+        avatarUrl = await ctx.storage.getUrl(user.avatarStorageId);
+    }
+    return {...user, avatarUrl};
+}
+
+/**
  * Get membership for a user in an organization.
  */
 export async function getMembership(ctx: Ctx, userId: Id<'users'>, orgId: Id<'organizations'>) {
@@ -39,7 +53,7 @@ export const createFromWebhook = internalMutation({
 		authId: v.string(),
 		email: v.string(),
 		name: v.optional(v.string()),
-		avatarUrl: v.optional(v.string()),
+		avatarStorageId: v.optional(v.id('_storage')),
 	},
 	handler: async (ctx, args) => {
 		// Check if already exists (idempotency)
@@ -55,7 +69,7 @@ export const createFromWebhook = internalMutation({
 			authId: args.authId,
 			email: args.email,
 			name: args.name,
-			avatarUrl: args.avatarUrl,
+			avatarStorageId: args.avatarStorageId,
 			role: 'user',
 			createdAt: now,
 			updatedAt: now,
@@ -72,7 +86,7 @@ export const updateFromWebhook = internalMutation({
 		authId: v.string(),
 		email: v.optional(v.string()),
 		name: v.optional(v.string()),
-		avatarUrl: v.optional(v.string()),
+		avatarStorageId: v.optional(v.id('_storage')),
 	},
 	handler: async (ctx, args) => {
 		const user = await ctx.db
@@ -85,7 +99,7 @@ export const updateFromWebhook = internalMutation({
 		const updates: Record<string, unknown> = {updatedAt: Date.now()};
 		if (args.email !== undefined) updates.email = args.email;
 		if (args.name !== undefined) updates.name = args.name;
-		if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
+		if (args.avatarStorageId !== undefined) updates.avatarStorageId = args.avatarStorageId;
 
 		await ctx.db.patch(user._id, updates);
 	},
@@ -124,7 +138,11 @@ export const deleteFromWebhook = internalMutation({
  */
 export const me = query({
     args: {},
-    handler: async (ctx) => getCurrentUser(ctx),
+    handler: async (ctx) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) return null;
+        return withAvatarUrl(ctx, user);
+    },
 });
 
 /**
@@ -132,7 +150,11 @@ export const me = query({
  */
 export const getById = query({
     args: {id: v.id('users')},
-    handler: async (ctx, args) => ctx.db.get(args.id),
+    handler: async (ctx, args) => {
+        const user = await ctx.db.get(args.id);
+        if (!user) return null;
+        return withAvatarUrl(ctx, user);
+    },
 });
 
 /**

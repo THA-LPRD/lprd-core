@@ -13,7 +13,10 @@ import type * as http from "../http.js";
 import type * as lib_acl from "../lib/acl.js";
 import type * as organizations from "../organizations.js";
 import type * as users from "../users.js";
-import type * as workos from "../workos.js";
+import type * as workos_helpers from "../workos/helpers.js";
+import type * as workos_userCreated from "../workos/userCreated.js";
+import type * as workos_userDeleted from "../workos/userDeleted.js";
+import type * as workos_userUpdated from "../workos/userUpdated.js";
 
 import type {
   ApiFromModules,
@@ -27,7 +30,10 @@ declare const fullApi: ApiFromModules<{
   "lib/acl": typeof lib_acl;
   organizations: typeof organizations;
   users: typeof users;
-  workos: typeof workos;
+  "workos/helpers": typeof workos_helpers;
+  "workos/userCreated": typeof workos_userCreated;
+  "workos/userDeleted": typeof workos_userDeleted;
+  "workos/userUpdated": typeof workos_userUpdated;
 }>;
 
 /**

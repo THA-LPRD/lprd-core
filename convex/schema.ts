@@ -15,7 +15,7 @@ export default defineSchema({
         authId: v.string(),
         email: v.string(),
         name: v.optional(v.string()),
-        avatarUrl: v.optional(v.string()),
+        avatarStorageId: v.optional(v.id('_storage')),
         role: userRole,
         lastOrgSlug: v.optional(v.string()),
         createdAt: v.number(),

@@ -2,7 +2,7 @@ import {v} from 'convex/values';
 import {mutation, query} from './_generated/server';
 import {orgMemberRole} from './schema';
 import {getPermissions} from './lib/acl';
-import {getCurrentUser, getMembership} from './users';
+import {getCurrentUser, getMembership, withAvatarUrl} from './users';
 
 /**
  * Create a new organization.
@@ -269,10 +269,13 @@ export const listMembers = query({
             .collect();
 
         return Promise.all(
-            memberships.map(async (m) => ({
-                user: await ctx.db.get(m.userId),
-                role: m.role,
-            }))
+            memberships.map(async (m) => {
+                const memberUser = await ctx.db.get(m.userId);
+                return {
+                    user: memberUser ? await withAvatarUrl(ctx, memberUser) : null,
+                    role: m.role,
+                };
+            })
         );
     },
 });

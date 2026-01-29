@@ -1,5 +1,7 @@
 import {httpRouter} from 'convex/server';
-import {handleUserCreated, handleUserDeleted, handleUserUpdated} from './workos';
+import {handleUserCreated} from './workos/userCreated';
+import {handleUserUpdated} from './workos/userUpdated';
+import {handleUserDeleted} from './workos/userDeleted';
 
 const http = httpRouter();
 
