@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build/Test Commands
 
-Always use `pnpm` to run scripts.
+Always use `bun` to run scripts.
 
-- `pnpm dev' - Start Next.js development server [Note: Don't use this unless otherwise told to]
-- `pnpm lint` - Type-aware Oxlint linting (also reports TypeScript errors)
-- `pnpm lint --fix` - Apply fixes for autofixable lint issues
-- `pnpm dlx convex dev` - Start Convex backend [Note: Don't use this unless otherwise told to]
+- `bun dev' - Start Next.js development server [Note: Don't use this unless otherwise told to]
+- `bun lint` - Type-aware Oxlint linting (also reports TypeScript errors)
+- `bun lint --fix` - Apply fixes for autofixable lint issues
+- `bunx convex dev` - Start Convex backend [Note: Don't use this unless otherwise told to]
 
-**Do not run:** `pnpm dev` (assume already running), `pnpm build` (CI only)
+**Do not run:** `bun dev` (assume already running), `bun run build` (CI only)
 
 ## Architecture
 
@@ -43,7 +43,7 @@ This is a Next.js 16 application with a Convex backend and WorkOS AuthKit authen
 
 Using shadcn/ui with Base-ui. Add components via:
 ```bash
-pnpm dlx shadcn@latest add <component-name>
+bunx shadcn@latest add <component-name>
 ```
 
 Components use Tailwind CSS v4 with CSS variables for theming.

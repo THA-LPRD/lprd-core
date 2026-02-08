@@ -5,7 +5,7 @@ Next.js 16 application with Convex backend and WorkOS authentication.
 ## Prerequisites
 
 - Node.js 20+
-- pnpm
+- [Bun](https://bun.sh)
 - A [Convex](https://convex.dev) account
 - A [WorkOS](https://workos.com) account with AuthKit enabled
 
@@ -14,7 +14,7 @@ Next.js 16 application with Convex backend and WorkOS authentication.
 1. Install dependencies:
 
 ```bash
-pnpm install
+bun install
 ```
 
 2. Copy the environment file and fill in your values:
@@ -62,7 +62,7 @@ npx convex dev
 5. Start the Next.js development server:
 
 ```bash
-pnpm dev
+bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
