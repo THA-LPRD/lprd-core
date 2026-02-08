@@ -3,7 +3,7 @@
 import {redirect} from "next/navigation"
 import {useQuery} from "convex/react"
 import Link from "next/link"
-import {api} from "../../../convex/_generated/api"
+import {api} from "@convex/api"
 import {Button} from "@/components/ui/button"
 import {Skeleton} from "@/components/ui/skeleton"
 
@@ -61,13 +61,13 @@ function OrgLandingContent() {
     if (user?.lastOrgSlug) {
         const lastOrg = orgs.find(o => o.slug === user.lastOrgSlug)
         if (lastOrg) {
-            redirect(`/org/${lastOrg.slug}/devices`)
+            redirect(`/org/${lastOrg.slug}`)
         }
     }
 
     // Has orgs but no valid lastOrgSlug - pick first
     if (orgs.length > 0) {
-        redirect(`/org/${orgs[0].slug}/devices`)
+        redirect(`/org/${orgs[0].slug}`)
     }
 
     // No orgs - show onboarding

@@ -5,7 +5,7 @@ import {Card, CardContent} from "@/components/ui/card"
 import {Badge} from "@/components/ui/badge"
 import {DeviceStatusDot} from "./device-status-dot"
 import {Monitor} from "lucide-react"
-import type {Id} from "../../../convex/_generated/dataModel"
+import type {Id} from "@convex/dataModel"
 
 type Device = {
     _id: Id<"devices">

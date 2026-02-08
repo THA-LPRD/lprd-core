@@ -1,7 +1,7 @@
 "use client"
 
 import {DeviceCard} from "./device-card"
-import type {Id} from "../../../convex/_generated/dataModel"
+import type {Id} from "@convex/dataModel"
 
 type Device = {
     _id: Id<"devices">

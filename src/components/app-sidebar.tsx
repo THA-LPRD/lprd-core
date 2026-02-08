@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import {usePathname, useRouter} from "next/navigation"
-import {Monitor, Settings2} from "lucide-react"
+import {LayoutDashboard, Monitor, Settings2} from "lucide-react"
 import {useMutation, useQuery} from "convex/react"
-import {api} from "../../convex/_generated/api"
+import {api} from "@convex/api"
 
 import {NavUser} from "@/components/nav-user"
 import {OrgSwitcher} from "@/components/layout/org-switcher"
@@ -63,6 +63,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
     // Navigation items for org context
     const navItems = currentOrg ? [
+        {
+            title: "Dashboard",
+            url: `/org/${currentOrg.slug}`,
+            icon: LayoutDashboard,
+            isActive: pathname === `/org/${currentOrg.slug}`,
+        },
         {
             title: "Devices",
             url: `/org/${currentOrg.slug}/devices`,

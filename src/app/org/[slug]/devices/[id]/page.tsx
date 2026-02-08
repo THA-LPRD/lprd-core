@@ -3,7 +3,7 @@
 import * as React from "react"
 import {useParams, useRouter} from "next/navigation"
 import {useMutation, useQuery} from "convex/react"
-import {api} from "../../../../../../convex/_generated/api"
+import {api} from "@convex/api"
 import {DeviceForm} from "@/components/device/device-form"
 import {DeviceStatusDot} from "@/components/device/device-status-dot"
 import {Button} from "@/components/ui/button"

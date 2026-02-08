@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import {useMutation} from "convex/react"
-import {api} from "../../../convex/_generated/api"
+import {api} from "@convex/api"
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar"
 import {Badge} from "@/components/ui/badge"
 import {Button} from "@/components/ui/button"
@@ -22,7 +22,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import {MoreHorizontal, Shield, Trash2, User} from "lucide-react"
-import type {Id} from "../../../convex/_generated/dataModel"
+import type {Id} from "@convex/dataModel"
 
 type Member = {
     user: {

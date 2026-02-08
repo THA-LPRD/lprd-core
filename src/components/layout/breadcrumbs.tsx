@@ -3,7 +3,7 @@
 import {usePathname} from "next/navigation"
 import Link from "next/link"
 import {useQuery} from "convex/react"
-import {api} from "../../../convex/_generated/api"
+import {api} from "@convex/api"
 import {
     Breadcrumb,
     BreadcrumbItem,
