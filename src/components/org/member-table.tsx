@@ -153,7 +153,7 @@ export function MemberTable({
                                 <div className="w-10">
                                     <DropdownMenu>
                                         <DropdownMenuTrigger>
-                                            <Button variant="ghost" size="icon-sm">
+                                            <Button variant="ghost" size="icon-sm" nativeButton={false} render={<div />}>
                                                 <MoreHorizontal className="size-4" />
                                             </Button>
                                         </DropdownMenuTrigger>

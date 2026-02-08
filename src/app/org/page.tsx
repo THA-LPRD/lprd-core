@@ -1,5 +1,6 @@
 "use client"
 
+import type {Ref} from "react"
 import {redirect} from "next/navigation"
 import {useQuery} from "convex/react"
 import Link from "next/link"
@@ -21,7 +22,7 @@ function OnboardingView() {
                 <div className="flex flex-col gap-3">
                     <Button
                         nativeButton={false}
-                        render={(props) => <Link {...props} href="/org/create">Create Organization</Link>}
+                        render={({ref, ...props}) => <Link {...props} ref={ref as Ref<HTMLAnchorElement>} href="/org/create">Create Organization</Link>}
                     />
                     <p className="text-sm text-muted-foreground">
                         Have an invite? Check your email for the invite link.

@@ -118,7 +118,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         user={{
                             name: user.name,
                             email: user.email,
-                            avatar: user.avatarUrl,
+                            avatar: user.avatarUrl ?? undefined,
                         }}
                         onSignOut={handleSignOut}
                     />
