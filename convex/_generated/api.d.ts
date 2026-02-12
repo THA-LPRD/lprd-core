@@ -12,6 +12,8 @@ import type * as devices from "../devices.js";
 import type * as http from "../http.js";
 import type * as lib_acl from "../lib/acl.js";
 import type * as organizations from "../organizations.js";
+import type * as pluginHttp from "../pluginHttp.js";
+import type * as plugins from "../plugins.js";
 import type * as users from "../users.js";
 import type * as workos_helpers from "../workos/helpers.js";
 import type * as workos_userCreated from "../workos/userCreated.js";
@@ -29,6 +31,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/acl": typeof lib_acl;
   organizations: typeof organizations;
+  pluginHttp: typeof pluginHttp;
+  plugins: typeof plugins;
   users: typeof users;
   "workos/helpers": typeof workos_helpers;
   "workos/userCreated": typeof workos_userCreated;

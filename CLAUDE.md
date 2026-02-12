@@ -29,15 +29,41 @@ This is a Next.js 16 application with a Convex backend and WorkOS AuthKit authen
 - `src/app/` - Next.js App Router pages and API routes
 - `src/components/` - React components including UI components (shadcn/ui)
 - `src/lib/` - Utility functions
+- `src/worker/` - BullMQ health check worker (runs separately via `bun worker`)
 - `convex/` - Convex backend functions and schema
 - `convex/_generated/` - Auto-generated Convex types (do not edit)
+
+### Path Aliases (tsconfig)
+
+- `@/*` → `./src/*`
+- `@convex/*` → `./convex/_generated/*`
+- `@worker/*` → `./src/worker/*`
+
+Always use these aliases instead of relative paths.
 
 ### Convex Backend
 
 - Schema defined in `convex/schema.ts`
 - Functions (queries, mutations, actions) go in `convex/*.ts` files
 - Access authenticated user in Convex functions via `ctx.auth.getUserIdentity()`
-- Import generated API types from `convex/_generated/api`
+- Import generated API types: `import {api} from "@convex/api"`, `import {internal} from "@convex/api"`, `import type {Id} from "@convex/dataModel"`
+- Internal functions (`internalQuery`, `internalMutation`) are called via `internal.module.fn`, not `api.module.fn`
+- HTTP endpoints (webhooks, plugin API) are `httpAction` handlers organized by domain: `convex/workos/`, `convex/plugin/`, routed in `convex/http.ts`
+
+### Plugin System
+
+- Plugins register via `POST /api/v2/plugin/register` (Convex httpAction)
+- Plugins push data via `POST /api/v2/plugin/webhook/:pluginId` (Convex httpAction)
+- Plugin health checks run via a BullMQ worker (`src/worker/`) that polls Convex for active plugins and hits their `/health` endpoint
+- Plugin data is org-scoped — plugins specify `org_slug` in webhook payloads
+- Auth is not yet implemented
+
+### Worker (`src/worker/`)
+
+- Runs separately from Next.js: `bun worker`
+- Requires Redis and `CONVEX_DEPLOY_KEY` env var
+- Scheduler polls every 30s for active plugins due for health check, enqueues BullMQ jobs
+- Worker fetches `${plugin.baseUrl}/health`, records results in Convex
 
 ### UI Components
 
