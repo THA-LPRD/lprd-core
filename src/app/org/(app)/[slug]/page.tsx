@@ -1,26 +1,20 @@
-"use client"
+'use client';
 
-import {useParams} from "next/navigation"
-import {useQuery} from "convex/react"
-import {api} from "@convex/api"
-import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
-import {Skeleton} from "@/components/ui/skeleton"
-import {OrgNotFound} from "@/components/ui/not-found"
+import { useParams } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '@convex/api';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { OrgNotFound } from '@/components/ui/not-found';
 
 export default function OrgDashboardPage() {
-    const params = useParams<{ slug: string }>()
+    const params = useParams<{ slug: string }>();
 
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug })
+    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
 
-    const devices = useQuery(
-        api.devices.listByOrganization,
-        org ? { organizationId: org._id } : "skip"
-    )
+    const devices = useQuery(api.devices.listByOrganization, org ? { organizationId: org._id } : 'skip');
 
-    const members = useQuery(
-        api.organizations.listMembers,
-        org ? { organizationId: org._id } : "skip"
-    )
+    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
 
     // Loading state
     if (org === undefined || devices === undefined || members === undefined) {
@@ -31,28 +25,28 @@ export default function OrgDashboardPage() {
                     <Skeleton className="h-4 w-32" />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {[1, 2, 3, 4].map(i => (
+                    {[1, 2, 3, 4].map((i) => (
                         <Skeleton key={i} className="h-28 rounded-lg" />
                     ))}
                 </div>
             </div>
-        )
+        );
     }
 
     if (!org) {
-        return <OrgNotFound />
+        return <OrgNotFound />;
     }
 
-    const totalDevices = devices.length
-    const activeDevices = devices.filter(d => d.status === "active").length
-    const pendingDevices = devices.filter(d => d.status === "pending").length
+    const totalDevices = devices.length;
+    const activeDevices = devices.filter((d) => d.status === 'active').length;
+    const pendingDevices = devices.filter((d) => d.status === 'pending').length;
 
     const stats = [
-        { title: "Total Devices", value: totalDevices },
-        { title: "Active Devices", value: activeDevices },
-        { title: "Pending Devices", value: pendingDevices },
-        { title: "Members", value: members.length },
-    ]
+        { title: 'Total Devices', value: totalDevices },
+        { title: 'Active Devices', value: activeDevices },
+        { title: 'Pending Devices', value: pendingDevices },
+        { title: 'Members', value: members.length },
+    ];
 
     return (
         <div className="p-6">
@@ -61,12 +55,10 @@ export default function OrgDashboardPage() {
                 <p className="text-muted-foreground">Dashboard</p>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {stats.map(stat => (
+                {stats.map((stat) => (
                     <Card key={stat.title}>
                         <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-muted-foreground">
-                                {stat.title}
-                            </CardTitle>
+                            <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <p className="text-3xl font-bold">{stat.value}</p>
@@ -75,5 +67,5 @@ export default function OrgDashboardPage() {
                 ))}
             </div>
         </div>
-    )
+    );
 }

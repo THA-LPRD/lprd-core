@@ -1,10 +1,10 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
-import {Badge} from "@/components/ui/badge"
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -12,98 +12,90 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
-import {X} from "lucide-react"
+} from '@/components/ui/dialog';
+import { X } from 'lucide-react';
 
 type DeviceFormData = {
-    name: string
-    description: string
-    tags: string[]
-    status: "pending" | "active"
-}
+    name: string;
+    description: string;
+    tags: string[];
+    status: 'pending' | 'active';
+};
 
 type DeviceFormProps = {
-    open: boolean
-    onOpenChange: (open: boolean) => void
-    onSubmit: (data: DeviceFormData) => Promise<void>
-    initialData?: Partial<DeviceFormData>
-    mode: "create" | "edit"
-}
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (data: DeviceFormData) => Promise<void>;
+    initialData?: Partial<DeviceFormData>;
+    mode: 'create' | 'edit';
+};
 
-export function DeviceForm({
-    open,
-    onOpenChange,
-    onSubmit,
-    initialData,
-    mode,
-}: DeviceFormProps) {
-    const [name, setName] = React.useState(initialData?.name ?? "")
-    const [description, setDescription] = React.useState(initialData?.description ?? "")
-    const [tags, setTags] = React.useState<string[]>(initialData?.tags ?? [])
-    const [tagInput, setTagInput] = React.useState("")
-    const [status, setStatus] = React.useState<"pending" | "active">(initialData?.status ?? "pending")
-    const [isSubmitting, setIsSubmitting] = React.useState(false)
+export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: DeviceFormProps) {
+    const [name, setName] = React.useState(initialData?.name ?? '');
+    const [description, setDescription] = React.useState(initialData?.description ?? '');
+    const [tags, setTags] = React.useState<string[]>(initialData?.tags ?? []);
+    const [tagInput, setTagInput] = React.useState('');
+    const [status, setStatus] = React.useState<'pending' | 'active'>(initialData?.status ?? 'pending');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Reset form when dialog opens
     React.useEffect(() => {
         if (open) {
-            setName(initialData?.name ?? "")
-            setDescription(initialData?.description ?? "")
-            setTags(initialData?.tags ?? [])
-            setStatus(initialData?.status ?? "pending")
-            setTagInput("")
+            setName(initialData?.name ?? '');
+            setDescription(initialData?.description ?? '');
+            setTags(initialData?.tags ?? []);
+            setStatus(initialData?.status ?? 'pending');
+            setTagInput('');
         }
-    }, [open, initialData])
+    }, [open, initialData]);
 
     const handleAddTag = () => {
-        const trimmed = tagInput.trim().toLowerCase()
+        const trimmed = tagInput.trim().toLowerCase();
         if (trimmed && !tags.includes(trimmed)) {
-            setTags([...tags, trimmed])
-            setTagInput("")
+            setTags([...tags, trimmed]);
+            setTagInput('');
         }
-    }
+    };
 
     const handleRemoveTag = (tag: string) => {
-        setTags(tags.filter(t => t !== tag))
-    }
+        setTags(tags.filter((t) => t !== tag));
+    };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === "Enter") {
-            e.preventDefault()
-            handleAddTag()
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleAddTag();
         }
-    }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!name.trim()) return
+        e.preventDefault();
+        if (!name.trim()) return;
 
-        setIsSubmitting(true)
+        setIsSubmitting(true);
         try {
             await onSubmit({
                 name: name.trim(),
                 description: description.trim(),
                 tags,
                 status,
-            })
-            onOpenChange(false)
+            });
+            onOpenChange(false);
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
-    }
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md">
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
-                        <DialogTitle>
-                            {mode === "create" ? "Add Device" : "Edit Device"}
-                        </DialogTitle>
+                        <DialogTitle>{mode === 'create' ? 'Add Device' : 'Edit Device'}</DialogTitle>
                         <DialogDescription>
-                            {mode === "create"
-                                ? "Add a new device to your organization."
-                                : "Update device information."}
+                            {mode === 'create'
+                                ? 'Add a new device to your organization.'
+                                : 'Update device information.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -113,7 +105,7 @@ export function DeviceForm({
                             <Input
                                 id="name"
                                 value={name}
-                                onChange={e => setName(e.target.value)}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="Lobby Display"
                                 required
                             />
@@ -124,7 +116,7 @@ export function DeviceForm({
                             <Input
                                 id="description"
                                 value={description}
-                                onChange={e => setDescription(e.target.value)}
+                                onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Main lobby entrance display"
                             />
                         </div>
@@ -135,26 +127,18 @@ export function DeviceForm({
                                 <Input
                                     id="tags"
                                     value={tagInput}
-                                    onChange={e => setTagInput(e.target.value)}
+                                    onChange={(e) => setTagInput(e.target.value)}
                                     onKeyDown={handleKeyDown}
                                     placeholder="Add tag..."
                                 />
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={handleAddTag}
-                                >
+                                <Button type="button" variant="secondary" onClick={handleAddTag}>
                                     Add
                                 </Button>
                             </div>
                             {tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-2">
-                                    {tags.map(tag => (
-                                        <Badge
-                                            key={tag}
-                                            variant="secondary"
-                                            className="gap-1"
-                                        >
+                                    {tags.map((tag) => (
+                                        <Badge key={tag} variant="secondary" className="gap-1">
                                             {tag}
                                             <button
                                                 type="button"
@@ -169,23 +153,23 @@ export function DeviceForm({
                             )}
                         </div>
 
-                        {mode === "edit" && (
+                        {mode === 'edit' && (
                             <div className="grid gap-2">
                                 <Label>Status</Label>
                                 <div className="flex gap-2">
                                     <Button
                                         type="button"
-                                        variant={status === "pending" ? "default" : "outline"}
+                                        variant={status === 'pending' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => setStatus("pending")}
+                                        onClick={() => setStatus('pending')}
                                     >
                                         Pending
                                     </Button>
                                     <Button
                                         type="button"
-                                        variant={status === "active" ? "default" : "outline"}
+                                        variant={status === 'active' ? 'default' : 'outline'}
                                         size="sm"
-                                        onClick={() => setStatus("active")}
+                                        onClick={() => setStatus('active')}
                                     >
                                         Active
                                     </Button>
@@ -195,25 +179,21 @@ export function DeviceForm({
                     </div>
 
                     <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChange(false)}
-                        >
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isSubmitting || !name.trim()}>
                             {isSubmitting
-                                ? mode === "create"
-                                    ? "Adding..."
-                                    : "Saving..."
-                                : mode === "create"
-                                    ? "Add Device"
-                                    : "Save Changes"}
+                                ? mode === 'create'
+                                    ? 'Adding...'
+                                    : 'Saving...'
+                                : mode === 'create'
+                                  ? 'Add Device'
+                                  : 'Save Changes'}
                         </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

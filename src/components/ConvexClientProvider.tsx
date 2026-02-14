@@ -1,8 +1,8 @@
 'use client';
 
-import {ReactNode, useCallback, useState} from 'react';
-import {ConvexProviderWithAuth, ConvexReactClient} from 'convex/react';
-import {AuthKitProvider, useAccessToken, useAuth} from '@workos-inc/authkit-nextjs/components';
+import { ReactNode, useCallback, useState } from 'react';
+import { ConvexProviderWithAuth, ConvexReactClient } from 'convex/react';
+import { AuthKitProvider, useAccessToken, useAuth } from '@workos-inc/authkit-nextjs/components';
 
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
     const [convex] = useState(() => {

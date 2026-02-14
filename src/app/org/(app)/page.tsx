@@ -1,12 +1,12 @@
-"use client"
+'use client';
 
-import type {Ref} from "react"
-import {redirect} from "next/navigation"
-import {useQuery} from "convex/react"
-import Link from "next/link"
-import {api} from "@convex/api"
-import {Button} from "@/components/ui/button"
-import {Skeleton} from "@/components/ui/skeleton"
+import type { Ref } from 'react';
+import { redirect } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import Link from 'next/link';
+import { api } from '@convex/api';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function OnboardingView() {
     return (
@@ -22,7 +22,11 @@ function OnboardingView() {
                 <div className="flex flex-col gap-3">
                     <Button
                         nativeButton={false}
-                        render={({ref, ...props}) => <Link {...props} ref={ref as Ref<HTMLAnchorElement>} href="/org/create">Create Organization</Link>}
+                        render={({ ref, ...props }) => (
+                            <Link {...props} ref={ref as Ref<HTMLAnchorElement>} href="/org/create">
+                                Create Organization
+                            </Link>
+                        )}
                     />
                     <p className="text-sm text-muted-foreground">
                         Have an invite? Check your email for the invite link.
@@ -30,7 +34,7 @@ function OnboardingView() {
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 function LoadingSkeleton() {
@@ -41,38 +45,38 @@ function LoadingSkeleton() {
                 <Skeleton className="h-4 w-64" />
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map(i => (
+                {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-32 rounded-lg" />
                 ))}
             </div>
         </div>
-    )
+    );
 }
 
 function OrgLandingContent() {
-    const user = useQuery(api.users.me)
-    const orgs = useQuery(api.organizations.list)
+    const user = useQuery(api.users.me);
+    const orgs = useQuery(api.organizations.list);
 
     // Loading
     if (user === undefined || orgs === undefined) {
-        return <LoadingSkeleton />
+        return <LoadingSkeleton />;
     }
 
     // Has lastOrgSlug that exists
     if (user?.lastOrgSlug) {
-        const lastOrg = orgs.find(o => o.slug === user.lastOrgSlug)
+        const lastOrg = orgs.find((o) => o.slug === user.lastOrgSlug);
         if (lastOrg) {
-            redirect(`/org/${lastOrg.slug}`)
+            redirect(`/org/${lastOrg.slug}`);
         }
     }
 
     // Has orgs but no valid lastOrgSlug - pick first
     if (orgs.length > 0) {
-        redirect(`/org/${orgs[0].slug}`)
+        redirect(`/org/${orgs[0].slug}`);
     }
 
     // No orgs - show onboarding
-    return <OnboardingView />
+    return <OnboardingView />;
 }
 
 export default function OrgLandingPage() {
@@ -80,5 +84,5 @@ export default function OrgLandingPage() {
         <main className="flex-1">
             <OrgLandingContent />
         </main>
-    )
+    );
 }

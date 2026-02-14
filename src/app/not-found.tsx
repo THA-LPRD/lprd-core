@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {Button} from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
     return (
@@ -16,10 +16,7 @@ export default function NotFound() {
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Button
-                            nativeButton={false}
-                            render={(props) => <Link {...props} href="/" />}
-                        >
+                        <Button nativeButton={false} render={(props) => <Link {...props} href="/" />}>
                             Go home
                         </Button>
                     </div>

@@ -1,11 +1,11 @@
-"use client"
+'use client';
 
-import Link from "next/link"
-import {Button} from "@/components/ui/button"
-import {Badge} from "@/components/ui/badge"
-import {Input} from "@/components/ui/input"
-import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip"
-import {ArrowLeft, Save} from "lucide-react"
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, Save } from 'lucide-react';
 
 export function EditorToolbar({
     orgSlug,
@@ -16,15 +16,15 @@ export function EditorToolbar({
     isSaving,
     onSave,
 }: {
-    orgSlug: string
-    name: string
-    onNameChange: (name: string) => void
-    scope: "global" | "org"
-    isDirty: boolean
-    isSaving: boolean
-    onSave: () => void
+    orgSlug: string;
+    name: string;
+    onNameChange: (name: string) => void;
+    scope: 'global' | 'org';
+    isDirty: boolean;
+    isSaving: boolean;
+    onSave: () => void;
 }) {
-    const isGlobal = scope === "global"
+    const isGlobal = scope === 'global';
 
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b bg-background">
@@ -36,18 +36,14 @@ export function EditorToolbar({
 
             <Input
                 value={name}
-                onChange={e => onNameChange(e.target.value)}
+                onChange={(e) => onNameChange(e.target.value)}
                 disabled={isGlobal}
                 className="max-w-xs font-medium border-transparent hover:border-input focus:border-input transition-colors"
             />
 
-            <Badge variant={isGlobal ? "outline" : "secondary"}>
-                {isGlobal ? "Global" : "Org"}
-            </Badge>
+            <Badge variant={isGlobal ? 'outline' : 'secondary'}>{isGlobal ? 'Global' : 'Org'}</Badge>
 
-            {isDirty && !isGlobal && (
-                <span className="text-xs text-muted-foreground">Unsaved changes</span>
-            )}
+            {isDirty && !isGlobal && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
 
             <div className="ml-auto">
                 <Tooltip>
@@ -60,14 +56,12 @@ export function EditorToolbar({
                             size="sm"
                         >
                             <Save className="size-4 mr-2" />
-                            {isSaving ? "Saving..." : "Save"}
+                            {isSaving ? 'Saving...' : 'Save'}
                         </Button>
                     </TooltipTrigger>
-                    {isGlobal && (
-                        <TooltipContent>Global templates are read-only</TooltipContent>
-                    )}
+                    {isGlobal && <TooltipContent>Global templates are read-only</TooltipContent>}
                 </Tooltip>
             </div>
         </div>
-    )
+    );
 }

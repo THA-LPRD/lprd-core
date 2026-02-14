@@ -1,24 +1,24 @@
-"use client"
+'use client';
 
-import {useRouter} from "next/navigation"
-import {Authenticated, AuthLoading, Unauthenticated} from "convex/react"
-import {Spinner} from "@/components/ui/spinner"
-import {useEffect} from "react"
+import { useRouter } from 'next/navigation';
+import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react';
+import { Spinner } from '@/components/ui/spinner';
+import { useEffect } from 'react';
 
 function AuthenticatedRedirect() {
-    const router = useRouter()
+    const router = useRouter();
     useEffect(() => {
-        router.push("/org/")
-    }, [router])
-    return null
+        router.push('/org/');
+    }, [router]);
+    return null;
 }
 
 function UnauthenticatedRedirect() {
-    const router = useRouter()
+    const router = useRouter();
     useEffect(() => {
-        router.push("/login")
-    }, [router])
-    return null
+        router.push('/login');
+    }, [router]);
+    return null;
 }
 
 export default function RootPage() {
@@ -34,5 +34,5 @@ export default function RootPage() {
                 <UnauthenticatedRedirect />
             </Unauthenticated>
         </main>
-    )
+    );
 }

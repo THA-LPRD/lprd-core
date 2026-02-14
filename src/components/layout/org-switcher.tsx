@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import Link from "next/link"
-import {useRouter} from "next/navigation"
-import {Building2, ChevronsUpDown, Plus} from "lucide-react"
+import * as React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Building2, ChevronsUpDown, Plus } from 'lucide-react';
 
 import {
     DropdownMenu,
@@ -13,43 +13,40 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,} from "@/components/ui/sidebar"
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar"
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Organization = {
-    _id: string
-    name: string
-    slug: string
-    logoUrl?: string
-}
+    _id: string;
+    name: string;
+    slug: string;
+    logoUrl?: string;
+};
 
 function getOrgInitials(name: string): string {
-    const words = name.split(" ")
+    const words = name.split(' ');
     if (words.length >= 2) {
-        return (words[0][0] + words[1][0]).toUpperCase()
+        return (words[0][0] + words[1][0]).toUpperCase();
     }
-    return name.slice(0, 2).toUpperCase()
+    return name.slice(0, 2).toUpperCase();
 }
 
 export function OrgSwitcher({
     organizations,
     currentOrg,
 }: {
-    organizations: Organization[]
-    currentOrg?: Organization
+    organizations: Organization[];
+    currentOrg?: Organization;
 }) {
-    const { isMobile } = useSidebar()
-    const router = useRouter()
+    const { isMobile } = useSidebar();
+    const router = useRouter();
 
     if (!currentOrg) {
         return (
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton
-                        size="lg"
-                        render={<Link href="/" />}
-                    >
+                    <SidebarMenuButton size="lg" render={<Link href="/" />}>
                         <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                             <Building2 className="size-4" />
                         </div>
@@ -60,7 +57,7 @@ export function OrgSwitcher({
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
-        )
+        );
     }
 
     return (
@@ -88,7 +85,7 @@ export function OrgSwitcher({
                     <DropdownMenuContent
                         className="w-56 rounded-lg"
                         align="start"
-                        side={isMobile ? "bottom" : "right"}
+                        side={isMobile ? 'bottom' : 'right'}
                         sideOffset={4}
                     >
                         <DropdownMenuGroup>
@@ -116,10 +113,7 @@ export function OrgSwitcher({
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem
-                                className="gap-2 p-2"
-                                onClick={() => router.push("/")}
-                            >
+                            <DropdownMenuItem className="gap-2 p-2" onClick={() => router.push('/')}>
                                 <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                                     <Plus className="size-4" />
                                 </div>
@@ -130,5 +124,5 @@ export function OrgSwitcher({
                 </DropdownMenu>
             </SidebarMenuItem>
         </SidebarMenu>
-    )
+    );
 }

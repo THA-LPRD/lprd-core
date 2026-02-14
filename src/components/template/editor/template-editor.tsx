@@ -220,7 +220,11 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
                 </div>
             </div>
 
-            <AddVariantDialog open={showAddVariant} onOpenChangeAction={setShowAddVariant} onAddAction={handleAddVariant} />
+            <AddVariantDialog
+                open={showAddVariant}
+                onOpenChangeAction={setShowAddVariant}
+                onAddAction={handleAddVariant}
+            />
         </div>
     );
 }

@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import {Label} from "@/components/ui/label"
+import { Label } from '@/components/ui/label';
 
 export function CodePanel({
     templateHtml,
@@ -9,11 +9,11 @@ export function CodePanel({
     onSampleDataJsonChange,
     disabled,
 }: {
-    templateHtml: string
-    onTemplateHtmlChange: (value: string) => void
-    sampleDataJson: string
-    onSampleDataJsonChange: (value: string) => void
-    disabled: boolean
+    templateHtml: string;
+    onTemplateHtmlChange: (value: string) => void;
+    sampleDataJson: string;
+    onSampleDataJsonChange: (value: string) => void;
+    disabled: boolean;
 }) {
     return (
         <div className="flex flex-col gap-4 p-4 h-full">
@@ -22,7 +22,7 @@ export function CodePanel({
                 <textarea
                     id="template-html"
                     value={templateHtml}
-                    onChange={e => onTemplateHtmlChange(e.target.value)}
+                    onChange={(e) => onTemplateHtmlChange(e.target.value)}
                     disabled={disabled}
                     className="flex-1 min-h-0 w-full resize-none rounded-md border bg-background px-3 py-2 font-mono text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="<div>{{ content }}</div>"
@@ -35,7 +35,7 @@ export function CodePanel({
                 <textarea
                     id="sample-data"
                     value={sampleDataJson}
-                    onChange={e => onSampleDataJsonChange(e.target.value)}
+                    onChange={(e) => onSampleDataJsonChange(e.target.value)}
                     disabled={disabled}
                     className="flex-1 min-h-0 w-full resize-none rounded-md border bg-background px-3 py-2 font-mono text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder='{"content": "Hello World"}'
@@ -43,5 +43,5 @@ export function CodePanel({
                 />
             </div>
         </div>
-    )
+    );
 }

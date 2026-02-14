@@ -1,16 +1,16 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {useParams, useRouter} from "next/navigation"
-import {useMutation, useQuery} from "convex/react"
-import {api} from "@convex/api"
-import {MemberTable} from "@/components/org/member-table"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
-import {Skeleton} from "@/components/ui/skeleton"
-import {OrgNotFound, AccessDenied} from "@/components/ui/not-found"
+import * as React from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useMutation, useQuery } from 'convex/react';
+import { api } from '@convex/api';
+import { MemberTable } from '@/components/org/member-table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AccessDenied, OrgNotFound } from '@/components/ui/not-found';
 import {
     Dialog,
     DialogContent,
@@ -18,76 +18,73 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
-import {Save, Trash2} from "lucide-react"
+} from '@/components/ui/dialog';
+import { Save, Trash2 } from 'lucide-react';
 
 export default function OrgSettingsPage() {
-    const params = useParams<{ slug: string }>()
-    const router = useRouter()
+    const params = useParams<{ slug: string }>();
+    const router = useRouter();
 
     // Form state
-    const [orgName, setOrgName] = React.useState("")
-    const [isSaving, setIsSaving] = React.useState(false)
-    const [showDeleteDialog, setShowDeleteDialog] = React.useState(false)
-    const [deleteConfirm, setDeleteConfirm] = React.useState("")
-    const [isDeleting, setIsDeleting] = React.useState(false)
+    const [orgName, setOrgName] = React.useState('');
+    const [isSaving, setIsSaving] = React.useState(false);
+    const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
+    const [deleteConfirm, setDeleteConfirm] = React.useState('');
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
     // Get org by slug
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug })
+    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
 
     // Get members
-    const members = useQuery(
-        api.organizations.listMembers,
-        org ? { organizationId: org._id } : "skip"
-    )
+    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
 
     // Get current user
-    const user = useQuery(api.users.me)
+    const user = useQuery(api.users.me);
 
     // Check permissions
     const currentMember = React.useMemo(() => {
-        if (!user || !members) return null
-        return members.find(m => m.user?._id === user._id)
-    }, [user, members])
+        if (!user || !members) return null;
+        return members.find((m) => m.user?._id === user._id);
+    }, [user, members]);
 
-    const canManage = user?.role === "appAdmin" || currentMember?.role === "orgAdmin"
+    const canManage = user?.role === 'appAdmin' || currentMember?.role === 'orgAdmin';
 
     // Mutations
-    const updateOrg = useMutation(api.organizations.update)
-    const deleteOrg = useMutation(api.organizations.remove)
+    const updateOrg = useMutation(api.organizations.update);
+    const deleteOrg = useMutation(api.organizations.remove);
 
     // Sync org name when loaded
     React.useEffect(() => {
         if (org) {
-            setOrgName(org.name)
+            setOrgName(org.name);
         }
-    }, [org])
+    }, [org]);
 
     const handleSaveSettings = async () => {
-        if (!org || !orgName.trim()) return
+        if (!org || !orgName.trim()) return;
 
-        setIsSaving(true)
+        setIsSaving(true);
         try {
             await updateOrg({
                 id: org._id,
                 name: orgName.trim(),
-            })
+            });
         } finally {
-            setIsSaving(false)
+            setIsSaving(false);
         }
-    }
+    };
 
     const handleDeleteOrg = async () => {
-        if (!org || deleteConfirm !== org.name) return
+        if (!org || deleteConfirm !== org.name) return;
 
-        setIsDeleting(true)
+        setIsDeleting(true);
         try {
-            await deleteOrg({ id: org._id })
-            router.push("/")
+            await deleteOrg({ id: org._id });
+            router.push('/');
         } finally {
-            setIsDeleting(false)
+            setIsDeleting(false);
         }
-    }
+    };
 
     // Loading state
     if (org === undefined || members === undefined) {
@@ -100,24 +97,22 @@ export default function OrgSettingsPage() {
                     <Skeleton className="h-64 rounded-lg" />
                 </div>
             </div>
-        )
+        );
     }
 
     if (!org) {
-        return <OrgNotFound />
+        return <OrgNotFound />;
     }
 
     if (!canManage) {
-        return <AccessDenied />
+        return <AccessDenied />;
     }
 
     return (
         <div className="p-6 max-w-4xl">
             <div className="mb-8">
                 <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">
-                    Manage organization settings and members
-                </p>
+                <p className="text-muted-foreground">Manage organization settings and members</p>
             </div>
 
             <div className="space-y-6">
@@ -125,9 +120,7 @@ export default function OrgSettingsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>General</CardTitle>
-                        <CardDescription>
-                            Basic organization information
-                        </CardDescription>
+                        <CardDescription>Basic organization information</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="grid gap-2">
@@ -136,7 +129,7 @@ export default function OrgSettingsPage() {
                                 <Input
                                     id="org-name"
                                     value={orgName}
-                                    onChange={e => setOrgName(e.target.value)}
+                                    onChange={(e) => setOrgName(e.target.value)}
                                     className="max-w-md"
                                 />
                                 <Button
@@ -144,16 +137,14 @@ export default function OrgSettingsPage() {
                                     disabled={isSaving || orgName === org.name || !orgName.trim()}
                                 >
                                     <Save className="size-4 mr-2" />
-                                    {isSaving ? "Saving..." : "Save"}
+                                    {isSaving ? 'Saving...' : 'Save'}
                                 </Button>
                             </div>
                         </div>
 
                         <div className="grid gap-2">
                             <Label>Slug</Label>
-                            <p className="text-sm text-muted-foreground">
-                                {org.slug}
-                            </p>
+                            <p className="text-sm text-muted-foreground">{org.slug}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -162,9 +153,7 @@ export default function OrgSettingsPage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Members</CardTitle>
-                        <CardDescription>
-                            People who have access to this organization
-                        </CardDescription>
+                        <CardDescription>People who have access to this organization</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <MemberTable
@@ -180,9 +169,7 @@ export default function OrgSettingsPage() {
                 <Card className="border-destructive/50">
                     <CardHeader>
                         <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                        <CardDescription>
-                            Irreversible actions that affect the entire organization
-                        </CardDescription>
+                        <CardDescription>Irreversible actions that affect the entire organization</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center justify-between p-4 border border-destructive/50 rounded-lg">
@@ -192,10 +179,7 @@ export default function OrgSettingsPage() {
                                     Permanently delete this organization and all its data
                                 </p>
                             </div>
-                            <Button
-                                variant="destructive"
-                                onClick={() => setShowDeleteDialog(true)}
-                            >
+                            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
                                 <Trash2 className="size-4 mr-2" />
                                 Delete Organization
                             </Button>
@@ -222,7 +206,7 @@ export default function OrgSettingsPage() {
                         <Input
                             id="confirm-delete"
                             value={deleteConfirm}
-                            onChange={e => setDeleteConfirm(e.target.value)}
+                            onChange={(e) => setDeleteConfirm(e.target.value)}
                             placeholder={org.name}
                             className="mt-2"
                         />
@@ -232,8 +216,8 @@ export default function OrgSettingsPage() {
                         <Button
                             variant="outline"
                             onClick={() => {
-                                setShowDeleteDialog(false)
-                                setDeleteConfirm("")
+                                setShowDeleteDialog(false);
+                                setDeleteConfirm('');
                             }}
                         >
                             Cancel
@@ -243,11 +227,11 @@ export default function OrgSettingsPage() {
                             onClick={handleDeleteOrg}
                             disabled={isDeleting || deleteConfirm !== org.name}
                         >
-                            {isDeleting ? "Deleting..." : "Delete Organization"}
+                            {isDeleting ? 'Deleting...' : 'Delete Organization'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
-    )
+    );
 }

@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -11,50 +11,46 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 
 type TemplateFormData = {
-    name: string
-    description: string
-}
+    name: string;
+    description: string;
+};
 
 type TemplateFormProps = {
-    open: boolean
-    onOpenChangeAction: (open: boolean) => void
-    onSubmitAction: (data: TemplateFormData) => Promise<void>
-}
+    open: boolean;
+    onOpenChangeAction: (open: boolean) => void;
+    onSubmitAction: (data: TemplateFormData) => Promise<void>;
+};
 
-export function TemplateForm({
-    open,
-    onOpenChangeAction,
-    onSubmitAction,
-}: TemplateFormProps) {
-    const [name, setName] = React.useState("")
-    const [description, setDescription] = React.useState("")
-    const [isSubmitting, setIsSubmitting] = React.useState(false)
+export function TemplateForm({ open, onOpenChangeAction, onSubmitAction }: TemplateFormProps) {
+    const [name, setName] = React.useState('');
+    const [description, setDescription] = React.useState('');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     React.useEffect(() => {
         if (open) {
-            setName("")
-            setDescription("")
+            setName('');
+            setDescription('');
         }
-    }, [open])
+    }, [open]);
 
     const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        if (!name.trim()) return
+        e.preventDefault();
+        if (!name.trim()) return;
 
-        setIsSubmitting(true)
+        setIsSubmitting(true);
         try {
             await onSubmitAction({
                 name: name.trim(),
                 description: description.trim(),
-            })
-            onOpenChangeAction(false)
+            });
+            onOpenChangeAction(false);
         } finally {
-            setIsSubmitting(false)
+            setIsSubmitting(false);
         }
-    }
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChangeAction}>
@@ -62,9 +58,7 @@ export function TemplateForm({
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>New Template</DialogTitle>
-                        <DialogDescription>
-                            Create a new template for your organization.
-                        </DialogDescription>
+                        <DialogDescription>Create a new template for your organization.</DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
@@ -73,7 +67,7 @@ export function TemplateForm({
                             <Input
                                 id="template-name"
                                 value={name}
-                                onChange={e => setName(e.target.value)}
+                                onChange={(e) => setName(e.target.value)}
                                 placeholder="Weather Widget"
                                 required
                             />
@@ -84,26 +78,22 @@ export function TemplateForm({
                             <Input
                                 id="template-description"
                                 value={description}
-                                onChange={e => setDescription(e.target.value)}
+                                onChange={(e) => setDescription(e.target.value)}
                                 placeholder="Shows current weather conditions"
                             />
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => onOpenChangeAction(false)}
-                        >
+                        <Button type="button" variant="outline" onClick={() => onOpenChangeAction(false)}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isSubmitting || !name.trim()}>
-                            {isSubmitting ? "Creating..." : "Create Template"}
+                            {isSubmitting ? 'Creating...' : 'Create Template'}
                         </Button>
                     </DialogFooter>
                 </form>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

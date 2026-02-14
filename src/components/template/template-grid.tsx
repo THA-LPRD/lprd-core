@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import {TemplateCard, type Template} from "./template-card"
-import {Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription} from "@/components/ui/empty"
-import {LayoutTemplate} from "lucide-react"
+import { type Template, TemplateCard } from './template-card';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { LayoutTemplate } from 'lucide-react';
 
 export function TemplateGrid({
     templates,
@@ -10,10 +10,10 @@ export function TemplateGrid({
     onDelete,
     onDuplicate,
 }: {
-    templates: Template[]
-    onEdit: (id: string) => void
-    onDelete: (id: string) => void
-    onDuplicate: (id: string) => void
+    templates: Template[];
+    onEdit: (id: string) => void;
+    onDelete: (id: string) => void;
+    onDuplicate: (id: string) => void;
 }) {
     if (templates.length === 0) {
         return (
@@ -23,17 +23,15 @@ export function TemplateGrid({
                         <LayoutTemplate />
                     </EmptyMedia>
                     <EmptyTitle>No templates yet</EmptyTitle>
-                    <EmptyDescription>
-                        Create your first template to get started
-                    </EmptyDescription>
+                    <EmptyDescription>Create your first template to get started</EmptyDescription>
                 </EmptyHeader>
             </Empty>
-        )
+        );
     }
 
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {templates.map(template => (
+            {templates.map((template) => (
                 <TemplateCard
                     key={template._id}
                     template={template}
@@ -43,5 +41,5 @@ export function TemplateGrid({
                 />
             ))}
         </div>
-    )
+    );
 }

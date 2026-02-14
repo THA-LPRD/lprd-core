@@ -1,9 +1,9 @@
-"use client"
+'use client';
 
-import * as React from "react"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
+import * as React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -11,47 +11,44 @@ import {
     DialogFooter,
     DialogHeader,
     DialogTitle,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog';
 
-type TemplateVariant =
-    | {type: "content"; w: number; h: number}
-    | {type: "background"}
-    | {type: "foreground"}
+type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
-type VariantType = "content" | "background" | "foreground"
+type VariantType = 'content' | 'background' | 'foreground';
 
 export function AddVariantDialog({
     open,
     onOpenChangeAction,
     onAddAction,
 }: {
-    open: boolean
-    onOpenChangeAction: (open: boolean) => void
-    onAddAction: (variant: TemplateVariant) => void
+    open: boolean;
+    onOpenChangeAction: (open: boolean) => void;
+    onAddAction: (variant: TemplateVariant) => void;
 }) {
-    const [variantType, setVariantType] = React.useState<VariantType>("content")
-    const [w, setW] = React.useState(3)
-    const [h, setH] = React.useState(2)
+    const [variantType, setVariantType] = React.useState<VariantType>('content');
+    const [w, setW] = React.useState(3);
+    const [h, setH] = React.useState(2);
 
     React.useEffect(() => {
         if (open) {
-            setVariantType("content")
-            setW(3)
-            setH(2)
+            setVariantType('content');
+            setW(3);
+            setH(2);
         }
-    }, [open])
+    }, [open]);
 
     const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        if (variantType === "content") {
-            onAddAction({type: "content", w: Math.max(1, Math.min(6, w)), h: Math.max(1, Math.min(4, h))})
-        } else if (variantType === "background") {
-            onAddAction({type: "background"})
+        e.preventDefault();
+        if (variantType === 'content') {
+            onAddAction({ type: 'content', w: Math.max(1, Math.min(6, w)), h: Math.max(1, Math.min(4, h)) });
+        } else if (variantType === 'background') {
+            onAddAction({ type: 'background' });
         } else {
-            onAddAction({type: "foreground"})
+            onAddAction({ type: 'foreground' });
         }
-        onOpenChangeAction(false)
-    }
+        onOpenChangeAction(false);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChangeAction}>
@@ -59,30 +56,28 @@ export function AddVariantDialog({
                 <form onSubmit={handleSubmit}>
                     <DialogHeader>
                         <DialogTitle>Add Variant</DialogTitle>
-                        <DialogDescription>
-                            Add a new size variant to this template.
-                        </DialogDescription>
+                        <DialogDescription>Add a new size variant to this template.</DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label>Type</Label>
                             <div className="flex gap-2">
-                                {(["content", "background", "foreground"] as const).map(t => (
+                                {(['content', 'background', 'foreground'] as const).map((t) => (
                                     <Button
                                         key={t}
                                         type="button"
-                                        variant={variantType === t ? "default" : "outline"}
+                                        variant={variantType === t ? 'default' : 'outline'}
                                         size="sm"
                                         onClick={() => setVariantType(t)}
                                     >
-                                        {t === "content" ? "Content" : t === "background" ? "Background" : "Foreground"}
+                                        {t === 'content' ? 'Content' : t === 'background' ? 'Background' : 'Foreground'}
                                     </Button>
                                 ))}
                             </div>
                         </div>
 
-                        {variantType === "content" && (
+                        {variantType === 'content' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
                                     <Label htmlFor="variant-w">Width (1-6 cols)</Label>
@@ -92,7 +87,7 @@ export function AddVariantDialog({
                                         min={1}
                                         max={6}
                                         value={w}
-                                        onChange={e => setW(Number(e.target.value))}
+                                        onChange={(e) => setW(Number(e.target.value))}
                                     />
                                 </div>
                                 <div className="grid gap-2">
@@ -103,7 +98,7 @@ export function AddVariantDialog({
                                         min={1}
                                         max={4}
                                         value={h}
-                                        onChange={e => setH(Number(e.target.value))}
+                                        onChange={(e) => setH(Number(e.target.value))}
                                     />
                                 </div>
                             </div>
@@ -119,5 +114,5 @@ export function AddVariantDialog({
                 </form>
             </DialogContent>
         </Dialog>
-    )
+    );
 }

@@ -1,78 +1,76 @@
-"use client"
+'use client';
 
-import {useState} from "react"
-import {useRouter} from "next/navigation"
-import {useMutation} from "convex/react"
-import {api} from "@convex/api"
-import {Button} from "@/components/ui/button"
-import {Input} from "@/components/ui/input"
-import {Label} from "@/components/ui/label"
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMutation } from 'convex/react';
+import { api } from '@convex/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 function generateSlug(name: string): string {
     return name
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
+        .replace(/^-|-$/g, '');
 }
 
 export default function CreateOrgPage() {
-    const [name, setName] = useState("")
-    const [slug, setSlug] = useState("")
-    const [slugSynced, setSlugSynced] = useState(true)
-    const [isSubmitting, setIsSubmitting] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [name, setName] = useState('');
+    const [slug, setSlug] = useState('');
+    const [slugSynced, setSlugSynced] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const createOrg = useMutation(api.organizations.create)
-    const setLastOrg = useMutation(api.users.setLastOrg)
-    const router = useRouter()
+    const createOrg = useMutation(api.organizations.create);
+    const setLastOrg = useMutation(api.users.setLastOrg);
+    const router = useRouter();
 
     const handleNameChange = (newName: string) => {
-        setName(newName)
+        setName(newName);
         if (slugSynced) {
-            setSlug(generateSlug(newName))
+            setSlug(generateSlug(newName));
         }
-    }
+    };
 
     const handleSlugChange = (newSlug: string) => {
-        setSlugSynced(false)
-        setSlug(newSlug)
-    }
+        setSlugSynced(false);
+        setSlug(newSlug);
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        setError(null)
+        e.preventDefault();
+        setError(null);
 
         if (!name.trim()) {
-            setError("Organization name is required")
-            return
+            setError('Organization name is required');
+            return;
         }
 
         if (!slug.trim()) {
-            setError("Organization slug is required")
-            return
+            setError('Organization slug is required');
+            return;
         }
 
-        setIsSubmitting(true)
+        setIsSubmitting(true);
 
         try {
-            await createOrg({name: name.trim(), slug: slug.trim()})
-            await setLastOrg({slug: slug.trim()})
-            router.push(`/org/${slug.trim()}/devices`)
+            await createOrg({ name: name.trim(), slug: slug.trim() });
+            await setLastOrg({ slug: slug.trim() });
+            router.push(`/org/${slug.trim()}/devices`);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to create organization")
-            setIsSubmitting(false)
+            setError(err instanceof Error ? err.message : 'Failed to create organization');
+            setIsSubmitting(false);
         }
-    }
+    };
 
     return (
         <main className="flex-1 flex items-center justify-center p-6">
             <Card className="w-full max-w-md">
                 <CardHeader>
                     <CardTitle>Create Organization</CardTitle>
-                    <CardDescription>
-                        Set up your new organization to start managing devices.
-                    </CardDescription>
+                    <CardDescription>Set up your new organization to start managing devices.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,20 +95,18 @@ export default function CreateOrgPage() {
                                 disabled={isSubmitting}
                             />
                             <p className="text-xs text-muted-foreground">
-                                Your organization will be available at /org/{slug || "your-slug"}
+                                Your organization will be available at /org/{slug || 'your-slug'}
                             </p>
                         </div>
 
-                        {error && (
-                            <p className="text-sm text-destructive">{error}</p>
-                        )}
+                        {error && <p className="text-sm text-destructive">{error}</p>}
 
                         <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting ? "Creating..." : "Create Organization"}
+                            {isSubmitting ? 'Creating...' : 'Create Organization'}
                         </Button>
                     </form>
                 </CardContent>
             </Card>
         </main>
-    )
+    );
 }

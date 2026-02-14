@@ -1,19 +1,16 @@
-"use client"
+'use client';
 
-import {Button} from "@/components/ui/button"
-import {ButtonGroup} from "@/components/ui/button-group"
-import {Tooltip, TooltipContent, TooltipTrigger} from "@/components/ui/tooltip"
-import {Plus, Star, X} from "lucide-react"
+import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Plus, Star, X } from 'lucide-react';
 
-type TemplateVariant =
-    | {type: "content"; w: number; h: number}
-    | {type: "background"}
-    | {type: "foreground"}
+type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
 function variantLabel(v: TemplateVariant): string {
-    if (v.type === "content") return `${v.w}×${v.h}`
-    if (v.type === "background") return "BG"
-    return "FG"
+    if (v.type === 'content') return `${v.w}×${v.h}`;
+    if (v.type === 'background') return 'BG';
+    return 'FG';
 }
 
 export function VariantBar({
@@ -26,31 +23,29 @@ export function VariantBar({
     onAddVariant,
     disabled,
 }: {
-    variants: TemplateVariant[]
-    activeVariantIndex: number
-    preferredVariantIndex: number
-    onSelectVariant: (index: number) => void
-    onSetPreferred: (index: number) => void
-    onRemoveVariant: (index: number) => void
-    onAddVariant: () => void
-    disabled: boolean
+    variants: TemplateVariant[];
+    activeVariantIndex: number;
+    preferredVariantIndex: number;
+    onSelectVariant: (index: number) => void;
+    onSetPreferred: (index: number) => void;
+    onRemoveVariant: (index: number) => void;
+    onAddVariant: () => void;
+    disabled: boolean;
 }) {
     return (
         <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 overflow-x-auto">
             <span className="text-xs text-muted-foreground shrink-0">Variants:</span>
 
             {variants.map((v, i) => {
-                const isActive = i === activeVariantIndex
-                const isPreferred = i === preferredVariantIndex
-                const buttonVariant = isActive ? "default" : "outline"
+                const isActive = i === activeVariantIndex;
+                const isPreferred = i === preferredVariantIndex;
+                const buttonVariant = isActive ? 'default' : 'outline';
 
                 return (
-                    <ButtonGroup
-                        key={i}
-                        className="shrink-0 *:data-slot:border-0"
-                    >
-                        {isActive && !disabled && (
-                            isPreferred ? (
+                    <ButtonGroup key={i} className="shrink-0 *:data-slot:border-0">
+                        {isActive &&
+                            !disabled &&
+                            (isPreferred ? (
                                 <Button
                                     render={<div />}
                                     nativeButton={false}
@@ -76,8 +71,7 @@ export function VariantBar({
                                     </TooltipTrigger>
                                     <TooltipContent>Set as preferred</TooltipContent>
                                 </Tooltip>
-                            )
-                        )}
+                            ))}
 
                         <Button
                             variant={buttonVariant}
@@ -85,9 +79,7 @@ export function VariantBar({
                             className="gap-1 px-2 text-xs"
                             onClick={() => onSelectVariant(i)}
                         >
-                            {!isActive && isPreferred && (
-                                <Star className="size-3 fill-current" />
-                            )}
+                            {!isActive && isPreferred && <Star className="size-3 fill-current" />}
                             {variantLabel(v)}
                         </Button>
 
@@ -109,20 +101,15 @@ export function VariantBar({
                             </Tooltip>
                         )}
                     </ButtonGroup>
-                )
+                );
             })}
 
             {!disabled && (
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1 px-2 h-7 text-xs shrink-0"
-                    onClick={onAddVariant}
-                >
+                <Button variant="outline" size="sm" className="gap-1 px-2 h-7 text-xs shrink-0" onClick={onAddVariant}>
                     <Plus className="size-3" />
                     Add
                 </Button>
             )}
         </div>
-    )
+    );
 }

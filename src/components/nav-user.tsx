@@ -1,8 +1,8 @@
-"use client"
+'use client';
 
-import {BadgeCheck, ChevronsUpDown, LogOut, Settings,} from "lucide-react"
+import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from 'lucide-react';
 
-import {Avatar, AvatarFallback, AvatarImage,} from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -11,16 +11,16 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar,} from "@/components/ui/sidebar"
+} from '@/components/ui/dropdown-menu';
+import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 
 function getInitials(name: string | undefined): string {
-    if (!name) return "?"
-    const parts = name.split(" ")
+    if (!name) return '?';
+    const parts = name.split(' ');
     if (parts.length >= 2) {
-        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
-    return name.slice(0, 2).toUpperCase()
+    return name.slice(0, 2).toUpperCase();
 }
 
 export function NavUser({
@@ -29,20 +29,20 @@ export function NavUser({
     onSignOut,
 }: {
     user: {
-        name?: string
-        email: string
-        avatar?: string
-    }
-    onSettingsClick?: () => void
-    onSignOut?: () => void
+        name?: string;
+        email: string;
+        avatar?: string;
+    };
+    onSettingsClick?: () => void;
+    onSignOut?: () => void;
 }) {
-    const { isMobile } = useSidebar()
+    const { isMobile } = useSidebar();
 
     return (
         <SidebarMenu>
             <SidebarMenuItem>
                 <DropdownMenu>
-                    <DropdownMenuTrigger render={<div/>} nativeButton={false}>
+                    <DropdownMenuTrigger render={<div />} nativeButton={false}>
                         <SidebarMenuButton
                             size="lg"
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
@@ -52,7 +52,7 @@ export function NavUser({
                                 <AvatarFallback className="rounded-full">{getInitials(user.name)}</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">{user.name || "User"}</span>
+                                <span className="truncate font-medium">{user.name || 'User'}</span>
                                 <span className="truncate text-xs">{user.email}</span>
                             </div>
                             <ChevronsUpDown className="ml-auto size-4" />
@@ -60,7 +60,7 @@ export function NavUser({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                         className="w-56 rounded-lg"
-                        side={isMobile ? "bottom" : "right"}
+                        side={isMobile ? 'bottom' : 'right'}
                         align="end"
                         sideOffset={4}
                     >
@@ -72,7 +72,7 @@ export function NavUser({
                                         <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-medium">{user.name || "User"}</span>
+                                        <span className="truncate font-medium">{user.name || 'User'}</span>
                                         <span className="truncate text-xs">{user.email}</span>
                                     </div>
                                 </div>
@@ -100,5 +100,5 @@ export function NavUser({
                 </DropdownMenu>
             </SidebarMenuItem>
         </SidebarMenu>
-    )
+    );
 }
