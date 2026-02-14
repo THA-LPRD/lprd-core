@@ -2,29 +2,26 @@ import {httpAction} from '../_generated/server';
 import {internal} from '../_generated/api';
 
 /**
- * POST /api/v2/plugin/webhook/:pluginId
- * Receives data pushed by a plugin. Returns 202.
+ * POST /api/v2/plugin/webhook/data
+ * Receives data pushed by a plugin. Plugin ID is read from the X-Plugin-Id header.
+ * Returns 202.
  */
-export const handlePluginWebhook = httpAction(async (ctx, request) => {
+export const handlePluginData = httpAction(async (ctx, request) => {
 	try {
-		// Extract plugin ID from URL path
-		const url = new URL(request.url);
-		const segments = url.pathname.split('/');
-		const pluginUuid = segments[segments.length - 1];
-
+		const pluginUuid = request.headers.get('X-Plugin-Id');
 		if (!pluginUuid) {
 			return new Response(
-				JSON.stringify({error: 'Plugin ID is required in URL path'}),
+				JSON.stringify({error: 'X-Plugin-Id header is required'}),
 				{status: 400, headers: {'Content-Type': 'application/json'}},
 			);
 		}
 
 		const body = await request.json();
-		const {content_type, data, ttl_seconds, org_slug} = body;
+		const {data, ttl_seconds, org_slug} = body;
 
-		if (!content_type || data === undefined || !ttl_seconds || !org_slug) {
+		if (data === undefined || !ttl_seconds || !org_slug) {
 			return new Response(
-				JSON.stringify({error: 'content_type, data, ttl_seconds, and org_slug are required'}),
+				JSON.stringify({error: 'data, ttl_seconds, and org_slug are required'}),
 				{status: 400, headers: {'Content-Type': 'application/json'}},
 			);
 		}
@@ -32,7 +29,7 @@ export const handlePluginWebhook = httpAction(async (ctx, request) => {
 		await ctx.runMutation(internal.plugins.storeWebhookData, {
 			pluginUuid,
 			orgSlug: org_slug,
-			contentType: content_type,
+			contentType: 'plugin_data',
 			data,
 			ttlSeconds: ttl_seconds,
 		});
@@ -48,7 +45,7 @@ export const handlePluginWebhook = httpAction(async (ctx, request) => {
 			);
 		}
 
-		console.error('Plugin webhook error:', error);
+		console.error('Plugin data error:', error);
 		return new Response(
 			JSON.stringify({error: 'Internal Server Error'}),
 			{status: 500, headers: {'Content-Type': 'application/json'}},

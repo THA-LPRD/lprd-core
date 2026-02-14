@@ -2,6 +2,20 @@ import {v} from 'convex/values';
 import {internalMutation, internalQuery} from './_generated/server';
 import {healthCheckStatus} from './schema';
 
+/**
+ * Get a plugin by its UUID string.
+ * Used by httpAction endpoints that receive plugin ID from headers.
+ */
+export const getByUuid = internalQuery({
+	args: {uuid: v.string()},
+	handler: async (ctx, args) => {
+		return ctx.db
+			.query('plugins')
+			.withIndex('by_plugin_id', (q) => q.eq('id', args.uuid))
+			.unique();
+	},
+});
+
 const DEFAULT_HEALTH_CHECK_INTERVAL_MS = 30_000;
 
 /**
