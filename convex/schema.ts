@@ -27,6 +27,16 @@ export const healthCheckStatus = v.union(
     v.literal('error'),
 );
 
+// Template variant
+export const templateVariant = v.union(
+    v.object({type: v.literal('content'), w: v.number(), h: v.number()}),
+    v.object({type: v.literal('background')}),
+    v.object({type: v.literal('foreground')}),
+);
+
+// Template scope
+export const templateScope = v.union(v.literal('global'), v.literal('org'));
+
 export default defineSchema({
     users: defineTable({
         authId: v.string(),
@@ -114,4 +124,32 @@ export default defineSchema({
         .index('by_plugin_and_org', ['pluginId', 'organizationId'])
         .index('by_plugin_and_time', ['pluginId', 'receivedAt'])
         .index('by_expiry', ['expiresAt']),
+
+    templates: defineTable({
+        // Ownership
+        scope: templateScope,
+        pluginId: v.optional(v.id('plugins')),
+        organizationId: v.optional(v.id('organizations')),
+        createdBy: v.optional(v.id('users')),
+
+        // Content
+        name: v.string(),
+        description: v.optional(v.string()),
+        templateHtml: v.string(),
+        sampleData: v.optional(v.any()),
+
+        // Variants & preferred
+        variants: v.array(templateVariant),
+        preferredVariantIndex: v.number(),
+        thumbnailStorageId: v.optional(v.id('_storage')),
+
+        // Metadata
+        version: v.optional(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index('by_scope', ['scope'])
+        .index('by_organization', ['organizationId'])
+        .index('by_plugin', ['pluginId'])
+        .index('by_plugin_and_name', ['pluginId', 'name']),
 });

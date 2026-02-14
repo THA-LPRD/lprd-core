@@ -8,6 +8,7 @@ import {DeviceGrid} from "@/components/device/device-grid"
 import {DeviceForm} from "@/components/device/device-form"
 import {Button} from "@/components/ui/button"
 import {Skeleton} from "@/components/ui/skeleton"
+import {OrgNotFound} from "@/components/ui/not-found"
 import {Plus} from "lucide-react"
 import {v4 as uuidv4} from "uuid"
 
@@ -77,18 +78,8 @@ export default function DevicesPage() {
         )
     }
 
-    // Org not found
     if (!org) {
-        return (
-            <div className="p-6">
-                <div className="text-center py-12">
-                    <h2 className="text-xl font-semibold mb-2">Organization not found</h2>
-                    <p className="text-muted-foreground">
-                        The organization you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.
-                    </p>
-                </div>
-            </div>
-        )
+        return <OrgNotFound />
     }
 
     return (

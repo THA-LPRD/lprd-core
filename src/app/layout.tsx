@@ -2,6 +2,7 @@ import type {Metadata} from "next";
 import {Inter_Tight, JetBrains_Mono} from "next/font/google";
 import {ThemeProvider} from "@/components/theme-provider"
 import {ConvexClientProvider} from "@/components/ConvexClientProvider";
+import {Toaster} from "@/components/ui/sonner";
 import "./globals.css";
 
 const inter_tight = Inter_Tight({
@@ -36,6 +37,7 @@ export default function RootLayout({children}: Readonly<{children: React.ReactNo
                     <ConvexClientProvider>
                         {children}
                     </ConvexClientProvider>
+                    <Toaster />
                 </ThemeProvider>
             </body>
         </html>

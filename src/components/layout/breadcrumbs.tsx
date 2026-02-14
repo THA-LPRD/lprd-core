@@ -40,6 +40,13 @@ export function DynamicBreadcrumbs() {
                 // Devices list
                 items.push({ label: "Devices" })
             }
+        } else if (segments[2] === "templates") {
+            if (segments[3]) {
+                items.push({ label: "Templates", href: `/org/${orgSlug}/templates` })
+                items.push({ label: "Editor" })
+            } else {
+                items.push({ label: "Templates" })
+            }
         } else if (segments[2] === "settings") {
             items.push({ label: "Settings" })
         }

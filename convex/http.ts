@@ -3,7 +3,8 @@ import {handleUserCreated} from './workos/userCreated';
 import {handleUserUpdated} from './workos/userUpdated';
 import {handleUserDeleted} from './workos/userDeleted';
 import {handlePluginRegister} from './plugin/register';
-import {handlePluginWebhook} from './plugin/webhook';
+import {handleCreateTemplate} from './plugin/createTemplate';
+import {handlePluginData} from './plugin/data';
 
 const http = httpRouter();
 
@@ -35,9 +36,15 @@ http.route({
 });
 
 http.route({
-	pathPrefix: '/api/v2/plugin/webhook/',
+	path: '/api/v2/plugin/webhook/createTemplate',
 	method: 'POST',
-	handler: handlePluginWebhook,
+	handler: handleCreateTemplate,
+});
+
+http.route({
+	path: '/api/v2/plugin/webhook/data',
+	method: 'POST',
+	handler: handlePluginData,
 });
 
 export default http;

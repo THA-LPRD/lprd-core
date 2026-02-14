@@ -5,6 +5,7 @@ import {useQuery} from "convex/react"
 import {api} from "@convex/api"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
 import {Skeleton} from "@/components/ui/skeleton"
+import {OrgNotFound} from "@/components/ui/not-found"
 
 export default function OrgDashboardPage() {
     const params = useParams<{ slug: string }>()
@@ -38,18 +39,8 @@ export default function OrgDashboardPage() {
         )
     }
 
-    // Org not found
     if (!org) {
-        return (
-            <div className="p-6">
-                <div className="text-center py-12">
-                    <h2 className="text-xl font-semibold mb-2">Organization not found</h2>
-                    <p className="text-muted-foreground">
-                        The organization you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.
-                    </p>
-                </div>
-            </div>
-        )
+        return <OrgNotFound />
     }
 
     const totalDevices = devices.length

@@ -10,6 +10,7 @@ import {Input} from "@/components/ui/input"
 import {Label} from "@/components/ui/label"
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card"
 import {Skeleton} from "@/components/ui/skeleton"
+import {OrgNotFound, AccessDenied} from "@/components/ui/not-found"
 import {
     Dialog,
     DialogContent,
@@ -102,32 +103,12 @@ export default function OrgSettingsPage() {
         )
     }
 
-    // Org not found
     if (!org) {
-        return (
-            <div className="p-6">
-                <div className="text-center py-12">
-                    <h2 className="text-xl font-semibold mb-2">Organization not found</h2>
-                    <p className="text-muted-foreground">
-                        The organization you&apos;re looking for doesn&apos;t exist or you don&apos;t have access.
-                    </p>
-                </div>
-            </div>
-        )
+        return <OrgNotFound />
     }
 
-    // No permission
     if (!canManage) {
-        return (
-            <div className="p-6">
-                <div className="text-center py-12">
-                    <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-                    <p className="text-muted-foreground">
-                        You don&apos;t have permission to manage this organization&apos;s settings.
-                    </p>
-                </div>
-            </div>
-        )
+        return <AccessDenied />
     }
 
     return (
