@@ -11,19 +11,19 @@ const http = httpRouter();
 const usersPathSecret = process.env.WORKOS_WEBHOOK_USERS_PATH_SECRET!;
 
 http.route({
-	path: `/webhooks/workos/users-${usersPathSecret}/create`,
+	path: `/api/v2/user/webhook/create-${usersPathSecret}`,
 	method: 'POST',
 	handler: handleUserCreated,
 });
 
 http.route({
-	path: `/webhooks/workos/users-${usersPathSecret}/update`,
+	path: `/api/v2/user/webhook/update-${usersPathSecret}`,
 	method: 'POST',
 	handler: handleUserUpdated,
 });
 
 http.route({
-	path: `/webhooks/workos/users-${usersPathSecret}/deleted`,
+	path: `/api/v2/user/webhook/deleted-${usersPathSecret}`,
 	method: 'POST',
 	handler: handleUserDeleted,
 });
