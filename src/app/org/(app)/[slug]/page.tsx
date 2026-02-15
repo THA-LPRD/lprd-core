@@ -1,23 +1,17 @@
 'use client';
 
-import { useParams } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrgNotFound } from '@/components/ui/not-found';
+import { useOrg } from '@/components/org/org-context';
 
 export default function OrgDashboardPage() {
-    const params = useParams<{ slug: string }>();
+    const { org, members } = useOrg();
 
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
+    const devices = useQuery(api.devices.listByOrganization, { organizationId: org._id });
 
-    const devices = useQuery(api.devices.listByOrganization, org ? { organizationId: org._id } : 'skip');
-
-    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
-
-    // Loading state
-    if (org === undefined || devices === undefined || members === undefined) {
+    if (devices === undefined) {
         return (
             <div className="p-6">
                 <div className="mb-6">
@@ -31,10 +25,6 @@ export default function OrgDashboardPage() {
                 </div>
             </div>
         );
-    }
-
-    if (!org) {
-        return <OrgNotFound />;
     }
 
     const totalDevices = devices.length;

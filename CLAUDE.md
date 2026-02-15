@@ -61,6 +61,29 @@ Always use these aliases instead of relative paths.
 - Internal functions (`internalQuery`, `internalMutation`) are called via `internal.module.fn`, not `api.module.fn`
 - HTTP endpoints (webhooks, plugin API) are `httpAction` handlers organized by domain: `convex/workos/`, `convex/plugin/`, routed in `convex/http.ts`
 
+### Org Context & Permissions
+
+Pages under `src/app/org/(app)/[slug]/` are wrapped by a `[slug]/layout.tsx` that renders `<OrgProvider>`. This provider fetches the org, user, and members once, computes permissions, and exposes everything via React context.
+
+- **Context**: `src/components/org/org-context.tsx` — `useOrg()` hook returns `{ org, user, members, currentMember, permissions }`
+- **Provider**: `src/components/org/org-provider.tsx` — handles loading skeleton and `<OrgNotFound />` centrally
+- **ACL**: `convex/lib/acl.ts` defines `getPermissions(user, membership)` → `Permissions` object; re-exported from `src/lib/acl.ts` for clean `@/lib/acl` imports
+
+Pages should **not** fetch org/user/members themselves. Use `useOrg()` instead:
+
+```tsx
+const { org, permissions } = useOrg();
+
+// Check permissions using the permissions object
+if (permissions.device.manage) { /* show admin UI */ }
+if (permissions.org.manage) { /* show settings */ }
+if (permissions.template.manage) { /* show edit controls */ }
+```
+
+Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{view,manage}`, `template.{view,manage}`
+
+**Note:** Only applies to `(app)` route group pages. `(bare)` pages and the org listing page (`src/app/org/(app)/page.tsx`) are not wrapped by this provider.
+
 ### Plugin System
 
 - Plugins register via `POST /api/v2/plugin/register` (Convex httpAction)

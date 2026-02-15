@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { ArrowLeft, Edit, Monitor, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useOrg } from '@/components/org/org-context';
 
 function formatDate(timestamp: number): string {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -58,24 +59,10 @@ export default function DeviceDetailPage() {
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // Get device
+    const { permissions } = useOrg();
+
     const device = useQuery(api.devices.getById, { id: params.id });
 
-    // Get org for permissions
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
-
-    // Get current user's membership to check permissions
-    const user = useQuery(api.users.me);
-    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
-
-    const currentMember = React.useMemo(() => {
-        if (!user || !members) return null;
-        return members.find((m) => m.user?._id === user._id);
-    }, [user, members]);
-
-    const canManageDevices = user?.role === 'appAdmin' || currentMember?.role === 'orgAdmin';
-
-    // Mutations
     const updateDevice = useMutation(api.devices.update);
     const deleteDevice = useMutation(api.devices.remove);
 
@@ -104,7 +91,6 @@ export default function DeviceDetailPage() {
         }
     };
 
-    // Loading state
     if (device === undefined) {
         return (
             <div className="p-6">
@@ -145,7 +131,7 @@ export default function DeviceDetailPage() {
                     </div>
                     {device.description && <p className="text-muted-foreground">{device.description}</p>}
                 </div>
-                {canManageDevices && (
+                {permissions.device.manage && (
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => setShowEditForm(true)}>
                             <Edit className="size-4 mr-2" />

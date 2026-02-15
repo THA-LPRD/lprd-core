@@ -1,16 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useRouter } from 'next/navigation';
+import { useMutation } from 'convex/react';
 import { api } from '@convex/api';
 import { MemberTable } from '@/components/org/member-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { AccessDenied, OrgNotFound } from '@/components/ui/not-found';
+import { AccessDenied } from '@/components/ui/not-found';
 import {
     Dialog,
     DialogContent,
@@ -20,48 +19,31 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
+import { useOrg } from '@/components/org/org-context';
 
 export default function OrgSettingsPage() {
-    const params = useParams<{ slug: string }>();
     const router = useRouter();
 
+    const { org, user, members, permissions } = useOrg();
+
     // Form state
-    const [orgName, setOrgName] = React.useState('');
+    const [orgName, setOrgName] = React.useState(org.name);
     const [isSaving, setIsSaving] = React.useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
     const [deleteConfirm, setDeleteConfirm] = React.useState('');
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // Get org by slug
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
-
-    // Get members
-    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
-
-    // Get current user
-    const user = useQuery(api.users.me);
-
-    // Check permissions
-    const currentMember = React.useMemo(() => {
-        if (!user || !members) return null;
-        return members.find((m) => m.user?._id === user._id);
-    }, [user, members]);
-
-    const canManage = user?.role === 'appAdmin' || currentMember?.role === 'orgAdmin';
-
     // Mutations
     const updateOrg = useMutation(api.organizations.update);
     const deleteOrg = useMutation(api.organizations.remove);
 
-    // Sync org name when loaded
+    // Sync org name when it changes externally
     React.useEffect(() => {
-        if (org) {
-            setOrgName(org.name);
-        }
-    }, [org]);
+        setOrgName(org.name);
+    }, [org.name]);
 
     const handleSaveSettings = async () => {
-        if (!org || !orgName.trim()) return;
+        if (!orgName.trim()) return;
 
         setIsSaving(true);
         try {
@@ -75,7 +57,7 @@ export default function OrgSettingsPage() {
     };
 
     const handleDeleteOrg = async () => {
-        if (!org || deleteConfirm !== org.name) return;
+        if (deleteConfirm !== org.name) return;
 
         setIsDeleting(true);
         try {
@@ -86,25 +68,7 @@ export default function OrgSettingsPage() {
         }
     };
 
-    // Loading state
-    if (org === undefined || members === undefined) {
-        return (
-            <div className="p-6 max-w-4xl">
-                <Skeleton className="h-8 w-48 mb-2" />
-                <Skeleton className="h-4 w-64 mb-8" />
-                <div className="space-y-6">
-                    <Skeleton className="h-48 rounded-lg" />
-                    <Skeleton className="h-64 rounded-lg" />
-                </div>
-            </div>
-        );
-    }
-
-    if (!org) {
-        return <OrgNotFound />;
-    }
-
-    if (!canManage) {
+    if (!permissions.org.manage) {
         return <AccessDenied />;
     }
 
@@ -159,8 +123,8 @@ export default function OrgSettingsPage() {
                         <MemberTable
                             members={members}
                             organizationId={org._id}
-                            currentUserId={user?._id}
-                            canManage={canManage}
+                            currentUserId={user._id}
+                            canManage={permissions.org.manage}
                         />
                     </CardContent>
                 </Card>

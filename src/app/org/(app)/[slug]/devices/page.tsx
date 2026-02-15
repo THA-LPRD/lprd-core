@@ -8,7 +8,7 @@ import { DeviceGrid } from '@/components/device/device-grid';
 import { DeviceForm } from '@/components/device/device-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrgNotFound } from '@/components/ui/not-found';
+import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -16,29 +16,13 @@ export default function DevicesPage() {
     const params = useParams<{ slug: string }>();
     const [showAddForm, setShowAddForm] = React.useState(false);
 
-    // Get org by slug
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
+    const { org, permissions } = useOrg();
 
-    // Get devices for this org
-    const devices = useQuery(api.devices.listByOrganization, org ? { organizationId: org._id } : 'skip');
+    const devices = useQuery(api.devices.listByOrganization, { organizationId: org._id });
 
-    // Get current user's membership to check permissions
-    const user = useQuery(api.users.me);
-    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
-
-    const currentMember = React.useMemo(() => {
-        if (!user || !members) return null;
-        return members.find((m) => m.user?._id === user._id);
-    }, [user, members]);
-
-    const canManageDevices = user?.role === 'appAdmin' || currentMember?.role === 'orgAdmin';
-
-    // Create device mutation
     const createDevice = useMutation(api.devices.create);
 
     const handleCreateDevice = async (data: { name: string; description: string; tags: string[] }) => {
-        if (!org) return;
-
         await createDevice({
             id: uuidv4(),
             organizationId: org._id,
@@ -48,8 +32,7 @@ export default function DevicesPage() {
         });
     };
 
-    // Loading state
-    if (org === undefined || devices === undefined) {
+    if (devices === undefined) {
         return (
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -68,10 +51,6 @@ export default function DevicesPage() {
         );
     }
 
-    if (!org) {
-        return <OrgNotFound />;
-    }
-
     return (
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -79,7 +58,7 @@ export default function DevicesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
                     <p className="text-muted-foreground">Manage devices in {org.name}</p>
                 </div>
-                {canManageDevices && (
+                {permissions.device.manage && (
                     <Button onClick={() => setShowAddForm(true)}>
                         <Plus className="size-4 mr-2" />
                         Add Device

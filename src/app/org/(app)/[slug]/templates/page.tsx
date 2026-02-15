@@ -8,7 +8,7 @@ import { TemplateGrid } from '@/components/template/template-grid';
 import { TemplateForm } from '@/components/template/template-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrgNotFound } from '@/components/ui/not-found';
+import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
 
@@ -17,19 +17,9 @@ export default function TemplatesPage() {
     const router = useRouter();
     const [showCreateForm, setShowCreateForm] = React.useState(false);
 
-    const org = useQuery(api.organizations.getBySlug, { slug: params.slug });
+    const { org, permissions } = useOrg();
 
-    const templates = useQuery(api.templates.listByOrganization, org ? { organizationId: org._id } : 'skip');
-
-    const user = useQuery(api.users.me);
-    const members = useQuery(api.organizations.listMembers, org ? { organizationId: org._id } : 'skip');
-
-    const currentMember = React.useMemo(() => {
-        if (!user || !members) return null;
-        return members.find((m) => m.user?._id === user._id);
-    }, [user, members]);
-
-    const canManageTemplates = user?.role === 'appAdmin' || currentMember?.role === 'orgAdmin';
+    const templates = useQuery(api.templates.listByOrganization, { organizationId: org._id });
 
     const createTemplate = useMutation(api.templates.create);
     const removeTemplate = useMutation(api.templates.remove);
@@ -54,8 +44,6 @@ export default function TemplatesPage() {
     };
 
     const handleCreate = async (data: { name: string; description: string }) => {
-        if (!org) return;
-
         const id = await createTemplate({
             organizationId: org._id,
             name: data.name,
@@ -108,7 +96,6 @@ export default function TemplatesPage() {
     };
 
     const handleDuplicate = async (id: string) => {
-        if (!org) return;
         const newId = await duplicateTemplate({ id: id as Id<'templates'>, organizationId: org._id });
 
         // Generate thumbnail for the new copy
@@ -149,7 +136,7 @@ export default function TemplatesPage() {
         }
     };
 
-    if (org === undefined || templates === undefined) {
+    if (templates === undefined) {
         return (
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -168,10 +155,6 @@ export default function TemplatesPage() {
         );
     }
 
-    if (!org) {
-        return <OrgNotFound />;
-    }
-
     return (
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
@@ -179,7 +162,7 @@ export default function TemplatesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
                     <p className="text-muted-foreground">Manage display templates in {org.name}</p>
                 </div>
-                {canManageTemplates && (
+                {permissions.template.manage && (
                     <Button onClick={() => setShowCreateForm(true)}>
                         <Plus className="size-4 mr-2" />
                         New Template
