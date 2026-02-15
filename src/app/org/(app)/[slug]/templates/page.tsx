@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
+import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
 
 export default function TemplatesPage() {
@@ -63,8 +64,8 @@ export default function TemplatesPage() {
                     templateId: id,
                     orgSlug: params.slug,
                     variantIndex: 0,
-                    width: 3 * 120,
-                    height: 2 * 120,
+                    width: 3 * DEFAULT_CELL_SIZE,
+                    height: 2 * DEFAULT_CELL_SIZE,
                 }),
             });
             if (res.ok) {
@@ -102,8 +103,10 @@ export default function TemplatesPage() {
         const source = templates?.find((t) => t._id === id);
         if (source) {
             const preferred = source.variants[source.preferredVariantIndex];
-            const width = preferred?.type === 'content' ? preferred.w * 120 : 6 * 120;
-            const height = preferred?.type === 'content' ? preferred.h * 120 : 4 * 120;
+            const width =
+                preferred?.type === 'content' ? preferred.w * DEFAULT_CELL_SIZE : GRID_COLS * DEFAULT_CELL_SIZE;
+            const height =
+                preferred?.type === 'content' ? preferred.h * DEFAULT_CELL_SIZE : GRID_ROWS * DEFAULT_CELL_SIZE;
 
             try {
                 const res = await fetch('/api/v2/templates/createThumbnail', {

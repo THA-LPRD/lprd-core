@@ -9,6 +9,7 @@ import { VariantBar } from './variant-bar';
 import { PreviewPanel } from './preview-panel';
 import { CodePanel } from './code-panel';
 import { AddVariantDialog } from './add-variant-dialog';
+import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
@@ -25,15 +26,11 @@ type TemplateDoc = {
     thumbnailStorageId?: Id<'_storage'>;
 };
 
-const CELL_SIZE = 120;
-const FULL_W = 6;
-const FULL_H = 4;
-
 function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
     if (variant.type === 'content') {
-        return { width: variant.w * CELL_SIZE, height: variant.h * CELL_SIZE };
+        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
     }
-    return { width: FULL_W * CELL_SIZE, height: FULL_H * CELL_SIZE };
+    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
 }
 
 export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; orgSlug: string }) {

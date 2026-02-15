@@ -26,6 +26,10 @@ export interface Permissions {
         view: boolean;
         manage: boolean;
     };
+    frame: {
+        view: boolean;
+        manage: boolean;
+    };
 }
 
 /**
@@ -53,6 +57,10 @@ export function getPermissions(user: User, membership: OrgMembership): Permissio
             manage: isAppAdmin || !!isOrgAdmin, // create, update, remove
         },
         template: {
+            view: isAppAdmin || !!membership,
+            manage: isAppAdmin || !!isOrgAdmin,
+        },
+        frame: {
             view: isAppAdmin || !!membership,
             manage: isAppAdmin || !!isOrgAdmin,
         },

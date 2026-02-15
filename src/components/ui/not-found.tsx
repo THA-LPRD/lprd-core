@@ -65,8 +65,18 @@ function DeviceNotFound(props: PresetProps) {
     );
 }
 
+function FrameNotFound(props: PresetProps) {
+    return (
+        <NotFound
+            title="Frame not found"
+            description="The frame you're looking for doesn't exist or you don't have access."
+            {...props}
+        />
+    );
+}
+
 function AccessDenied(props: PresetProps) {
     return <NotFound title="Access Denied" description="You don't have permission to access this page." {...props} />;
 }
 
-export { NotFound, OrgNotFound, TemplateNotFound, DeviceNotFound, AccessDenied };
+export { NotFound, OrgNotFound, TemplateNotFound, DeviceNotFound, FrameNotFound, AccessDenied };

@@ -4,16 +4,16 @@ import { generateThumbnail } from '@/lib/render/thumbnail';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { templateId, orgSlug, width, height } = body;
+        const { frameId, orgSlug, width, height } = body;
 
-        if (!templateId || !orgSlug || !width || !height) {
-            return NextResponse.json({ error: 'templateId, orgSlug, width, and height are required' }, { status: 400 });
+        if (!frameId || !orgSlug || !width || !height) {
+            return NextResponse.json({ error: 'frameId, orgSlug, width, and height are required' }, { status: 400 });
         }
 
         const { origin, hostname } = new URL(request.url);
 
         const png = await generateThumbnail({
-            renderPath: `/org/${orgSlug}/templates/render/${templateId}`,
+            renderPath: `/org/${orgSlug}/frames/render/${frameId}`,
             width,
             height,
             cookieHeader: request.headers.get('cookie') ?? '',
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
             headers: { 'Content-Type': 'image/png' },
         });
     } catch (error) {
-        console.error('Template thumbnail generation error:', error);
+        console.error('Frame thumbnail generation error:', error);
         return NextResponse.json({ error: 'Failed to generate thumbnail' }, { status: 500 });
     }
 }

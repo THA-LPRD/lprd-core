@@ -1,19 +1,16 @@
 'use client';
 
 import { ShadowPreview } from './shadow-preview';
+import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
-const CELL_SIZE = 120;
-const FULL_W = 6;
-const FULL_H = 4;
-
 function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
     if (variant.type === 'content') {
-        return { width: variant.w * CELL_SIZE, height: variant.h * CELL_SIZE };
+        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
     }
     // Background/foreground = full display
-    return { width: FULL_W * CELL_SIZE, height: FULL_H * CELL_SIZE };
+    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
 }
 
 function getSizeLabel(variant: TemplateVariant): string {

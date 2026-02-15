@@ -4,60 +4,41 @@ import * as React from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
-import { renderAndSanitize, TEMPLATE_BASE_CSS } from '@/lib/template-document';
+import { ShadowLayer } from '@/components/render/shadow-layer';
+import { RenderPageShell } from '@/components/render/render-page-shell';
+import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
+
+type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+
+function getVariantSize(variant: TemplateVariant): { width: number; height: number } {
+    if (variant.type === 'content') {
+        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
+    }
+    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
+}
 
 export default function TemplateRenderPage() {
     const params = useParams<{ id: string }>();
     const template = useQuery(api.templates.getById, { id: params.id as Id<'templates'> });
-    const hostRef = React.useRef<HTMLDivElement>(null);
-    const shadowRef = React.useRef<ShadowRoot | null>(null);
+    const [rendered, setRendered] = React.useState(false);
 
-    React.useEffect(() => {
-        if (hostRef.current && !shadowRef.current) {
-            shadowRef.current = hostRef.current.attachShadow({ mode: 'open' });
-        }
-    }, []);
+    if (!template) return null;
 
-    // Hide Next.js dev indicator
-    React.useEffect(() => {
-        const hideIndicator = () => {
-            const indicator = document.querySelector('nextjs-portal');
-            if (indicator) {
-                (indicator as HTMLElement).style.display = 'none';
-            }
-        };
-
-        hideIndicator();
-        const interval = setInterval(hideIndicator, 100);
-
-        return () => clearInterval(interval);
-    }, []);
-
-    React.useEffect(() => {
-        if (!shadowRef.current || !template) return;
-
-        const baseStyles = `<style>:host { ${TEMPLATE_BASE_CSS} }</style>`;
-        const sampleData = (template.sampleData as Record<string, unknown>) ?? {};
-        try {
-            const html = renderAndSanitize(template.templateHtml, sampleData);
-            shadowRef.current.innerHTML = baseStyles + html;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown render error';
-            shadowRef.current.innerHTML =
-                baseStyles +
-                `<div style="color: #ef4444; font-family: monospace; padding: 8px; font-size: 12px;">Template error: ${message}</div>`;
-        }
-
-        hostRef.current?.setAttribute('data-rendered', '');
-    }, [template]);
+    const sampleData = (template.sampleData as Record<string, unknown>) ?? {};
+    const preferred = (template.variants as TemplateVariant[])[template.preferredVariantIndex];
+    const { width, height } = preferred
+        ? getVariantSize(preferred)
+        : { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
 
     return (
-        <>
-            <style>
-                {'body { margin: 0; background: white; } next-dev-tools-indicator { display: none !important; }'}
-            </style>
-            <div ref={hostRef} style={{ width: '100vw', height: '100vh' }} />
-        </>
+        <RenderPageShell rendered={rendered}>
+            <ShadowLayer
+                html={template.templateHtml}
+                sampleData={sampleData}
+                style={{ width, height }}
+                onRendered={() => setRendered(true)}
+            />
+        </RenderPageShell>
     );
 }

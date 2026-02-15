@@ -37,6 +37,23 @@ export const templateVariant = v.union(
 // Template scope
 export const templateScope = v.union(v.literal('global'), v.literal('org'));
 
+// Widget placed on a frame grid
+export const frameWidget = v.object({
+    id: v.string(),
+    templateId: v.optional(v.id('templates')),
+    variantIndex: v.optional(v.number()),
+    x: v.number(),
+    y: v.number(),
+    w: v.number(),
+    h: v.number(),
+});
+
+// Reference to a template used as background/foreground layer
+export const frameLayer = v.object({
+    templateId: v.id('templates'),
+    variantIndex: v.number(),
+});
+
 export default defineSchema({
     users: defineTable({
         authId: v.string(),
@@ -152,4 +169,24 @@ export default defineSchema({
         .index('by_organization', ['organizationId'])
         .index('by_plugin', ['pluginId'])
         .index('by_plugin_and_name', ['pluginId', 'name']),
+
+    frames: defineTable({
+        organizationId: v.id('organizations'),
+        createdBy: v.id('users'),
+        name: v.string(),
+        description: v.optional(v.string()),
+
+        // Layers
+        background: v.optional(frameLayer),
+        foreground: v.optional(frameLayer),
+
+        // Content grid (always 10×6, each cell 80px for preview)
+        widgets: v.array(frameWidget),
+
+        // Thumbnail
+        thumbnailStorageId: v.optional(v.id('_storage')),
+
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    }).index('by_organization', ['organizationId']),
 });

@@ -12,6 +12,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
@@ -41,7 +42,11 @@ export function AddVariantDialog({
     const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (variantType === 'content') {
-            onAddAction({ type: 'content', w: Math.max(1, Math.min(6, w)), h: Math.max(1, Math.min(4, h)) });
+            onAddAction({
+                type: 'content',
+                w: Math.max(1, Math.min(GRID_COLS, w)),
+                h: Math.max(1, Math.min(GRID_ROWS, h)),
+            });
         } else if (variantType === 'background') {
             onAddAction({ type: 'background' });
         } else {
@@ -80,23 +85,23 @@ export function AddVariantDialog({
                         {variantType === 'content' && (
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="grid gap-2">
-                                    <Label htmlFor="variant-w">Width (1-6 cols)</Label>
+                                    <Label htmlFor="variant-w">Width (1-{GRID_COLS} cols)</Label>
                                     <Input
                                         id="variant-w"
                                         type="number"
                                         min={1}
-                                        max={6}
+                                        max={GRID_COLS}
                                         value={w}
                                         onChange={(e) => setW(Number(e.target.value))}
                                     />
                                 </div>
                                 <div className="grid gap-2">
-                                    <Label htmlFor="variant-h">Height (1-4 rows)</Label>
+                                    <Label htmlFor="variant-h">Height (1-{GRID_ROWS} rows)</Label>
                                     <Input
                                         id="variant-h"
                                         type="number"
                                         min={1}
-                                        max={4}
+                                        max={GRID_ROWS}
                                         value={h}
                                         onChange={(e) => setH(Number(e.target.value))}
                                     />

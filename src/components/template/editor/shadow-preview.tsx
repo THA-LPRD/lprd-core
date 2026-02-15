@@ -1,7 +1,6 @@
 'use client';
 
-import * as React from 'react';
-import { renderAndSanitize, TEMPLATE_BASE_CSS } from '@/lib/template-document';
+import { ShadowLayer } from '@/components/render/shadow-layer';
 
 export function ShadowPreview({
     templateHtml,
@@ -14,33 +13,8 @@ export function ShadowPreview({
     width: number;
     height: number;
 }) {
-    const hostRef = React.useRef<HTMLDivElement>(null);
-    const shadowRef = React.useRef<ShadowRoot | null>(null);
-
-    React.useEffect(() => {
-        if (hostRef.current && !shadowRef.current) {
-            shadowRef.current = hostRef.current.attachShadow({ mode: 'open' });
-        }
-    }, []);
-
-    React.useEffect(() => {
-        if (!shadowRef.current) return;
-
-        const baseStyles = `<style>:host { ${TEMPLATE_BASE_CSS} }</style>`;
-        try {
-            const sanitized = renderAndSanitize(templateHtml, sampleData);
-            shadowRef.current.innerHTML = baseStyles + sanitized;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown render error';
-            shadowRef.current.innerHTML =
-                baseStyles +
-                `<div style="color: #ef4444; font-family: monospace; padding: 8px; font-size: 12px;">Template error: ${message}</div>`;
-        }
-    }, [templateHtml, sampleData]);
-
     return (
         <div
-            ref={hostRef}
             style={{
                 width: `${width + 2}px`,
                 height: `${height + 2}px`,
@@ -50,6 +24,8 @@ export function ShadowPreview({
                 borderRadius: '6px',
                 background: 'white',
             }}
-        />
+        >
+            <ShadowLayer html={templateHtml} sampleData={sampleData} style={{ width: '100%', height: '100%' }} />
+        </div>
     );
 }
