@@ -178,6 +178,7 @@ export default defineSchema({
 
         // Layers
         background: v.optional(frameLayer),
+        backgroundColor: v.optional(v.string()),
         foreground: v.optional(frameLayer),
 
         // Content grid (always 10×6, each cell 80px for preview)

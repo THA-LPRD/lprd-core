@@ -39,6 +39,7 @@ type FrameDoc = {
     description?: string;
     widgets: Widget[];
     background?: LayerRef;
+    backgroundColor?: string;
     foreground?: LayerRef;
 };
 
@@ -48,6 +49,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
     const [name, setName] = React.useState(frame.name);
     const [widgets, setWidgets] = React.useState<Widget[]>(frame.widgets);
     const [background, setBackground] = React.useState<LayerRef | undefined>(frame.background);
+    const [backgroundColor, setBackgroundColor] = React.useState<string | undefined>(frame.backgroundColor);
     const [foreground, setForeground] = React.useState<LayerRef | undefined>(frame.foreground);
     const [selectedWidgetId, setSelectedWidgetId] = React.useState<string | null>(null);
     const [isDirty, setIsDirty] = React.useState(false);
@@ -98,9 +100,10 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
             name !== frame.name ||
             JSON.stringify(widgets) !== JSON.stringify(frame.widgets) ||
             JSON.stringify(background) !== JSON.stringify(frame.background) ||
+            backgroundColor !== frame.backgroundColor ||
             JSON.stringify(foreground) !== JSON.stringify(frame.foreground);
         setIsDirty(changed);
-    }, [name, widgets, background, foreground, frame]);
+    }, [name, widgets, background, backgroundColor, foreground, frame]);
 
     const selectedWidget = selectedWidgetId ? (widgets.find((w) => w.id === selectedWidgetId) ?? null) : null;
 
@@ -147,8 +150,10 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
                 name,
                 widgets,
                 background,
+                backgroundColor,
                 foreground,
                 clearBackground: !background,
+                clearBackgroundColor: !backgroundColor,
                 clearForeground: !foreground,
             });
 
@@ -199,9 +204,20 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
         [pickerTarget, selectedWidget],
     );
 
+    const handleSelectBackgroundColor = React.useCallback((color: string) => {
+        setBackgroundColor(color);
+        setBackground(undefined);
+    }, []);
+
+    const handleClearBackground = React.useCallback(() => {
+        setBackground(undefined);
+        setBackgroundColor(undefined);
+    }, []);
+
     const handleTemplateSelect = (selection: TemplateSelection) => {
         if (pickerTarget === 'background') {
             setBackground(selection);
+            setBackgroundColor(undefined);
         } else if (pickerTarget === 'foreground') {
             setForeground(selection);
         } else if (pickerTarget === 'widget' && selectedWidgetId) {
@@ -225,11 +241,12 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
 
             <LayerControls
                 background={background}
+                backgroundColor={backgroundColor}
                 foreground={foreground}
                 templates={templateOptions}
                 onPickBackground={() => setPickerTarget('background')}
                 onPickForeground={() => setPickerTarget('foreground')}
-                onClearBackground={() => setBackground(undefined)}
+                onClearBackground={handleClearBackground}
                 onClearForeground={() => setForeground(undefined)}
             />
 
@@ -250,6 +267,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
                     onSelectWidget={setSelectedWidgetId}
                     onMoveWidget={handleMoveWidget}
                     background={background}
+                    backgroundColor={backgroundColor}
                     foreground={foreground}
                     templateDocs={templateDocs}
                 />
@@ -281,6 +299,10 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
                 templates={templateOptions}
                 filter={pickerFilter}
                 onSelect={handleTemplateSelect}
+                mode={pickerTarget === 'background' ? 'background' : 'default'}
+                backgroundColor={backgroundColor}
+                onSelectColor={handleSelectBackgroundColor}
+                hasBackgroundTemplate={!!background}
             />
         </div>
     );

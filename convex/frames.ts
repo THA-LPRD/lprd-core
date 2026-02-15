@@ -72,6 +72,7 @@ export const create = mutation({
 		description: v.optional(v.string()),
 		widgets: v.array(frameWidget),
 		background: v.optional(frameLayer),
+		backgroundColor: v.optional(v.string()),
 		foreground: v.optional(frameLayer),
 	},
 	handler: async (ctx, args) => {
@@ -90,6 +91,7 @@ export const create = mutation({
 			description: args.description,
 			widgets: args.widgets,
 			background: args.background,
+			backgroundColor: args.backgroundColor,
 			foreground: args.foreground,
 			createdAt: now,
 			updatedAt: now,
@@ -108,8 +110,10 @@ export const update = mutation({
 		description: v.optional(v.string()),
 		widgets: v.optional(v.array(frameWidget)),
 		background: v.optional(frameLayer),
+		backgroundColor: v.optional(v.string()),
 		foreground: v.optional(frameLayer),
 		clearBackground: v.optional(v.boolean()),
+		clearBackgroundColor: v.optional(v.boolean()),
 		clearForeground: v.optional(v.boolean()),
 	},
 	handler: async (ctx, args) => {
@@ -123,13 +127,16 @@ export const update = mutation({
 		const perms = getPermissions(user, membership);
 		if (!perms.frame.manage) throw new Error('Forbidden');
 
-		const {id, clearBackground, clearForeground, ...updates} = args;
+		const {id, clearBackground, clearBackgroundColor, clearForeground, ...updates} = args;
 		void id;
 
 		const patch: Record<string, unknown> = {...updates, updatedAt: Date.now()};
 
 		if (clearBackground) {
 			patch.background = undefined;
+		}
+		if (clearBackgroundColor) {
+			patch.backgroundColor = undefined;
 		}
 		if (clearForeground) {
 			patch.foreground = undefined;

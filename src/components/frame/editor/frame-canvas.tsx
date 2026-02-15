@@ -125,6 +125,7 @@ export function FrameCanvas({
     onSelectWidget,
     onMoveWidget,
     background,
+    backgroundColor,
     foreground,
     templateDocs,
 }: {
@@ -133,6 +134,7 @@ export function FrameCanvas({
     onSelectWidget: (id: string | null) => void;
     onMoveWidget: (id: string, x: number, y: number) => void;
     background?: LayerRef;
+    backgroundColor?: string;
     foreground?: LayerRef;
     templateDocs: Map<string, TemplateDoc>;
 }) {
@@ -221,11 +223,13 @@ export function FrameCanvas({
                     </svg>
 
                     {/* Background layer */}
-                    {bgDoc && (
+                    {bgDoc ? (
                         <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
                             <LayerPreview templateDoc={bgDoc} />
                         </div>
-                    )}
+                    ) : backgroundColor ? (
+                        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundColor }} />
+                    ) : null}
 
                     {/* Widgets */}
                     {widgets.map((widget) => (

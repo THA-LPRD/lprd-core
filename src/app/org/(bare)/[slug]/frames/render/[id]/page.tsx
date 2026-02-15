@@ -62,7 +62,7 @@ export default function FrameRenderPage() {
                 }}
             >
                 {/* Background layer */}
-                {frame.background &&
+                {frame.background ? (
                     (() => {
                         const doc = templateMap.get(frame.background.templateId);
                         if (!doc) return null;
@@ -75,7 +75,12 @@ export default function FrameRenderPage() {
                                 errorFallback={null}
                             />
                         );
-                    })()}
+                    })()
+                ) : frame.backgroundColor ? (
+                    <div
+                        style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundColor: frame.backgroundColor }}
+                    />
+                ) : null}
 
                 {/* Content widgets */}
                 {frame.widgets.map((widget) => {

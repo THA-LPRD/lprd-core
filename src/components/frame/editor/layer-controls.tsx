@@ -11,6 +11,7 @@ type LayerRef = {
 
 export function LayerControls({
     background,
+    backgroundColor,
     foreground,
     templates,
     onPickBackground,
@@ -19,6 +20,7 @@ export function LayerControls({
     onClearForeground,
 }: {
     background?: LayerRef;
+    backgroundColor?: string;
     foreground?: LayerRef;
     templates: TemplateOption[];
     onPickBackground: () => void;
@@ -34,6 +36,7 @@ export function LayerControls({
             <TemplatePickerInline
                 label="BG"
                 templateName={bgName}
+                backgroundColor={!bgName ? backgroundColor : undefined}
                 onPick={onPickBackground}
                 onClear={onClearBackground}
             />
