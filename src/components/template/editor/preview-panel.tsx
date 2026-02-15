@@ -1,6 +1,7 @@
 'use client';
 
 import { ShadowPreview } from './shadow-preview';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
@@ -37,9 +38,20 @@ export function PreviewPanel({
 
     return (
         <div className="flex flex-col items-center gap-3 p-4 h-full">
-            <div className="flex-1 flex items-center justify-center w-full overflow-auto">
-                <ShadowPreview templateHtml={templateHtml} sampleData={sampleData} width={width} height={height} />
-            </div>
+            <ScrollArea className="flex-1 min-h-0 w-full">
+                <div
+                    style={{
+                        minWidth: width + 32,
+                        minHeight: height + 32,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <ShadowPreview templateHtml={templateHtml} sampleData={sampleData} width={width} height={height} />
+                </div>
+                <ScrollBar orientation="horizontal" />
+            </ScrollArea>
             <p className="text-xs text-muted-foreground">{getSizeLabel(activeVariant)}</p>
         </div>
     );

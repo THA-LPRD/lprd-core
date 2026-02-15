@@ -4,6 +4,7 @@ import * as React from 'react';
 import { DndContext, type DragEndEvent, PointerSensor, useDraggable, useSensor, useSensors } from '@dnd-kit/core';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { ShadowLayer } from '@/components/render/shadow-layer';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { Id } from '@convex/dataModel';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
@@ -173,83 +174,97 @@ export function FrameCanvas({
     const fgDoc = foreground ? templateDocs.get(foreground.templateId) : undefined;
 
     return (
-        <div className="flex-1 overflow-auto bg-muted/30 flex items-center justify-center p-8">
-            <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-                <div
-                    style={{
-                        position: 'relative',
-                        width: CANVAS_W,
-                        height: CANVAS_H,
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        overflow: 'hidden',
-                        background: 'white',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    }}
-                    onClick={() => onSelectWidget(null)}
-                >
-                    {/* Grid lines */}
-                    <svg
-                        width={CANVAS_W}
-                        height={CANVAS_H}
-                        style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}
+        <ScrollArea className="flex-1 min-h-0 bg-muted/30">
+            <div
+                style={{
+                    minWidth: CANVAS_W + 64,
+                    minHeight: CANVAS_H + 64,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: 32,
+                }}
+            >
+                <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                    <div
+                        style={{
+                            position: 'relative',
+                            width: CANVAS_W,
+                            minWidth: CANVAS_W,
+                            height: CANVAS_H,
+                            minHeight: CANVAS_H,
+                            border: '1px solid var(--border)',
+                            borderRadius: 8,
+                            overflow: 'hidden',
+                            background: 'white',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        }}
+                        onClick={() => onSelectWidget(null)}
                     >
-                        {Array.from({ length: GRID_COLS + 1 }, (_, i) => (
-                            <line
-                                key={`v${i}`}
-                                x1={i * DEFAULT_CELL_SIZE}
-                                y1={0}
-                                x2={i * DEFAULT_CELL_SIZE}
-                                y2={CANVAS_H}
-                                stroke="var(--border)"
-                                strokeWidth={0.5}
-                                strokeDasharray="4 4"
-                                opacity={0.5}
+                        {/* Grid lines */}
+                        <svg
+                            width={CANVAS_W}
+                            height={CANVAS_H}
+                            style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 }}
+                        >
+                            {Array.from({ length: GRID_COLS + 1 }, (_, i) => (
+                                <line
+                                    key={`v${i}`}
+                                    x1={i * DEFAULT_CELL_SIZE}
+                                    y1={0}
+                                    x2={i * DEFAULT_CELL_SIZE}
+                                    y2={CANVAS_H}
+                                    stroke="var(--border)"
+                                    strokeWidth={0.5}
+                                    strokeDasharray="4 4"
+                                    opacity={0.5}
+                                />
+                            ))}
+                            {Array.from({ length: GRID_ROWS + 1 }, (_, i) => (
+                                <line
+                                    key={`h${i}`}
+                                    x1={0}
+                                    y1={i * DEFAULT_CELL_SIZE}
+                                    x2={CANVAS_W}
+                                    y2={i * DEFAULT_CELL_SIZE}
+                                    stroke="var(--border)"
+                                    strokeWidth={0.5}
+                                    strokeDasharray="4 4"
+                                    opacity={0.5}
+                                />
+                            ))}
+                        </svg>
+
+                        {/* Background layer */}
+                        {bgDoc ? (
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+                                <LayerPreview templateDoc={bgDoc} />
+                            </div>
+                        ) : backgroundColor ? (
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundColor }} />
+                        ) : null}
+
+                        {/* Widgets */}
+                        {widgets.map((widget) => (
+                            <DraggableWidget
+                                key={widget.id}
+                                widget={widget}
+                                isSelected={widget.id === selectedWidgetId}
+                                onClick={() => onSelectWidget(widget.id)}
+                                templateDoc={widget.templateId ? (templateDocs.get(widget.templateId) ?? null) : null}
                             />
                         ))}
-                        {Array.from({ length: GRID_ROWS + 1 }, (_, i) => (
-                            <line
-                                key={`h${i}`}
-                                x1={0}
-                                y1={i * DEFAULT_CELL_SIZE}
-                                x2={CANVAS_W}
-                                y2={i * DEFAULT_CELL_SIZE}
-                                stroke="var(--border)"
-                                strokeWidth={0.5}
-                                strokeDasharray="4 4"
-                                opacity={0.5}
-                            />
-                        ))}
-                    </svg>
 
-                    {/* Background layer */}
-                    {bgDoc ? (
-                        <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
-                            <LayerPreview templateDoc={bgDoc} />
-                        </div>
-                    ) : backgroundColor ? (
-                        <div style={{ position: 'absolute', inset: 0, zIndex: 0, backgroundColor }} />
-                    ) : null}
-
-                    {/* Widgets */}
-                    {widgets.map((widget) => (
-                        <DraggableWidget
-                            key={widget.id}
-                            widget={widget}
-                            isSelected={widget.id === selectedWidgetId}
-                            onClick={() => onSelectWidget(widget.id)}
-                            templateDoc={widget.templateId ? (templateDocs.get(widget.templateId) ?? null) : null}
-                        />
-                    ))}
-
-                    {/* Foreground layer */}
-                    {fgDoc && (
-                        <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
-                            <LayerPreview templateDoc={fgDoc} />
-                        </div>
-                    )}
-                </div>
-            </DndContext>
-        </div>
+                        {/* Foreground layer */}
+                        {fgDoc && (
+                            <div style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}>
+                                <LayerPreview templateDoc={fgDoc} />
+                            </div>
+                        )}
+                    </div>
+                </DndContext>
+            </div>
+            <ScrollBar orientation="horizontal" />
+        </ScrollArea>
     );
 }
