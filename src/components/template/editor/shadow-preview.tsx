@@ -7,11 +7,15 @@ export function ShadowPreview({
     sampleData,
     width,
     height,
+    widthCells,
+    heightCells,
 }: {
     templateHtml: string;
     sampleData: Record<string, unknown>;
     width: number;
     height: number;
+    widthCells?: number;
+    heightCells?: number;
 }) {
     return (
         <div
@@ -25,7 +29,13 @@ export function ShadowPreview({
                 background: 'white',
             }}
         >
-            <ShadowLayer html={templateHtml} sampleData={sampleData} style={{ width: '100%', height: '100%' }} />
+            <ShadowLayer
+                html={templateHtml}
+                sampleData={sampleData}
+                width={widthCells}
+                height={heightCells}
+                style={{ width: '100%', height: '100%' }}
+            />
         </div>
     );
 }

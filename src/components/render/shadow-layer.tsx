@@ -8,6 +8,8 @@ export function ShadowLayer({
     html,
     sampleData,
     cellSize = DEFAULT_CELL_SIZE,
+    width,
+    height,
     extraHostCSS,
     style,
     onRendered,
@@ -16,6 +18,8 @@ export function ShadowLayer({
     html: string;
     sampleData: Record<string, unknown>;
     cellSize?: number;
+    width?: number;
+    height?: number;
     extraHostCSS?: string;
     style?: React.CSSProperties;
     onRendered?: () => void;
@@ -33,11 +37,11 @@ export function ShadowLayer({
     React.useEffect(() => {
         if (!shadowRef.current) return;
 
-        const baseCSS = getTemplateBaseCSS(cellSize);
+        const baseCSS = getTemplateBaseCSS(cellSize, width, height);
         const hostCSS = extraHostCSS ? `${baseCSS}; ${extraHostCSS}` : baseCSS;
         const baseStyles = `<style>:host { ${hostCSS} }</style>`;
         try {
-            const rendered = renderAndSanitize(html, sampleData, cellSize);
+            const rendered = renderAndSanitize(html, sampleData, cellSize, width, height);
             shadowRef.current.innerHTML = baseStyles + rendered;
             onRendered?.();
         } catch (error) {
@@ -52,7 +56,7 @@ export function ShadowLayer({
                     `<div style="color: #ef4444; font-family: monospace; padding: 8px; font-size: 12px;">Template error: ${message}</div>`;
             }
         }
-    }, [html, sampleData, cellSize, extraHostCSS, errorFallback, onRendered]);
+    }, [html, sampleData, cellSize, width, height, extraHostCSS, errorFallback, onRendered]);
 
     return <div ref={hostRef} style={style} />;
 }

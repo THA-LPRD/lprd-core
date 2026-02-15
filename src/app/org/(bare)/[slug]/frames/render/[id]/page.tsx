@@ -70,6 +70,8 @@ export default function FrameRenderPage() {
                             <ShadowLayer
                                 html={doc.templateHtml}
                                 sampleData={(doc.sampleData as Record<string, unknown>) ?? {}}
+                                width={GRID_COLS}
+                                height={GRID_ROWS}
                                 extraHostCSS="overflow: hidden;"
                                 style={{ position: 'absolute', inset: 0, zIndex: 0 }}
                                 errorFallback={null}
@@ -92,6 +94,8 @@ export default function FrameRenderPage() {
                             key={widget.id}
                             html={doc.templateHtml}
                             sampleData={(doc.sampleData as Record<string, unknown>) ?? {}}
+                            width={widget.w}
+                            height={widget.h}
                             extraHostCSS="overflow: hidden;"
                             style={{
                                 position: 'absolute',
@@ -116,6 +120,8 @@ export default function FrameRenderPage() {
                             <ShadowLayer
                                 html={doc.templateHtml}
                                 sampleData={(doc.sampleData as Record<string, unknown>) ?? {}}
+                                width={GRID_COLS}
+                                height={GRID_ROWS}
                                 extraHostCSS="overflow: hidden;"
                                 style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}
                                 errorFallback={null}

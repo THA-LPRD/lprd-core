@@ -79,6 +79,8 @@ function DraggableWidget({
                 <ShadowLayer
                     html={templateDoc.templateHtml}
                     sampleData={(templateDoc.sampleData as Record<string, unknown>) ?? {}}
+                    width={widget.w}
+                    height={widget.h}
                     extraHostCSS="overflow: hidden;"
                     style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
                     errorFallback={`<div style="color:#ef4444;font-family:monospace;padding:8px;font-size:12px;">Render error</div>`}
@@ -113,6 +115,8 @@ function LayerPreview({ templateDoc }: { templateDoc: TemplateDoc | undefined })
         <ShadowLayer
             html={templateDoc.templateHtml}
             sampleData={sampleData}
+            width={GRID_COLS}
+            height={GRID_ROWS}
             extraHostCSS="overflow: hidden;"
             style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}
             errorFallback={null}

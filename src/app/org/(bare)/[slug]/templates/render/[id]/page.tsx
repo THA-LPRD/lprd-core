@@ -11,11 +11,11 @@ import type { Id } from '@convex/dataModel';
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
-function getVariantSize(variant: TemplateVariant): { width: number; height: number } {
+function getVariantDimensions(variant: TemplateVariant): { widthCells: number; heightCells: number } {
     if (variant.type === 'content') {
-        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
+        return { widthCells: variant.w, heightCells: variant.h };
     }
-    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
+    return { widthCells: GRID_COLS, heightCells: GRID_ROWS };
 }
 
 export default function TemplateRenderPage() {
@@ -27,16 +27,18 @@ export default function TemplateRenderPage() {
 
     const sampleData = (template.sampleData as Record<string, unknown>) ?? {};
     const preferred = (template.variants as TemplateVariant[])[template.preferredVariantIndex];
-    const { width, height } = preferred
-        ? getVariantSize(preferred)
-        : { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
+    const { widthCells, heightCells } = preferred
+        ? getVariantDimensions(preferred)
+        : { widthCells: GRID_COLS, heightCells: GRID_ROWS };
 
     return (
         <RenderPageShell rendered={rendered}>
             <ShadowLayer
                 html={template.templateHtml}
                 sampleData={sampleData}
-                style={{ width, height }}
+                width={widthCells}
+                height={heightCells}
+                style={{ width: widthCells * DEFAULT_CELL_SIZE, height: heightCells * DEFAULT_CELL_SIZE }}
                 onRendered={() => setRendered(true)}
             />
         </RenderPageShell>

@@ -6,12 +6,16 @@ import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants'
 
 type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
 
-function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
+function getVariantCells(variant: TemplateVariant): { widthCells: number; heightCells: number } {
     if (variant.type === 'content') {
-        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
+        return { widthCells: variant.w, heightCells: variant.h };
     }
-    // Background/foreground = full display
-    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
+    return { widthCells: GRID_COLS, heightCells: GRID_ROWS };
+}
+
+function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
+    const { widthCells, heightCells } = getVariantCells(variant);
+    return { width: widthCells * DEFAULT_CELL_SIZE, height: heightCells * DEFAULT_CELL_SIZE };
 }
 
 function getSizeLabel(variant: TemplateVariant): string {
@@ -34,6 +38,7 @@ export function PreviewPanel({
     sampleData: Record<string, unknown>;
     activeVariant: TemplateVariant;
 }) {
+    const { widthCells, heightCells } = getVariantCells(activeVariant);
     const { width, height } = getPreviewSize(activeVariant);
 
     return (
@@ -48,7 +53,14 @@ export function PreviewPanel({
                         justifyContent: 'center',
                     }}
                 >
-                    <ShadowPreview templateHtml={templateHtml} sampleData={sampleData} width={width} height={height} />
+                    <ShadowPreview
+                        templateHtml={templateHtml}
+                        sampleData={sampleData}
+                        width={width}
+                        height={height}
+                        widthCells={widthCells}
+                        heightCells={heightCells}
+                    />
                 </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
