@@ -102,6 +102,7 @@ Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{v
 - Each template has one or more **variants**: `content` (w×h grid cells), `background`, or `foreground`
 - One variant is marked **preferred** — rendered as a PNG thumbnail stored in Convex storage
 - Template editor uses Shadow DOM for CSS isolation and DOMPurify for sanitization
+- Code panel (`code-panel.tsx`) uses CodeMirror 6 (`@uiw/react-codemirror`) with HTML and JSON language modes, dark/light theme via `next-themes`, and inline linting (syntax errors via `@codemirror/language` syntax tree, Nunjucks template errors via `nunjucks.renderString`)
 - Schema: `convex/schema.ts` (`templates` table), functions: `convex/templates.ts`
 - Editor components: `src/components/template/editor/`
 - Pages: `src/app/org/(app)/[slug]/templates/` (list) and `src/app/org/(app)/[slug]/templates/[id]/` (editor)

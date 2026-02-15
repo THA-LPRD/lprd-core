@@ -25,7 +25,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <body className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased`}>
+            <body
+                className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased h-screen w-screen flex overflow-hidden`}
+            >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     <ConvexClientProvider>{children}</ConvexClientProvider>
                     <Toaster />

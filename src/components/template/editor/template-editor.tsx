@@ -176,7 +176,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
     };
 
     return (
-        <div className="flex flex-col h-[calc(100vh-52px)]">
+        <div className="flex flex-col h-[calc(100vh-52px)] overflow-hidden">
             <EditorToolbar
                 orgSlug={orgSlug}
                 name={name}
@@ -198,7 +198,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
                 disabled={isGlobal}
             />
 
-            <div className="flex-1 flex min-h-0">
+            <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
                 {/* Left: Preview */}
                 <div className="flex-1 border-r overflow-auto bg-muted/10">
                     <PreviewPanel
@@ -209,7 +209,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
                 </div>
 
                 {/* Right: Code */}
-                <div className="flex-1 overflow-auto">
+                <div className="flex-1 min-w-0 overflow-hidden">
                     <CodePanel
                         templateHtml={templateHtml}
                         onTemplateHtmlChange={setTemplateHtml}

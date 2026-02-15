@@ -12,9 +12,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-json": "^6.0.2",
     "@convex-dev/workos": "^0.0.1",
     "@dicebear/collection": "^9.3.1",
     "@dicebear/core": "^9.3.1",
+    "@uiw/react-codemirror": "^4.25.4",
     "@workos-inc/authkit-nextjs": "^2.13.0",
     "@workos-inc/node": "^8.0.0",
     "bullmq": "^5.67.3",
