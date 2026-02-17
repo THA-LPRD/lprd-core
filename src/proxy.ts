@@ -4,7 +4,15 @@ export default authkitMiddleware({
     eagerAuth: true,
     middlewareAuth: {
         enabled: true,
-        unauthenticatedPaths: ['/', '/login', '/sign-in', '/sign-up'],
+        unauthenticatedPaths: [
+            '/',
+            '/login',
+            '/sign-in',
+            '/sign-up',
+            '/api/v2/plugin/webhook/data',
+            '/api/v2/devices/render',
+            '/org/:slug/devices/render/:path*',
+        ],
     },
 });
 

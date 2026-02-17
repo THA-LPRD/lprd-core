@@ -33,6 +33,28 @@ export const templateVariant = v.union(
 // Template scope
 export const templateScope = v.union(v.literal('global'), v.literal('org'));
 
+// Plugin topic
+export const pluginTopic = v.object({
+    id: v.string(),
+    key: v.string(),
+    label: v.string(),
+    description: v.optional(v.string()),
+});
+
+// Device data binding
+export const deviceDataBinding = v.object({
+    widgetId: v.string(),
+    pluginId: v.id('plugins'),
+    topic: v.string(),
+    entry: v.string(),
+});
+
+// Device render reference
+export const deviceRender = v.object({
+    storageId: v.id('_storage'),
+    renderedAt: v.number(),
+});
+
 // Widget placed on a frame grid
 export const frameWidget = v.object({
     id: v.string(),
@@ -90,6 +112,10 @@ export default defineSchema({
         tags: v.array(v.string()),
         status: deviceStatus,
         lastSeen: v.optional(v.number()),
+        frameId: v.optional(v.id('frames')),
+        dataBindings: v.optional(v.array(deviceDataBinding)),
+        current: v.optional(deviceRender),
+        next: v.optional(deviceRender),
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -104,6 +130,7 @@ export default defineSchema({
         configSchema: v.optional(v.any()),
         status: pluginStatus,
         baseUrl: v.string(),
+        topics: v.array(pluginTopic),
         healthCheckIntervalMs: v.number(), // minimum 30000 (30s)
         lastHealthCheckAt: v.optional(v.number()),
         createdAt: v.number(),
@@ -126,6 +153,8 @@ export default defineSchema({
     pluginData: defineTable({
         pluginId: v.id('plugins'),
         organizationId: v.id('organizations'),
+        topic: v.string(),
+        entry: v.string(),
         contentType: v.string(),
         data: v.any(),
         ttlSeconds: v.number(),
@@ -136,7 +165,8 @@ export default defineSchema({
         .index('by_organization', ['organizationId'])
         .index('by_plugin_and_org', ['pluginId', 'organizationId'])
         .index('by_plugin_and_time', ['pluginId', 'receivedAt'])
-        .index('by_expiry', ['expiresAt']),
+        .index('by_expiry', ['expiresAt'])
+        .index('by_plugin_org_topic_entry', ['pluginId', 'organizationId', 'topic', 'entry']),
 
     templates: defineTable({
         // Ownership

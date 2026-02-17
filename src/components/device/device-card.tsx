@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { DeviceStatusDot } from './device-status-dot';
 import { Monitor } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/date';
 import type { Id } from '@convex/dataModel';
 
 type Device = {
@@ -16,36 +17,23 @@ type Device = {
     tags: string[];
     status: 'pending' | 'active';
     lastSeen?: number;
+    currentUrl?: string | null;
     createdAt: number;
     updatedAt: number;
 };
-
-function formatRelativeTime(timestamp?: number): string {
-    if (!timestamp) return 'Never';
-
-    const now = Date.now();
-    const diff = now - timestamp;
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (seconds < 60) return 'Just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    if (hours < 24) return `${hours} hr ago`;
-    if (days < 7) return `${days} day${days > 1 ? 's' : ''} ago`;
-
-    return new Date(timestamp).toLocaleDateString();
-}
 
 export function DeviceCard({ device, orgSlug }: { device: Device; orgSlug: string }) {
     return (
         <Link href={`/org/${orgSlug}/devices/${device.id}`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden">
                 {/* Device preview area */}
-                <div className="aspect-video bg-muted flex items-center justify-center border-b">
-                    <Monitor className="size-12 text-muted-foreground/50" />
+                <div className="aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">
+                    {device.currentUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={device.currentUrl} alt={device.name} className="w-full h-full object-contain" />
+                    ) : (
+                        <Monitor className="size-12 text-muted-foreground/50" />
+                    )}
                 </div>
 
                 <CardContent className="p-4">

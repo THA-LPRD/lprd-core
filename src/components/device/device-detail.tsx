@@ -1,0 +1,169 @@
+'use client';
+
+import * as React from 'react';
+import { useParams } from 'next/navigation';
+import { useQuery } from 'convex/react';
+import { api } from '@convex/api';
+import type { DeviceData } from '@/components/device/types';
+import { DeviceStatusDot } from '@/components/device/device-status-dot';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { useOrg } from '@/components/org/org-context';
+import { formatDate, formatRelativeTime } from '@/lib/date';
+
+export function DeviceDetail({ device }: { device: DeviceData }) {
+    const params = useParams<{ slug: string; id: string }>();
+    const [previewTab, setPreviewTab] = React.useState<'current' | 'queued'>('current');
+
+    const { org, permissions } = useOrg();
+
+    const frames = useQuery(api.frames.listByOrganization, org ? { organizationId: org._id } : 'skip');
+    const assignedFrame = frames?.find((f) => f._id === device.frameId);
+
+    return (
+        <div className="p-6 overflow-auto h-full">
+            {/* Back link */}
+            <Link
+                href={`/org/${params.slug}/devices`}
+                className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
+            >
+                <ArrowLeft className="size-4" />
+                Back to devices
+            </Link>
+
+            {/* Header */}
+            <div className="flex items-start justify-between mb-6">
+                <div>
+                    <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-2xl font-bold tracking-tight">{device.name}</h1>
+                        <DeviceStatusDot status={device.status} className="size-3" />
+                    </div>
+                    {device.description && <p className="text-muted-foreground">{device.description}</p>}
+                </div>
+                {permissions.device.manage && (
+                    <Button
+                        variant="outline"
+                        render={<Link href={`/org/${params.slug}/devices/${params.id}/configure`} />}
+                        nativeButton={false}
+                    >
+                        <Settings className="size-4 mr-2" />
+                        Edit
+                    </Button>
+                )}
+            </div>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+                {/* Left column — Preview */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <CardTitle className="text-lg">Preview</CardTitle>
+                            <div className="flex gap-1">
+                                <Button
+                                    variant={previewTab === 'current' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setPreviewTab('current')}
+                                >
+                                    Current
+                                </Button>
+                                <Button
+                                    variant={previewTab === 'queued' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setPreviewTab('queued')}
+                                    className="relative"
+                                >
+                                    Queued
+                                    {device.nextUrl && (
+                                        <span className="absolute -top-1 -right-1 size-2.5 bg-blue-500 rounded-full" />
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                            {previewTab === 'current' && device.currentUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={device.currentUrl}
+                                    alt="Current render"
+                                    className="w-full h-full object-contain"
+                                />
+                            ) : previewTab === 'queued' && device.nextUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={device.nextUrl}
+                                    alt="Queued render"
+                                    className="w-full h-full object-contain"
+                                />
+                            ) : (
+                                <ImageIcon className="size-16 text-muted-foreground/50" />
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Right column — Details */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Details</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Device ID</p>
+                                <p className="font-mono text-sm">{device.id}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Status</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <DeviceStatusDot status={device.status} />
+                                    <span className="capitalize">{device.status}</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Frame</p>
+                                <p className="text-sm">{assignedFrame ? assignedFrame.name : 'None'}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Tags</p>
+                                {device.tags.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                        {device.tags.map((tag) => (
+                                            <Badge key={tag} variant="secondary">
+                                                {tag}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No tags</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Last Seen</p>
+                                <p className="text-sm">{formatRelativeTime(device.lastSeen)}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Created</p>
+                                <p className="text-sm">{formatDate(device.createdAt)}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
+                                <p className="text-sm">{formatDate(device.updatedAt)}</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
+    );
+}

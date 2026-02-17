@@ -49,6 +49,7 @@ convex env set WORKOS_WEBHOOK_USERS_PATH_SECRET "your_path_secret_here"
 convex env set WORKOS_WEBHOOK_USERS_CREATED_SECRET "secret_from_workos"
 convex env set WORKOS_WEBHOOK_USERS_UPDATED_SECRET "secret_from_workos"
 convex env set WORKOS_WEBHOOK_USERS_DELETED_SECRET "secret_from_workos"
+convex env set SITE_URL "http://localhost:3000"
 ```
 
 Note: The webhook secrets will be provided by WorkOS after creating the webhook endpoints (see step 6).

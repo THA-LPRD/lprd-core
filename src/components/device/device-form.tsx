@@ -138,15 +138,15 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
                             {tags.length > 0 && (
                                 <div className="flex flex-wrap gap-1 mt-2">
                                     {tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary" className="gap-1">
-                                            {tag}
-                                            <button
-                                                type="button"
+                                        <Badge key={tag} variant="secondary" className="gap-1 p-2.5">
+                                            <span className={`-mt-1`}>{tag}</span>
+                                            <Button
+                                                variant="ghost"
                                                 onClick={() => handleRemoveTag(tag)}
-                                                className="hover:bg-muted rounded-full"
+                                                className="hover:bg-muted px-0"
                                             >
                                                 <X className="size-3" />
-                                            </button>
+                                            </Button>
                                         </Badge>
                                     ))}
                                 </div>
@@ -179,7 +179,7 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
                     </div>
 
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                        <Button variant="outline" onClick={() => onOpenChange(false)}>
                             Cancel
                         </Button>
                         <Button type="submit" disabled={isSubmitting || !name.trim()}>

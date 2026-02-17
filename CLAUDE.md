@@ -87,12 +87,41 @@ Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{v
 ### Plugin System
 
 - Plugins register via `POST /api/v2/plugin/register` (Convex httpAction)
+- Registration includes **topics** — named data categories the plugin can push (e.g. `room`, `weather`)
 - Action-based webhook endpoints use `X-Plugin-Id` header (not URL path):
   - `POST /api/v2/plugin/webhook/createTemplate` — upserts a global template
-  - `POST /api/v2/plugin/webhook/data` — pushes org-scoped data
+  - `POST /api/v2/plugin/webhook/data` — pushes org-scoped data with **topic** + **entry** (upsert semantics)
+- Plugin data is keyed by `(pluginId, orgId, topic, entry)` — pushing the same key overwrites the previous record
 - Plugin health checks run via a BullMQ worker (`src/worker/`) that polls Convex for active plugins and hits their `/health` endpoint
 - Plugin data is org-scoped — plugins specify `org_slug` in webhook payloads
 - Auth is not yet implemented
+- **Mock plugin script**: `./scripts/mock-plugin.sh` simulates registration and data pushes for testing. Set `PLUGIN_ID` and `ORG_SLUG` env vars after first registration.
+
+### Device–Frame–Plugin Integration
+
+Devices display frames with live plugin data, pre-rendered as images.
+
+**Data flow:**
+1. Plugins declare **topics** on registration
+2. Plugins push data with **topic + entry** per org (upsert)
+3. A **frame** is a reusable layout (widgets + layers)
+4. A **device** is assigned a frame and configures **data bindings** per widget — multiple bindings merge flat (last wins)
+5. On data push, affected devices get a new image rendered via Playwright (stored as `next`)
+
+**Schema additions (devices table):**
+- `frameId` — optional reference to assigned frame
+- `dataBindings` — array of `{ widgetId, pluginId, topic, entry }`
+- `current` / `next` — `{ storageId, renderedAt }` double-buffer for rendered images
+
+**Key files:**
+- `convex/devices.ts` — CRUD + `renderDevice` (internalAction), `setNext`, `getDataForBindings`
+- `convex/plugins/data.ts` — `storeWebhookData` (upsert + trigger render), `listPluginsWithTopics`, `listEntries`
+- `src/app/org/(bare)/[slug]/devices/render/[id]/page.tsx` — Playwright render target
+- `src/app/api/v2/devices/render/route.ts` — render API (POST, returns PNG)
+- `src/components/device/data-source-picker.tsx` — plugin → topic → entry cascading selects
+- `src/app/org/(app)/[slug]/devices/[id]/page.tsx` — device detail with frame config, data bindings, current/queued preview
+
+**Convex images note:** Use native `<img>` (not `next/image`) for Convex storage URLs — the hostname is dynamic and can't be statically configured in `next.config.ts`.
 
 ### Template System
 
@@ -208,3 +237,7 @@ Base-UI does **not** support the `asChild` prop (that's a Radix concept). Passin
     <Button render={<div />} nativeButton={false}>Click</Button>
 </TooltipTrigger>
 ```
+
+#### Field Component
+
+Use `Field`, `FieldLabel`, `FieldGroup`, etc. from `src/components/ui/field.tsx` to wrap form inputs with labels and descriptions. Prefer this over raw `<Label>` + input combos for consistent spacing and layout.
