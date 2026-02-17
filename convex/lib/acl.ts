@@ -6,8 +6,8 @@
 export type UserRole = 'appAdmin' | 'user';
 export type OrgMemberRole = 'orgAdmin' | 'user';
 
-export type User = {role: UserRole};
-export type OrgMembership = {role: OrgMemberRole} | null;
+export type User = { role: UserRole };
+export type OrgMembership = { role: OrgMemberRole } | null;
 
 export interface Permissions {
     platform: {

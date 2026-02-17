@@ -1,8 +1,8 @@
-import {v} from 'convex/values';
-import {mutation, query} from './_generated/server';
-import {deviceStatus} from './schema';
-import {getPermissions} from './lib/acl';
-import {getCurrentUser, getMembership} from './users';
+import { v } from 'convex/values';
+import { mutation, query } from './_generated/server';
+import { deviceStatus } from './schema';
+import { getPermissions } from './lib/acl';
+import { getCurrentUser, getMembership } from './users';
 
 /**
  * Create a new device.
@@ -43,7 +43,7 @@ export const create = mutation({
  * Requires device.view permission.
  */
 export const getById = query({
-    args: {id: v.string()},
+    args: { id: v.string() },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return null;
@@ -67,7 +67,7 @@ export const getById = query({
  * Requires device.view permission.
  */
 export const listByOrganization = query({
-    args: {organizationId: v.id('organizations')},
+    args: { organizationId: v.id('organizations') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
@@ -109,8 +109,8 @@ export const update = mutation({
         const perms = getPermissions(user, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
-        const {name, description, tags, status} = args;
-        await ctx.db.patch(device._id, {name, description, tags, status, updatedAt: Date.now()});
+        const { name, description, tags, status } = args;
+        await ctx.db.patch(device._id, { name, description, tags, status, updatedAt: Date.now() });
     },
 });
 
@@ -119,7 +119,7 @@ export const update = mutation({
  * Requires device.manage permission.
  */
 export const remove = mutation({
-    args: {id: v.string()},
+    args: { id: v.string() },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');

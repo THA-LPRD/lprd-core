@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { getTemplateBaseCSS, renderAndSanitize } from '@/lib/render/template-document';
 import { DEFAULT_CELL_SIZE } from '@/lib/render/constants';
+import { isTemplateData, resolveForRender } from '@/lib/template-data';
 
 export function ShadowLayer({
     html,
@@ -41,7 +42,8 @@ export function ShadowLayer({
         const hostCSS = extraHostCSS ? `${baseCSS}; ${extraHostCSS}` : baseCSS;
         const baseStyles = `<style>:host { ${hostCSS} }</style>`;
         try {
-            const rendered = renderAndSanitize(html, sampleData, cellSize, width, height);
+            const resolvedData = isTemplateData(sampleData) ? resolveForRender(sampleData) : sampleData;
+            const rendered = renderAndSanitize(html, resolvedData, cellSize, width, height);
             shadowRef.current.innerHTML = baseStyles + rendered;
             onRendered?.();
         } catch (error) {

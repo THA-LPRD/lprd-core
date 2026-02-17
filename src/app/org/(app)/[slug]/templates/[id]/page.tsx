@@ -11,7 +11,7 @@ import type { Id } from '@convex/dataModel';
 export default function TemplateEditorPage() {
     const params = useParams<{ slug: string; id: string }>();
 
-    const template = useQuery(api.templates.getById, {
+    const template = useQuery(api.templates.crud.getById, {
         id: params.id as Id<'templates'>,
     });
 

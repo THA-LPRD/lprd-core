@@ -1,8 +1,8 @@
-import {v} from 'convex/values';
-import {mutation, query} from './_generated/server';
-import {orgMemberRole} from './schema';
-import {getPermissions} from './lib/acl';
-import {getCurrentUser, getMembership, withAvatarUrl} from './users';
+import { v } from 'convex/values';
+import { mutation, query } from './_generated/server';
+import { orgMemberRole } from './schema';
+import { getPermissions } from './lib/acl';
+import { getCurrentUser, getMembership, withAvatarUrl } from './users';
 
 /**
  * Create a new organization.
@@ -78,7 +78,7 @@ export const list = query({
  * Get an organization by ID.
  */
 export const getById = query({
-    args: {id: v.id('organizations')},
+    args: { id: v.id('organizations') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return null;
@@ -98,7 +98,7 @@ export const getById = query({
  * Get an organization by slug.
  */
 export const getBySlug = query({
-    args: {slug: v.string()},
+    args: { slug: v.string() },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return null;
@@ -135,8 +135,8 @@ export const update = mutation({
         const perms = getPermissions(user, membership);
         if (!perms.org.manage) throw new Error('Forbidden');
 
-        const {id, ...updates} = args;
-        await ctx.db.patch(id, {...updates, updatedAt: Date.now()});
+        const { id, ...updates } = args;
+        await ctx.db.patch(id, { ...updates, updatedAt: Date.now() });
     },
 });
 
@@ -145,7 +145,7 @@ export const update = mutation({
  * Requires org.manage permission.
  */
 export const remove = mutation({
-    args: {id: v.id('organizations')},
+    args: { id: v.id('organizations') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
@@ -223,7 +223,7 @@ export const updateMemberRole = mutation({
         const targetMembership = await getMembership(ctx, args.userId, args.organizationId);
         if (!targetMembership) throw new Error('Member not found');
 
-        await ctx.db.patch(targetMembership._id, {role: args.role});
+        await ctx.db.patch(targetMembership._id, { role: args.role });
     },
 });
 
@@ -254,7 +254,7 @@ export const removeMember = mutation({
  * Requires org.view permission.
  */
 export const listMembers = query({
-    args: {organizationId: v.id('organizations')},
+    args: { organizationId: v.id('organizations') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
@@ -275,7 +275,7 @@ export const listMembers = query({
                     user: memberUser ? await withAvatarUrl(ctx, memberUser) : null,
                     role: m.role,
                 };
-            })
+            }),
         );
     },
 });
@@ -284,7 +284,7 @@ export const listMembers = query({
  * List organizations a user belongs to with their role.
  */
 export const listByUser = query({
-    args: {userId: v.id('users')},
+    args: { userId: v.id('users') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
@@ -302,7 +302,7 @@ export const listByUser = query({
             memberships.map(async (m) => ({
                 organization: await ctx.db.get(m.organizationId),
                 role: m.role,
-            }))
+            })),
         );
     },
 });

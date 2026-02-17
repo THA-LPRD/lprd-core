@@ -48,9 +48,9 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
     const [isSaving, setIsSaving] = React.useState(false);
     const [showAddVariant, setShowAddVariant] = React.useState(false);
 
-    const updateTemplate = useMutation(api.templates.update);
-    const storeThumbnail = useMutation(api.templates.storeThumbnail);
-    const generateUploadUrl = useMutation(api.templates.generateUploadUrl);
+    const updateTemplate = useMutation(api.templates.crud.update);
+    const storeThumbnail = useMutation(api.templates.crud.storeThumbnail);
+    const generateUploadUrl = useMutation(api.templates.crud.generateUploadUrl);
 
     // Parse sample data safely
     const parsedSampleData = React.useMemo(() => {

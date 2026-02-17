@@ -30,7 +30,7 @@ export default function FrameRenderPage() {
 
     // Fetch all templates for this org to get their HTML
     const templates = useQuery(
-        api.templates.listByOrganization,
+        api.templates.crud.listByOrganization,
         frame ? { organizationId: frame.organizationId } : 'skip',
     );
 

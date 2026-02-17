@@ -20,7 +20,7 @@ function getVariantDimensions(variant: TemplateVariant): { widthCells: number; h
 
 export default function TemplateRenderPage() {
     const params = useParams<{ id: string }>();
-    const template = useQuery(api.templates.getById, { id: params.id as Id<'templates'> });
+    const template = useQuery(api.templates.crud.getById, { id: params.id as Id<'templates'> });
     const [rendered, setRendered] = React.useState(false);
 
     if (!template) return null;

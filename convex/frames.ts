@@ -1,38 +1,38 @@
-import {v} from 'convex/values';
-import {mutation, query} from './_generated/server';
-import {frameLayer, frameWidget} from './schema';
-import {getPermissions} from './lib/acl';
-import {getCurrentUser, getMembership} from './users';
+import { v } from 'convex/values';
+import { mutation, query } from './_generated/server';
+import { frameLayer, frameWidget } from './schema';
+import { getPermissions } from './lib/acl';
+import { getCurrentUser, getMembership } from './users';
 
 /**
  * List all frames for an organization.
  * Requires frame.view permission.
  */
 export const listByOrganization = query({
-	args: {organizationId: v.id('organizations')},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) return [];
+    args: { organizationId: v.id('organizations') },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) return [];
 
-		const membership = await getMembership(ctx, user._id, args.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.view) return [];
+        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.view) return [];
 
-		const frames = await ctx.db
-			.query('frames')
-			.withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
-			.collect();
+        const frames = await ctx.db
+            .query('frames')
+            .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
+            .collect();
 
-		return Promise.all(
-			frames.map(async (frame) => {
-				let thumbnailUrl: string | null = null;
-				if (frame.thumbnailStorageId) {
-					thumbnailUrl = await ctx.storage.getUrl(frame.thumbnailStorageId);
-				}
-				return {...frame, thumbnailUrl};
-			}),
-		);
-	},
+        return Promise.all(
+            frames.map(async (frame) => {
+                let thumbnailUrl: string | null = null;
+                if (frame.thumbnailStorageId) {
+                    thumbnailUrl = await ctx.storage.getUrl(frame.thumbnailStorageId);
+                }
+                return { ...frame, thumbnailUrl };
+            }),
+        );
+    },
 });
 
 /**
@@ -40,25 +40,25 @@ export const listByOrganization = query({
  * Requires frame.view permission.
  */
 export const getById = query({
-	args: {id: v.id('frames')},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) return null;
+    args: { id: v.id('frames') },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) return null;
 
-		const frame = await ctx.db.get(args.id);
-		if (!frame) return null;
+        const frame = await ctx.db.get(args.id);
+        if (!frame) return null;
 
-		const membership = await getMembership(ctx, user._id, frame.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.view) return null;
+        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.view) return null;
 
-		let thumbnailUrl: string | null = null;
-		if (frame.thumbnailStorageId) {
-			thumbnailUrl = await ctx.storage.getUrl(frame.thumbnailStorageId);
-		}
+        let thumbnailUrl: string | null = null;
+        if (frame.thumbnailStorageId) {
+            thumbnailUrl = await ctx.storage.getUrl(frame.thumbnailStorageId);
+        }
 
-		return {...frame, thumbnailUrl};
-	},
+        return { ...frame, thumbnailUrl };
+    },
 });
 
 /**
@@ -66,37 +66,37 @@ export const getById = query({
  * Requires frame.manage permission.
  */
 export const create = mutation({
-	args: {
-		organizationId: v.id('organizations'),
-		name: v.string(),
-		description: v.optional(v.string()),
-		widgets: v.array(frameWidget),
-		background: v.optional(frameLayer),
-		backgroundColor: v.optional(v.string()),
-		foreground: v.optional(frameLayer),
-	},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
+    args: {
+        organizationId: v.id('organizations'),
+        name: v.string(),
+        description: v.optional(v.string()),
+        widgets: v.array(frameWidget),
+        background: v.optional(frameLayer),
+        backgroundColor: v.optional(v.string()),
+        foreground: v.optional(frameLayer),
+    },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
 
-		const membership = await getMembership(ctx, user._id, args.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.manage) throw new Error('Forbidden');
+        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.manage) throw new Error('Forbidden');
 
-		const now = Date.now();
-		return ctx.db.insert('frames', {
-			organizationId: args.organizationId,
-			createdBy: user._id,
-			name: args.name,
-			description: args.description,
-			widgets: args.widgets,
-			background: args.background,
-			backgroundColor: args.backgroundColor,
-			foreground: args.foreground,
-			createdAt: now,
-			updatedAt: now,
-		});
-	},
+        const now = Date.now();
+        return ctx.db.insert('frames', {
+            organizationId: args.organizationId,
+            createdBy: user._id,
+            name: args.name,
+            description: args.description,
+            widgets: args.widgets,
+            background: args.background,
+            backgroundColor: args.backgroundColor,
+            foreground: args.foreground,
+            createdAt: now,
+            updatedAt: now,
+        });
+    },
 });
 
 /**
@@ -104,46 +104,46 @@ export const create = mutation({
  * Requires frame.manage permission.
  */
 export const update = mutation({
-	args: {
-		id: v.id('frames'),
-		name: v.optional(v.string()),
-		description: v.optional(v.string()),
-		widgets: v.optional(v.array(frameWidget)),
-		background: v.optional(frameLayer),
-		backgroundColor: v.optional(v.string()),
-		foreground: v.optional(frameLayer),
-		clearBackground: v.optional(v.boolean()),
-		clearBackgroundColor: v.optional(v.boolean()),
-		clearForeground: v.optional(v.boolean()),
-	},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
+    args: {
+        id: v.id('frames'),
+        name: v.optional(v.string()),
+        description: v.optional(v.string()),
+        widgets: v.optional(v.array(frameWidget)),
+        background: v.optional(frameLayer),
+        backgroundColor: v.optional(v.string()),
+        foreground: v.optional(frameLayer),
+        clearBackground: v.optional(v.boolean()),
+        clearBackgroundColor: v.optional(v.boolean()),
+        clearForeground: v.optional(v.boolean()),
+    },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
 
-		const frame = await ctx.db.get(args.id);
-		if (!frame) throw new Error('Frame not found');
+        const frame = await ctx.db.get(args.id);
+        if (!frame) throw new Error('Frame not found');
 
-		const membership = await getMembership(ctx, user._id, frame.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.manage) throw new Error('Forbidden');
+        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.manage) throw new Error('Forbidden');
 
-		const {id, clearBackground, clearBackgroundColor, clearForeground, ...updates} = args;
-		void id;
+        const { id, clearBackground, clearBackgroundColor, clearForeground, ...updates } = args;
+        void id;
 
-		const patch: Record<string, unknown> = {...updates, updatedAt: Date.now()};
+        const patch: Record<string, unknown> = { ...updates, updatedAt: Date.now() };
 
-		if (clearBackground) {
-			patch.background = undefined;
-		}
-		if (clearBackgroundColor) {
-			patch.backgroundColor = undefined;
-		}
-		if (clearForeground) {
-			patch.foreground = undefined;
-		}
+        if (clearBackground) {
+            patch.background = undefined;
+        }
+        if (clearBackgroundColor) {
+            patch.backgroundColor = undefined;
+        }
+        if (clearForeground) {
+            patch.foreground = undefined;
+        }
 
-		await ctx.db.patch(frame._id, patch);
-	},
+        await ctx.db.patch(frame._id, patch);
+    },
 });
 
 /**
@@ -151,24 +151,24 @@ export const update = mutation({
  * Requires frame.manage permission.
  */
 export const remove = mutation({
-	args: {id: v.id('frames')},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
+    args: { id: v.id('frames') },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
 
-		const frame = await ctx.db.get(args.id);
-		if (!frame) throw new Error('Frame not found');
+        const frame = await ctx.db.get(args.id);
+        if (!frame) throw new Error('Frame not found');
 
-		const membership = await getMembership(ctx, user._id, frame.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.manage) throw new Error('Forbidden');
+        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.manage) throw new Error('Forbidden');
 
-		if (frame.thumbnailStorageId) {
-			await ctx.storage.delete(frame.thumbnailStorageId);
-		}
+        if (frame.thumbnailStorageId) {
+            await ctx.storage.delete(frame.thumbnailStorageId);
+        }
 
-		await ctx.db.delete(frame._id);
-	},
+        await ctx.db.delete(frame._id);
+    },
 });
 
 /**
@@ -176,34 +176,34 @@ export const remove = mutation({
  * Requires frame.manage permission.
  */
 export const duplicate = mutation({
-	args: {
-		id: v.id('frames'),
-		organizationId: v.id('organizations'),
-	},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
+    args: {
+        id: v.id('frames'),
+        organizationId: v.id('organizations'),
+    },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
 
-		const membership = await getMembership(ctx, user._id, args.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.manage) throw new Error('Forbidden');
+        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.manage) throw new Error('Forbidden');
 
-		const source = await ctx.db.get(args.id);
-		if (!source) throw new Error('Frame not found');
+        const source = await ctx.db.get(args.id);
+        if (!source) throw new Error('Frame not found');
 
-		const now = Date.now();
-		return ctx.db.insert('frames', {
-			organizationId: args.organizationId,
-			createdBy: user._id,
-			name: `${source.name} (Copy)`,
-			description: source.description,
-			widgets: source.widgets,
-			background: source.background,
-			foreground: source.foreground,
-			createdAt: now,
-			updatedAt: now,
-		});
-	},
+        const now = Date.now();
+        return ctx.db.insert('frames', {
+            organizationId: args.organizationId,
+            createdBy: user._id,
+            name: `${source.name} (Copy)`,
+            description: source.description,
+            widgets: source.widgets,
+            background: source.background,
+            foreground: source.foreground,
+            createdAt: now,
+            updatedAt: now,
+        });
+    },
 });
 
 /**
@@ -211,40 +211,40 @@ export const duplicate = mutation({
  * Requires frame.manage permission.
  */
 export const storeThumbnail = mutation({
-	args: {
-		id: v.id('frames'),
-		storageId: v.id('_storage'),
-	},
-	handler: async (ctx, args) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
+    args: {
+        id: v.id('frames'),
+        storageId: v.id('_storage'),
+    },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
 
-		const frame = await ctx.db.get(args.id);
-		if (!frame) throw new Error('Frame not found');
+        const frame = await ctx.db.get(args.id);
+        if (!frame) throw new Error('Frame not found');
 
-		const membership = await getMembership(ctx, user._id, frame.organizationId);
-		const perms = getPermissions(user, membership);
-		if (!perms.frame.manage) throw new Error('Forbidden');
+        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.frame.manage) throw new Error('Forbidden');
 
-		if (frame.thumbnailStorageId) {
-			await ctx.storage.delete(frame.thumbnailStorageId);
-		}
+        if (frame.thumbnailStorageId) {
+            await ctx.storage.delete(frame.thumbnailStorageId);
+        }
 
-		await ctx.db.patch(frame._id, {
-			thumbnailStorageId: args.storageId,
-			updatedAt: Date.now(),
-		});
-	},
+        await ctx.db.patch(frame._id, {
+            thumbnailStorageId: args.storageId,
+            updatedAt: Date.now(),
+        });
+    },
 });
 
 /**
  * Generate an upload URL for frame thumbnails.
  */
 export const generateUploadUrl = mutation({
-	args: {},
-	handler: async (ctx) => {
-		const user = await getCurrentUser(ctx);
-		if (!user) throw new Error('Not authenticated');
-		return ctx.storage.generateUploadUrl();
-	},
+    args: {},
+    handler: async (ctx) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
+        return ctx.storage.generateUploadUrl();
+    },
 });

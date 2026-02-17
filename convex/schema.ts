@@ -1,5 +1,5 @@
-import {defineSchema, defineTable} from 'convex/server';
-import {v} from 'convex/values';
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
 // Platform-level role
 export const userRole = v.union(v.literal('appAdmin'), v.literal('user'));
@@ -21,17 +21,13 @@ export const pluginStatus = v.union(
 );
 
 // Health check status
-export const healthCheckStatus = v.union(
-    v.literal('healthy'),
-    v.literal('unhealthy'),
-    v.literal('error'),
-);
+export const healthCheckStatus = v.union(v.literal('healthy'), v.literal('unhealthy'), v.literal('error'));
 
 // Template variant
 export const templateVariant = v.union(
-    v.object({type: v.literal('content'), w: v.number(), h: v.number()}),
-    v.object({type: v.literal('background')}),
-    v.object({type: v.literal('foreground')}),
+    v.object({ type: v.literal('content'), w: v.number(), h: v.number() }),
+    v.object({ type: v.literal('background') }),
+    v.object({ type: v.literal('foreground') }),
 );
 
 // Template scope

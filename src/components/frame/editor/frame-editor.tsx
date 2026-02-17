@@ -62,7 +62,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
     const generateUploadUrl = useMutation(api.frames.generateUploadUrl);
 
     // Fetch templates for this org
-    const templates = useQuery(api.templates.listByOrganization, {
+    const templates = useQuery(api.templates.crud.listByOrganization, {
         organizationId: frame.organizationId,
     });
 

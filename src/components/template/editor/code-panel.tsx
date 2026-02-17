@@ -1,14 +1,18 @@
 'use client';
 
 import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import CodeMirror from '@uiw/react-codemirror';
 import { html } from '@codemirror/lang-html';
 import { json } from '@codemirror/lang-json';
 import { syntaxTree } from '@codemirror/language';
-import { linter, lintGutter, type Diagnostic } from '@codemirror/lint';
+import { type Diagnostic, linter, lintGutter } from '@codemirror/lint';
 import nunjucks from 'nunjucks';
 import { useTheme } from 'next-themes';
-import { type CSSProperties, useMemo } from 'react';
+import { type CSSProperties, useMemo, useState } from 'react';
+import { DataFieldsEditor } from './data-fields-editor';
+import { isTemplateData, type TemplateData } from '@/lib/template-data';
 
 const nunjucksEnv = new nunjucks.Environment(null, { autoescape: true });
 
@@ -39,6 +43,8 @@ const cmStyle: CSSProperties = {
     overflow: 'hidden',
 };
 
+type DataMode = 'form' | 'json';
+
 export function CodePanel({
     templateHtml,
     onTemplateHtmlChange,
@@ -64,6 +70,18 @@ export function CodePanel({
             return {};
         }
     }, [sampleDataJson]);
+
+    // Determine initial mode: if existing data is typed, default to form
+    const [dataMode, setDataMode] = useState<DataMode>(() => (isTemplateData(sampleData) ? 'form' : 'json'));
+
+    const typedData = useMemo<TemplateData | null>(() => {
+        if (isTemplateData(sampleData)) return sampleData as TemplateData;
+        return null;
+    }, [sampleData]);
+
+    const handleFormChange = (data: TemplateData) => {
+        onSampleDataJsonChange(JSON.stringify(data, null, 2));
+    };
 
     const htmlExtensions = useMemo(
         () => [
@@ -116,21 +134,45 @@ export function CodePanel({
             </div>
 
             <div className="flex flex-col gap-2 h-48 shrink-0 min-w-0">
-                <Label>Sample Data (JSON)</Label>
-                <div className="h-full min-h-0 min-w-0 overflow-hidden rounded-md border">
-                    <CodeMirror
-                        value={sampleDataJson}
-                        onChange={onSampleDataJsonChange}
-                        extensions={jsonExtensions}
-                        editable={editableConfig.editable}
-                        readOnly={editableConfig.readOnly}
-                        placeholder='{"content": "Hello World"}'
-                        height="100%"
-                        width="100%"
-                        style={cmStyle}
-                        theme={cmTheme}
-                        basicSetup={{ foldGutter: false }}
-                    />
+                <div className="flex items-center justify-between">
+                    <Label>Sample Data</Label>
+                    <ButtonGroup>
+                        <Button
+                            variant={dataMode === 'form' ? 'default' : 'outline'}
+                            size="xs"
+                            onClick={() => setDataMode('form')}
+                        >
+                            Form
+                        </Button>
+                        <Button
+                            variant={dataMode === 'json' ? 'default' : 'outline'}
+                            size="xs"
+                            onClick={() => setDataMode('json')}
+                        >
+                            JSON
+                        </Button>
+                    </ButtonGroup>
+                </div>
+                <div className="h-full min-h-0 min-w-0 overflow-auto rounded-md border">
+                    {dataMode === 'json' ? (
+                        <CodeMirror
+                            value={sampleDataJson}
+                            onChange={onSampleDataJsonChange}
+                            extensions={jsonExtensions}
+                            editable={editableConfig.editable}
+                            readOnly={editableConfig.readOnly}
+                            placeholder='{"content": {"type": "text", "value": "Hello"}}'
+                            height="100%"
+                            width="100%"
+                            style={cmStyle}
+                            theme={cmTheme}
+                            basicSetup={{ foldGutter: false }}
+                        />
+                    ) : (
+                        <div className="p-2">
+                            <DataFieldsEditor data={typedData ?? {}} onChange={handleFormChange} disabled={disabled} />
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

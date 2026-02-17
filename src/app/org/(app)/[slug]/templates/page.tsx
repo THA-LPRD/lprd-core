@@ -20,13 +20,13 @@ export default function TemplatesPage() {
 
     const { org, permissions } = useOrg();
 
-    const templates = useQuery(api.templates.listByOrganization, { organizationId: org._id });
+    const templates = useQuery(api.templates.crud.listByOrganization, { organizationId: org._id });
 
-    const createTemplate = useMutation(api.templates.create);
-    const removeTemplate = useMutation(api.templates.remove);
-    const duplicateTemplate = useMutation(api.templates.duplicate);
-    const generateUploadUrl = useMutation(api.templates.generateUploadUrl);
-    const storeTemplateThumbnail = useMutation(api.templates.storeThumbnail);
+    const createTemplate = useMutation(api.templates.crud.create);
+    const removeTemplate = useMutation(api.templates.crud.remove);
+    const duplicateTemplate = useMutation(api.templates.crud.duplicate);
+    const generateUploadUrl = useMutation(api.templates.crud.generateUploadUrl);
+    const storeTemplateThumbnail = useMutation(api.templates.crud.storeThumbnail);
 
     const starterHtml =
         '<div>\n' +
