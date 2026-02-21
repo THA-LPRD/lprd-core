@@ -10,6 +10,9 @@ export const orgMemberRole = v.union(v.literal('orgAdmin'), v.literal('user'));
 // Device status
 export const deviceStatus = v.union(v.literal('pending'), v.literal('active'));
 
+// Device API version
+export const deviceApiVersion = v.union(v.literal('v1'), v.literal('v2'));
+
 // Plugin status
 export const pluginStatus = v.union(
     v.literal('pending'),
@@ -108,6 +111,8 @@ export default defineSchema({
         id: v.string(), // UUIDv4
         organizationId: v.id('organizations'),
         name: v.string(),
+        macAddress: v.optional(v.string()),
+        apiVersion: v.optional(deviceApiVersion),
         description: v.optional(v.string()),
         tags: v.array(v.string()),
         status: deviceStatus,
@@ -120,7 +125,21 @@ export default defineSchema({
         updatedAt: v.number(),
     })
         .index('by_device_id', ['id'])
-        .index('by_organization', ['organizationId']),
+        .index('by_organization', ['organizationId'])
+        .index('by_mac_address', ['macAddress']),
+
+    deviceAccessLogs: defineTable({
+        deviceId: v.id('devices'),
+        macAddress: v.string(),
+        ipAddress: v.optional(v.string()),
+        responseStatus: v.string(),
+        imageChanged: v.boolean(),
+        bindingData: v.optional(v.any()),
+        accessedAt: v.number(),
+    })
+        .index('by_device', ['deviceId'])
+        .index('by_device_and_time', ['deviceId', 'accessedAt'])
+        .index('by_mac', ['macAddress']),
 
     plugins: defineTable({
         id: v.string(), // UUIDv4

@@ -16,8 +16,7 @@ import {
 } from '@/components/ui/color-picker';
 import { LayoutTemplate, X } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
-
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 export type TemplateOption = {
     _id: Id<'templates'>;

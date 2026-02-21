@@ -4,7 +4,7 @@ import { ShadowPreview } from './shadow-preview';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 function getVariantCells(variant: TemplateVariant): { widthCells: number; heightCells: number } {
     if (variant.type === 'content') {

@@ -6,8 +6,7 @@ import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants'
 import { ShadowLayer } from '@/components/render/shadow-layer';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import type { Id } from '@convex/dataModel';
-
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 type TemplateDoc = {
     _id: Id<'templates'>;

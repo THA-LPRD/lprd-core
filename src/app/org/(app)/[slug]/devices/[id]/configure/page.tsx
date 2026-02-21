@@ -9,7 +9,7 @@ import { DeviceNotFound } from '@/components/ui/not-found';
 
 export default function DeviceConfigurePage() {
     const params = useParams<{ slug: string; id: string }>();
-    const device = useQuery(api.devices.getById, { id: params.id });
+    const device = useQuery(api.devices.crud.getById, { id: params.id });
 
     if (device === undefined) {
         return (

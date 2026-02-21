@@ -5,7 +5,7 @@ import { ButtonGroup } from '@/components/ui/button-group';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Plus, Star, X } from 'lucide-react';
 
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 function variantLabel(v: TemplateVariant): string {
     if (v.type === 'content') return `${v.w}×${v.h}`;

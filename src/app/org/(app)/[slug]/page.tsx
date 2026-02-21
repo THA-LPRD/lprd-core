@@ -9,7 +9,7 @@ import { useOrg } from '@/components/org/org-context';
 export default function OrgDashboardPage() {
     const { org, members } = useOrg();
 
-    const devices = useQuery(api.devices.listByOrganization, { organizationId: org._id });
+    const devices = useQuery(api.devices.crud.listByOrganization, { organizationId: org._id });
 
     if (devices === undefined) {
         return (

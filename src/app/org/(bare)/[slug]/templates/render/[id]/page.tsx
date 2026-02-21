@@ -8,8 +8,7 @@ import { ShadowLayer } from '@/components/render/shadow-layer';
 import { RenderPageShell } from '@/components/render/render-page-shell';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
-
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 function getVariantDimensions(variant: TemplateVariant): { widthCells: number; heightCells: number } {
     if (variant.type === 'content') {

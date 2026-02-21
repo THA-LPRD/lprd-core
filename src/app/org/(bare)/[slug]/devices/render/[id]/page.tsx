@@ -14,7 +14,7 @@ const CANVAS_H = GRID_ROWS * DEFAULT_CELL_SIZE;
 
 export default function DeviceRenderPage() {
     const params = useParams<{ id: string }>();
-    const bundle = useQuery(api.devices.getRenderBundle, { deviceId: params.id });
+    const bundle = useQuery(api.devices.render.getRenderBundle, { deviceId: params.id });
 
     const getWidgetData = React.useCallback(
         (widgetId: string, sampleData?: unknown): Record<string, unknown> => {

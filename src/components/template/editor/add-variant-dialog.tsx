@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 type VariantType = 'content' | 'background' | 'foreground';
 

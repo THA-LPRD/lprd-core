@@ -12,6 +12,8 @@ export default authkitMiddleware({
             '/api/v2/plugin/webhook/data',
             '/api/v2/devices/render',
             '/org/:slug/devices/render/:path*',
+            '/api/v1/displays/:mac*',
+            '/api/v1/displays/config/:mac*',
         ],
     },
 });

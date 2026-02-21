@@ -18,9 +18,9 @@ export default function DevicesPage() {
 
     const { org, permissions } = useOrg();
 
-    const devices = useQuery(api.devices.listByOrganization, { organizationId: org._id });
+    const devices = useQuery(api.devices.crud.listByOrganization, { organizationId: org._id });
 
-    const createDevice = useMutation(api.devices.create);
+    const createDevice = useMutation(api.devices.crud.create);
 
     const handleCreateDevice = async (data: { name: string; description: string; tags: string[] }) => {
         await createDevice({

@@ -8,8 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Copy, LayoutTemplate, Pencil, Trash2 } from 'lucide-react';
 import { ButtonGroup } from '@/components/ui/button-group';
 import type { Id } from '@convex/dataModel';
-
-type TemplateVariant = { type: 'content'; w: number; h: number } | { type: 'background' } | { type: 'foreground' };
+import type { TemplateVariant } from '@/lib/template';
 
 export type Template = {
     _id: Id<'templates'>;

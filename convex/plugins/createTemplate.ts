@@ -1,5 +1,30 @@
 import { httpAction } from '../_generated/server';
-import { internal } from '../_generated/api';
+import { makeFunctionReference } from 'convex/server';
+import type { Id } from '../_generated/dataModel';
+import type { TemplateVariant } from '../lib/template';
+
+// Direct function references avoid traversing the full `internal` type tree,
+// which would exceed TypeScript's type instantiation depth limit.
+const getPluginByUuid = makeFunctionReference<
+    'query',
+    { uuid: string },
+    { _id: Id<'plugins'> } | null
+>('plugins/registration:getByUuid');
+
+const upsertGlobal = makeFunctionReference<
+    'mutation',
+    {
+        pluginId: Id<'plugins'>;
+        name: string;
+        description?: string;
+        templateHtml: string;
+        sampleData?: unknown;
+        variants: TemplateVariant[];
+        preferredVariantIndex: number;
+        version?: string;
+    },
+    { created: boolean; id: Id<'templates'> }
+>('templates/global:upsertGlobal');
 
 /**
  * POST /api/v2/plugin/webhook/createTemplate
@@ -26,8 +51,7 @@ export const handleCreateTemplate = httpAction(async (ctx, request) => {
             );
         }
 
-        // Look up the plugin by UUID
-        const plugin = await ctx.runQuery(internal.plugins.registration.getByUuid, { uuid: pluginUuid });
+        const plugin = await ctx.runQuery(getPluginByUuid, { uuid: pluginUuid });
         if (!plugin) {
             return new Response(JSON.stringify({ error: 'Plugin not found' }), {
                 status: 404,
@@ -35,7 +59,7 @@ export const handleCreateTemplate = httpAction(async (ctx, request) => {
             });
         }
 
-        const result = await ctx.runMutation(internal.templates.global.upsertGlobal, {
+        const result = await ctx.runMutation(upsertGlobal, {
             pluginId: plugin._id,
             name,
             description: description ?? undefined,

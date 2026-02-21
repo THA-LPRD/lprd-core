@@ -8,10 +8,13 @@
  * @module
  */
 
-import type * as devices from "../devices.js";
+import type * as devices_crud from "../devices/crud.js";
+import type * as devices_render from "../devices/render.js";
+import type * as devices_v1 from "../devices/v1.js";
 import type * as frames from "../frames.js";
 import type * as http from "../http.js";
 import type * as lib_acl from "../lib/acl.js";
+import type * as lib_template from "../lib/template.js";
 import type * as lib_template_data from "../lib/template_data.js";
 import type * as organizations from "../organizations.js";
 import type * as plugins_createTemplate from "../plugins/createTemplate.js";
@@ -35,10 +38,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  devices: typeof devices;
+  "devices/crud": typeof devices_crud;
+  "devices/render": typeof devices_render;
+  "devices/v1": typeof devices_v1;
   frames: typeof frames;
   http: typeof http;
   "lib/acl": typeof lib_acl;
+  "lib/template": typeof lib_template;
   "lib/template_data": typeof lib_template_data;
   organizations: typeof organizations;
   "plugins/createTemplate": typeof plugins_createTemplate;

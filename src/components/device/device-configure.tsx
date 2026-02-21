@@ -54,10 +54,10 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
         const sentinel = sentinelRef.current;
         const scrollContainer = scrollRef.current;
         if (!sentinel || !scrollContainer) return;
-        const observer = new IntersectionObserver(
-            ([entry]) => setIsDocked(!entry.isIntersecting),
-            { root: scrollContainer, threshold: 0 },
-        );
+        const observer = new IntersectionObserver(([entry]) => setIsDocked(!entry.isIntersecting), {
+            root: scrollContainer,
+            threshold: 0,
+        });
         observer.observe(sentinel);
         return () => observer.disconnect();
     }, []);
@@ -68,10 +68,10 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
 
     const selectedFrame = frames?.find((f) => f._id === selectedFrameId);
 
-    const updateDevice = useMutation(api.devices.update);
-    const deleteDevice = useMutation(api.devices.remove);
-    const setNextRender = useMutation(api.devices.setNext);
-    const generateUploadUrl = useMutation(api.devices.generateUploadUrl);
+    const updateDevice = useMutation(api.devices.crud.update);
+    const deleteDevice = useMutation(api.devices.crud.remove);
+    const setNextRender = useMutation(api.devices.render.setNext);
+    const generateUploadUrl = useMutation(api.devices.render.generateUploadUrl);
 
     const getTemplateName = (templateId?: string) => {
         if (!templateId || !templates) return 'Untitled';
@@ -183,7 +183,11 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                         <h1 className="text-xl font-semibold tracking-tight truncate">Configure: {device.name}</h1>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                        <Button variant="outline" render={<Link href={`/org/${params.slug}/devices/${params.id}`} />} nativeButton={false}>
+                        <Button
+                            variant="outline"
+                            render={<Link href={`/org/${params.slug}/devices/${params.id}`} />}
+                            nativeButton={false}
+                        >
                             Cancel
                         </Button>
                         <Button onClick={handleSave} disabled={isSaving || !name.trim()}>
@@ -196,210 +200,214 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
             <div className="px-6 pb-6">
                 <div ref={sentinelRef} />
                 <div className="max-w-3xl mx-auto space-y-6">
-
-                {/* Device Info */}
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Device Info</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="cfg-name">Name</Label>
-                                <Input
-                                    id="cfg-name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="Lobby Display"
-                                    required
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="cfg-description">Description</Label>
-                                <Input
-                                    id="cfg-description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    placeholder="Main lobby entrance display"
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="cfg-tags">Tags</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="cfg-tags"
-                                        value={tagInput}
-                                        onChange={(e) => setTagInput(e.target.value)}
-                                        onKeyDown={handleTagKeyDown}
-                                        placeholder="Add tag..."
-                                    />
-                                    <Button type="button" variant="secondary" onClick={handleAddTag}>
-                                        Add
-                                    </Button>
-                                </div>
-                                {tags.length > 0 && (
-                                    <div className="flex flex-wrap gap-1 mt-2">
-                                        {tags.map((tag) => (
-                                            <Badge key={tag} variant="secondary" className="gap-1 p-2.5">
-                                                <span className="-mt-1">{tag}</span>
-                                                <Button
-                                                    variant="ghost"
-                                                    onClick={() => handleRemoveTag(tag)}
-                                                    className="hover:bg-muted px-0"
-                                                >
-                                                    <X className="size-3" />
-                                                </Button>
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label>Status</Label>
-                                <div className="flex gap-2">
-                                    <Button
-                                        type="button"
-                                        variant={status === 'pending' ? 'default' : 'outline'}
-                                        size="sm"
-                                        onClick={() => setStatus('pending')}
-                                    >
-                                        Pending
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant={status === 'active' ? 'default' : 'outline'}
-                                        size="sm"
-                                        onClick={() => setStatus('active')}
-                                    >
-                                        Active
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Frame Assignment */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">Frame Assignment</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <Select
-                                value={selectedFrameId ?? '__none__'}
-                                onValueChange={(val) => {
-                                    if (val === '__none__') {
-                                        setSelectedFrameId(null);
-                                        setBindings([]);
-                                    } else {
-                                        setSelectedFrameId(val as Id<'frames'>);
-                                        setBindings([]);
-                                    }
-                                }}
-                            >
-                                <SelectTrigger className="w-1/2">
-                                    <SelectValue placeholder="Select a frame">
-                                        <span className="truncate block">
-                                            {selectedFrame ? selectedFrame.name : 'No frame'}
-                                        </span>
-                                    </SelectValue>
-                                </SelectTrigger>
-                                <SelectContent alignItemWithTrigger={false}>
-                                    <SelectItem value="__none__">No frame</SelectItem>
-                                    {frames?.map((f) => (
-                                        <SelectItem key={f._id} value={f._id}>
-                                            {f.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {selectedFrame?.thumbnailUrl && (
-                                <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                        src={selectedFrame.thumbnailUrl}
-                                        alt={selectedFrame.name}
-                                        className="w-full h-full object-contain"
-                                    />
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Data Bindings */}
-                    {selectedFrame && (
+                    {/* Device Info */}
+                    <div className="space-y-6">
                         <Card>
                             <CardHeader>
-                                <CardTitle className="text-lg">Data Bindings</CardTitle>
+                                <CardTitle className="text-lg">Device Info</CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {selectedFrame.widgets.length === 0 && (
-                                    <p className="text-sm text-muted-foreground">No widgets in this frame.</p>
-                                )}
-                                {selectedFrame.widgets.map((widget) => {
-                                    const widgetBindings = bindings.filter((b) => b.widgetId === widget.id);
-                                    return (
-                                        <div key={widget.id} className="space-y-2 space-x-2">
-                                            <p className="text-sm font-medium">
-                                                {getTemplateName(widget.templateId)}
-                                                <span className="text-muted-foreground ml-1">
-                                                    ({widget.w}x{widget.h})
-                                                </span>
-                                            </p>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="cfg-name">Name</Label>
+                                    <Input
+                                        id="cfg-name"
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder="Lobby Display"
+                                        required
+                                    />
+                                </div>
 
-                                            {widgetBindings.map((binding) => {
-                                                const idx = bindings.indexOf(binding);
-                                                return (
-                                                    <Badge variant="secondary" key={idx} className="gap-2 text-sm p-3">
-                                                        <span className="truncate flex-1">
-                                                            {getPluginName(binding.pluginId)} &middot; {binding.topic}/{binding.entry}
-                                                        </span>
-                                                        <Button
-                                                            variant="ghost"
-                                                            onClick={() => removeBinding(idx)}
-                                                            className="text-muted-foreground hover:text-destructive px-0"
-                                                        >
-                                                            <X className="size-3.5" />
-                                                        </Button>
-                                                    </Badge>
-                                                );
-                                            })}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="cfg-description">Description</Label>
+                                    <Input
+                                        id="cfg-description"
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Main lobby entrance display"
+                                    />
+                                </div>
 
-                                            {org && (
-                                                <AddBindingRow
-                                                    organizationId={org._id}
-                                                    onAdd={(source) => addBinding(widget.id, source)}
-                                                />
-                                            )}
+                                <div className="grid gap-2">
+                                    <Label htmlFor="cfg-tags">Tags</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="cfg-tags"
+                                            value={tagInput}
+                                            onChange={(e) => setTagInput(e.target.value)}
+                                            onKeyDown={handleTagKeyDown}
+                                            placeholder="Add tag..."
+                                        />
+                                        <Button type="button" variant="secondary" onClick={handleAddTag}>
+                                            Add
+                                        </Button>
+                                    </div>
+                                    {tags.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {tags.map((tag) => (
+                                                <Badge key={tag} variant="secondary" className="gap-1 p-2.5">
+                                                    <span className="-mt-1">{tag}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={() => handleRemoveTag(tag)}
+                                                        className="hover:bg-muted px-0"
+                                                    >
+                                                        <X className="size-3" />
+                                                    </Button>
+                                                </Badge>
+                                            ))}
                                         </div>
-                                    );
-                                })}
-                            </CardContent>
-                        </Card>
-                    )}
+                                    )}
+                                </div>
 
-                    {/* Danger Zone */}
-                    {permissions.device.manage && (
-                        <Card className="border-destructive/50">
-                            <CardHeader>
-                                <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <p className="text-sm text-muted-foreground mb-4">
-                                    Permanently delete this device. This action cannot be undone.
-                                </p>
-                                <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                                    <Trash2 className="size-4 mr-2" />
-                                    Delete Device
-                                </Button>
+                                <div className="grid gap-2">
+                                    <Label>Status</Label>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={status === 'pending' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setStatus('pending')}
+                                        >
+                                            Pending
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant={status === 'active' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setStatus('active')}
+                                        >
+                                            Active
+                                        </Button>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
-                    )}
+
+                        {/* Frame Assignment */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Frame Assignment</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <Select
+                                    value={selectedFrameId ?? '__none__'}
+                                    onValueChange={(val) => {
+                                        if (val === '__none__') {
+                                            setSelectedFrameId(null);
+                                            setBindings([]);
+                                        } else {
+                                            setSelectedFrameId(val as Id<'frames'>);
+                                            setBindings([]);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="w-1/2">
+                                        <SelectValue placeholder="Select a frame">
+                                            <span className="truncate block">
+                                                {selectedFrame ? selectedFrame.name : 'No frame'}
+                                            </span>
+                                        </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent alignItemWithTrigger={false}>
+                                        <SelectItem value="__none__">No frame</SelectItem>
+                                        {frames?.map((f) => (
+                                            <SelectItem key={f._id} value={f._id}>
+                                                {f.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {selectedFrame?.thumbnailUrl && (
+                                    <div className="aspect-video bg-muted rounded-lg overflow-hidden">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={selectedFrame.thumbnailUrl}
+                                            alt={selectedFrame.name}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        {/* Data Bindings */}
+                        {selectedFrame && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="text-lg">Data Bindings</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    {selectedFrame.widgets.length === 0 && (
+                                        <p className="text-sm text-muted-foreground">No widgets in this frame.</p>
+                                    )}
+                                    {selectedFrame.widgets.map((widget) => {
+                                        const widgetBindings = bindings.filter((b) => b.widgetId === widget.id);
+                                        return (
+                                            <div key={widget.id} className="space-y-2 space-x-2">
+                                                <p className="text-sm font-medium">
+                                                    {getTemplateName(widget.templateId)}
+                                                    <span className="text-muted-foreground ml-1">
+                                                        ({widget.w}x{widget.h})
+                                                    </span>
+                                                </p>
+
+                                                {widgetBindings.map((binding) => {
+                                                    const idx = bindings.indexOf(binding);
+                                                    return (
+                                                        <Badge
+                                                            variant="secondary"
+                                                            key={idx}
+                                                            className="gap-2 text-sm p-3"
+                                                        >
+                                                            <span className="truncate flex-1">
+                                                                {getPluginName(binding.pluginId)} &middot;{' '}
+                                                                {binding.topic}/{binding.entry}
+                                                            </span>
+                                                            <Button
+                                                                variant="ghost"
+                                                                onClick={() => removeBinding(idx)}
+                                                                className="text-muted-foreground hover:text-destructive px-0"
+                                                            >
+                                                                <X className="size-3.5" />
+                                                            </Button>
+                                                        </Badge>
+                                                    );
+                                                })}
+
+                                                {org && (
+                                                    <AddBindingRow
+                                                        organizationId={org._id}
+                                                        onAdd={(source) => addBinding(widget.id, source)}
+                                                    />
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Danger Zone */}
+                        {permissions.device.manage && (
+                            <Card className="border-destructive/50">
+                                <CardHeader>
+                                    <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <p className="text-sm text-muted-foreground mb-4">
+                                        Permanently delete this device. This action cannot be undone.
+                                    </p>
+                                    <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+                                        <Trash2 className="size-4 mr-2" />
+                                        Delete Device
+                                    </Button>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 </div>
-            </div>
             </div>
 
             {/* Delete Confirmation Dialog */}

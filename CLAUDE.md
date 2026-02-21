@@ -61,6 +61,28 @@ Always use these aliases instead of relative paths.
 - Internal functions (`internalQuery`, `internalMutation`) are called via `internal.module.fn`, not `api.module.fn`
 - HTTP endpoints (webhooks, plugin API) are `httpAction` handlers organized by domain: `convex/workos/`, `convex/plugin/`, routed in `convex/http.ts`
 
+### Logging
+
+All backend code uses **Effect** for structured logging. Never use raw `console.log` in backend code.
+
+- **Logger module**: `src/lib/logger.ts` — exports an Effect `Logger` and a `withLogger` layer
+- **Dev**: logs to console via Effect's built-in logger
+- **Prod**: ships structured JSON to Axiom via a custom Effect logger transport (`AXIOM_TOKEN`, `AXIOM_DATASET` env vars)
+- **Scope**: all Convex functions (`convex/`), Next.js API routes (`src/app/api/`), and the BullMQ worker (`src/worker/`)
+- **Log levels**: `debug` (internal state), `info` (normal lifecycle), `warning` (recoverable anomalies), `error` (failures affecting correctness)
+
+```ts
+// Use Effect logging with structured annotations — never console.log
+yield* Effect.logInfo("Plugin registered").pipe(
+  Effect.annotateLogs({ pluginId, orgSlug })
+)
+yield* Effect.logError("Render failed").pipe(
+  Effect.annotateLogs({ deviceId, error: String(e) })
+)
+```
+
+Client-side logging is not yet implemented.
+
 ### Org Context & Permissions
 
 Pages under `src/app/org/(app)/[slug]/` are wrapped by a `[slug]/layout.tsx` that renders `<OrgProvider>`. This provider fetches the org, user, and members once, computes permissions, and exposes everything via React context.

@@ -1,6 +1,7 @@
 import { WorkOS } from '@workos-inc/node';
 import type { ActionCtx } from '../_generated/server';
 import { internalAction } from '../_generated/server';
+import { internal } from '../_generated/api';
 import { v } from 'convex/values';
 import { createAvatar } from '@dicebear/core';
 import { glass } from '@dicebear/collection';
@@ -15,7 +16,6 @@ export async function verifyAndParse(request: Request, ctx: ActionCtx, secretEnv
 
     // Verify signature with event-specific secret
     try {
-        const { internal } = await import('../_generated/api');
         await ctx.runAction(internal.workos.helpers.verifyWebhook, {
             payload: bodyText,
             signature: sigHeader,
