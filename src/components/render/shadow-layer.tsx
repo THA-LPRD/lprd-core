@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { getTemplateBaseCSS, renderAndSanitize } from '@/lib/render/template-document';
 import { DEFAULT_CELL_SIZE } from '@/lib/render/constants';
+import { resolveIconsInRoot } from '@/lib/render/icons';
 import { isTemplateData, resolveForRender } from '@/lib/template-data';
 
 export function ShadowLayer({
@@ -45,6 +46,7 @@ export function ShadowLayer({
             const resolvedData = isTemplateData(sampleData) ? resolveForRender(sampleData) : sampleData;
             const rendered = renderAndSanitize(html, resolvedData, cellSize, width, height);
             shadowRef.current.innerHTML = baseStyles + rendered;
+            resolveIconsInRoot(shadowRef.current);
             onRendered?.();
         } catch (error) {
             if (errorFallback === null) {

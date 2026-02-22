@@ -34,5 +34,8 @@ export function renderAndSanitize(
         extra.heightPx = height * cellSize;
     }
     const rendered = env.renderString(html, { ...data, ...extra });
-    return DOMPurify.sanitize(rendered);
+    return DOMPurify.sanitize(rendered, {
+        ADD_TAGS: ['img-fa', 'img-lucide'],
+        ADD_ATTR: ['name', 'set'],
+    });
 }
