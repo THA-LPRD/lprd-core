@@ -15,19 +15,14 @@ function asPublic<Type extends FunctionReference<any, 'internal'>>(fn: Type): Fu
  * Looks up device by MAC address. Returns 401 if device is not active.
  *
  * Returns: { file_path, valid_for }
- *   - file_path: signed URL to the current rendered image (or null)
+ *   - file_path: proxy URL to fetch the current image (/api/v1/displays/image/:deviceId)
  *   - valid_for: minimum TTL in seconds across bound plugin data (-1 if none)
  */
-export async function GET(
-    request: Request,
-    { params }: { params: Promise<{ mac_adr: string }> },
-) {
+export async function GET(request: Request, { params }: { params: Promise<{ mac_adr: string }> }) {
     const { mac_adr } = await params;
     const convex = getConvexClient();
     const ipAddress =
-        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-        request.headers.get('x-real-ip') ??
-        undefined;
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? undefined;
 
     try {
         // Look up device by MAC
@@ -40,10 +35,10 @@ export async function GET(
         }
 
         if (device.status !== 'active' || device.apiVersion !== 'v1') {
-            // Log the unauthorized access attempt
-            await convex.mutation(asPublic(internal.devices.v1.logAccess), {
+            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
                 deviceId: device._id,
                 macAddress: mac_adr,
+                type: 'config_fetch',
                 ipAddress,
                 responseStatus: 'unauthorized',
                 imageChanged: false,
@@ -51,7 +46,7 @@ export async function GET(
             return NextResponse.json({ error: 'Device not activated' }, { status: 401 });
         }
 
-        // Heartbeat: update lastSeen, promote next→current
+        // Update lastSeen only (no promotion — that's the image endpoint's job)
         const result = await convex.mutation(asPublic(internal.devices.v1.heartbeat), {
             id: device.id,
         });
@@ -60,13 +55,9 @@ export async function GET(
             return NextResponse.json({ error: 'Device not found' }, { status: 404 });
         }
 
-        // Resolve image URL
-        let fileUrl: string | null = null;
-        if (result.storageId) {
-            fileUrl = await convex.query(asPublic(internal.devices.v1.getStorageUrl), {
-                storageId: result.storageId,
-            });
-        }
+        // Build the proxy URL for this device
+        const hasImage = result.storageId != null;
+        const filePath = hasImage ? `/api/v1/displays/image/${device.id}` : null;
 
         // Get min TTL and binding data snapshot in parallel
         const [validFor, bindingData] = await Promise.all([
@@ -78,17 +69,17 @@ export async function GET(
             }),
         ]);
 
-        // Log successful access
-        await convex.mutation(asPublic(internal.devices.v1.logAccess), {
+        // Log the config fetch (with snapshot if image is changing)
+        await convex.mutation(asPublic(internal.devices.accessLogs.logWithSnapshot), {
             deviceId: device._id,
             macAddress: mac_adr,
             ipAddress,
-            responseStatus: fileUrl ? 'ok' : 'no_content',
-            imageChanged: result.imageChanged,
-            bindingData,
+            responseStatus: hasImage ? 'ok' : 'no_content',
+            imageChanged: result.hasNext,
+            bindingData: result.hasNext ? bindingData : undefined,
         });
 
-        return NextResponse.json({ file_path: fileUrl, valid_for: validFor });
+        return NextResponse.json({ file_path: filePath, valid_for: validFor });
     } catch (error) {
         console.error('Config display error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

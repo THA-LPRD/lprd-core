@@ -6,6 +6,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import type { DeviceData } from '@/components/device/types';
 import { DeviceStatusDot } from '@/components/device/device-status-dot';
+import { DeviceActivityChart } from '@/components/device/device-activity-chart';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,6 +55,26 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                     </Button>
                 )}
             </div>
+
+            {/* Activity */}
+            <Card className="mb-6">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">Activity (last 7 days)</CardTitle>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            render={<Link href={`/org/${params.slug}/devices/${params.id}/logs`} />}
+                            nativeButton={false}
+                        >
+                            View logbook
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <DeviceActivityChart deviceId={device._id} />
+                </CardContent>
+            </Card>
 
             <div className="grid gap-6 xl:grid-cols-2">
                 {/* Left column — Preview */}

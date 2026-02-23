@@ -10,6 +10,18 @@ export const orgMemberRole = v.union(v.literal('orgAdmin'), v.literal('user'));
 // Device status
 export const deviceStatus = v.union(v.literal('pending'), v.literal('active'));
 
+// Device access log type
+export const deviceLogType = v.union(v.literal('existence_check'), v.literal('config_fetch'), v.literal('image_fetch'));
+
+// Device access log status
+export const deviceLogStatus = v.union(
+    v.literal('ok'),
+    v.literal('no_content'),
+    v.literal('unauthorized'),
+    v.literal('not_found'),
+    v.literal('error'),
+);
+
 // Device API version
 export const deviceApiVersion = v.union(v.literal('v1'), v.literal('v2'));
 
@@ -131,15 +143,24 @@ export default defineSchema({
     deviceAccessLogs: defineTable({
         deviceId: v.id('devices'),
         macAddress: v.string(),
+        type: deviceLogType,
         ipAddress: v.optional(v.string()),
-        responseStatus: v.string(),
+        responseStatus: deviceLogStatus,
         imageChanged: v.boolean(),
-        bindingData: v.optional(v.any()),
         accessedAt: v.number(),
     })
         .index('by_device', ['deviceId'])
         .index('by_device_and_time', ['deviceId', 'accessedAt'])
         .index('by_mac', ['macAddress']),
+
+    deviceDataSnapshots: defineTable({
+        deviceId: v.id('devices'),
+        logId: v.id('deviceAccessLogs'),
+        data: v.any(),
+        createdAt: v.number(),
+    })
+        .index('by_device', ['deviceId'])
+        .index('by_log', ['logId']),
 
     plugins: defineTable({
         id: v.string(), // UUIDv4

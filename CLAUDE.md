@@ -91,6 +91,16 @@ Pages under `src/app/org/(app)/[slug]/` are wrapped by a `[slug]/layout.tsx` tha
 - **Provider**: `src/components/org/org-provider.tsx` — handles loading skeleton and `<OrgNotFound />` centrally
 - **ACL**: `convex/lib/acl.ts` defines `getPermissions(user, membership)` → `Permissions` object; re-exported from `src/lib/acl.ts` for clean `@/lib/acl` imports
 
+### Shared Domain Types (`convex/lib/` → `src/lib/`)
+
+Pure TypeScript types, constants, and logic that need to be shared between the Convex backend and the Next.js frontend live in `convex/lib/`. Each file is re-exported verbatim from a matching `src/lib/` file so components can use the `@/lib/` alias.
+
+- `convex/lib/acl.ts` → `src/lib/acl.ts` — permission types and `getPermissions`
+- `convex/lib/template.ts` → `src/lib/template.ts` — `TemplateVariant` type
+- `convex/lib/deviceLogs.ts` → `src/lib/deviceLogs.ts` — `DeviceLogType`, `DeviceLogStatus`, label/badge/color maps
+
+**Rule:** never duplicate these constants or types in components. Import from `@/lib/<name>` instead.
+
 Pages should **not** fetch org/user/members themselves. Use `useOrg()` instead:
 
 ```tsx
@@ -136,12 +146,19 @@ Devices display frames with live plugin data, pre-rendered as images.
 - `current` / `next` — `{ storageId, renderedAt }` double-buffer for rendered images
 
 **Key files:**
-- `convex/devices.ts` — CRUD + `renderDevice` (internalAction), `setNext`, `getDataForBindings`
+- `convex/devices/crud.ts` — CRUD queries and mutations
+- `convex/devices/render.ts` — `renderDevice` (internalAction), `setNext`, `getDataForBindings`
+- `convex/devices/v1.ts` — internal functions for the v1 device API (`getByMac`, `getById`, `heartbeat`, `promoteNext`, etc.)
+- `convex/devices/accessLogs.ts` — access log mutations (`log`, `logWithSnapshot`) and queries (`list`, `getDailyStats`, `listByDay`)
 - `convex/plugins/data.ts` — `storeWebhookData` (upsert + trigger render), `listPluginsWithTopics`, `listEntries`
+- `src/app/api/v1/displays/[mac_adr]/route.ts` — existence check (logs `existence_check`)
+- `src/app/api/v1/displays/config/[mac_adr]/route.ts` — config poll; returns proxy URL, logs `config_fetch`
+- `src/app/api/v1/displays/image/[deviceId]/route.ts` — image proxy; owns `next→current` promotion, streams image bytes, logs `image_fetch`
 - `src/app/org/(bare)/[slug]/devices/render/[id]/page.tsx` — Playwright render target
 - `src/app/api/v2/devices/render/route.ts` — render API (POST, returns PNG)
 - `src/components/device/data-source-picker.tsx` — plugin → topic → entry cascading selects
-- `src/app/org/(app)/[slug]/devices/[id]/page.tsx` — device detail with frame config, data bindings, current/queued preview
+- `src/app/org/(app)/[slug]/devices/[id]/page.tsx` — device detail with activity chart and logbook link
+- `src/app/org/(app)/[slug]/devices/[id]/logs/page.tsx` — full paginated logbook
 
 **Convex images note:** Use native `<img>` (not `next/image`) for Convex storage URLs — the hostname is dynamic and can't be statically configured in `next.config.ts`.
 

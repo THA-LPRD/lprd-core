@@ -19,8 +19,20 @@ export const getByMac = internalQuery({
 });
 
 /**
- * Update lastSeen, promote next→current if available.
- * Returns { storageId, imageChanged } or null if device not found.
+ * Find a device by its UUIDv4 id. No auth.
+ */
+export const getById = internalQuery({
+    args: { id: v.string() },
+    handler: async (ctx, args) => {
+        return ctx.db
+            .query('devices')
+            .withIndex('by_device_id', (q) => q.eq('id', args.id))
+            .unique();
+    },
+});
+
+/**
+ * Update lastSeen timestamp.
  */
 export const heartbeat = internalMutation({
     args: { id: v.string() },
@@ -31,28 +43,41 @@ export const heartbeat = internalMutation({
             .unique();
         if (!device) return null;
 
-        const now = Date.now();
-        const patch: Record<string, unknown> = { lastSeen: now };
+        await ctx.db.patch(device._id, { lastSeen: Date.now() });
 
-        let imageChanged = false;
+        // Return the storage ID to serve (next if pending, otherwise current)
+        const render = device.next ?? device.current;
+        return {
+            storageId: render?.storageId ?? null,
+            hasNext: device.next != null,
+        };
+    },
+});
 
-        // Promote next → current
-        if (device.next) {
-            if (device.current?.storageId) {
-                await ctx.storage.delete(device.current.storageId);
-            }
-            patch.current = device.next;
-            patch.next = undefined;
-            imageChanged = true;
+/**
+ * Promote next → current (called from the image proxy endpoint after serving).
+ * Deletes the old current blob, sets current = next, clears next.
+ * Returns true if a promotion occurred.
+ */
+export const promoteNext = internalMutation({
+    args: { id: v.string() },
+    handler: async (ctx, args) => {
+        const device = await ctx.db
+            .query('devices')
+            .withIndex('by_device_id', (q) => q.eq('id', args.id))
+            .unique();
+        if (!device || !device.next) return false;
+
+        if (device.current?.storageId) {
+            await ctx.storage.delete(device.current.storageId);
         }
 
-        await ctx.db.patch(device._id, patch);
+        await ctx.db.patch(device._id, {
+            current: device.next,
+            next: undefined,
+        });
 
-        const currentRender = device.next ?? device.current;
-        return {
-            storageId: currentRender?.storageId ?? null,
-            imageChanged,
-        };
+        return true;
     },
 });
 
@@ -135,30 +160,5 @@ export const getBindingData = internalQuery({
         }
 
         return Object.keys(data).length > 0 ? data : null;
-    },
-});
-
-/**
- * Log a device access to the deviceAccessLogs table.
- */
-export const logAccess = internalMutation({
-    args: {
-        deviceId: v.id('devices'),
-        macAddress: v.string(),
-        ipAddress: v.optional(v.string()),
-        responseStatus: v.string(),
-        imageChanged: v.boolean(),
-        bindingData: v.optional(v.any()),
-    },
-    handler: async (ctx, args) => {
-        await ctx.db.insert('deviceAccessLogs', {
-            deviceId: args.deviceId,
-            macAddress: args.macAddress,
-            ipAddress: args.ipAddress,
-            responseStatus: args.responseStatus,
-            imageChanged: args.imageChanged,
-            bindingData: args.bindingData,
-            accessedAt: Date.now(),
-        });
     },
 });
