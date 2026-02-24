@@ -10,7 +10,6 @@ import { getCurrentUser, getMembership } from '../users';
  */
 export const create = mutation({
     args: {
-        id: v.string(), // UUIDv4
         organizationId: v.id('organizations'),
         name: v.string(),
         description: v.optional(v.string()),
@@ -26,7 +25,6 @@ export const create = mutation({
 
         const now = Date.now();
         return ctx.db.insert('devices', {
-            id: args.id,
             organizationId: args.organizationId,
             name: args.name,
             description: args.description,
@@ -40,20 +38,17 @@ export const create = mutation({
 });
 
 /**
- * Get a device by its UUIDv4 id.
+ * Get a device by its Convex ID.
  * Requires device.view permission.
  * Resolves current/next storage URLs.
  */
 export const getById = query({
-    args: { id: v.string() },
+    args: { id: v.id('devices') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return null;
 
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        const device = await ctx.db.get(args.id);
         if (!device) return null;
 
         const membership = await getMembership(ctx, user._id, device.organizationId);
@@ -112,7 +107,7 @@ export const listByOrganization = query({
  */
 export const update = mutation({
     args: {
-        id: v.string(),
+        id: v.id('devices'),
         name: v.optional(v.string()),
         description: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
@@ -125,10 +120,7 @@ export const update = mutation({
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
         const membership = await getMembership(ctx, user._id, device.organizationId);
@@ -154,15 +146,12 @@ export const update = mutation({
  * Requires device.manage permission.
  */
 export const remove = mutation({
-    args: { id: v.string() },
+    args: { id: v.id('devices') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
         const membership = await getMembership(ctx, user._id, device.organizationId);

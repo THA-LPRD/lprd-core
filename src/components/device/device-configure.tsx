@@ -23,12 +23,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Plus, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
 import { useOrg } from '@/components/org/org-context';
+import { extractId } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
 export function DeviceConfigure({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
     const router = useRouter();
     const { org, permissions } = useOrg();
+    const rawId = extractId(params.id) as Id<'devices'>;
 
     // Metadata fields
     const [name, setName] = React.useState(device.name);
@@ -113,7 +115,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
         setIsSaving(true);
         try {
             const updates: Parameters<typeof updateDevice>[0] = {
-                id: params.id,
+                id: rawId,
                 name: name.trim(),
                 description: description.trim() || undefined,
                 tags,
@@ -134,7 +136,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                 const res = await fetch('/api/v2/devices/render', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId: params.id, orgSlug: params.slug }),
+                    body: JSON.stringify({ deviceId: rawId, orgSlug: params.slug }),
                 });
 
                 if (res.ok) {
@@ -142,7 +144,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                     const uploadUrl = await generateUploadUrl();
                     const uploadRes = await fetch(uploadUrl, { method: 'POST', body: blob });
                     const { storageId } = await uploadRes.json();
-                    await setNextRender({ deviceId: params.id, storageId, renderedAt: Date.now() });
+                    await setNextRender({ deviceId: rawId, storageId, renderedAt: Date.now() });
                 }
             }
 
@@ -155,7 +157,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            await deleteDevice({ id: params.id });
+            await deleteDevice({ id: rawId });
             router.push(`/org/${params.slug}/devices`);
         } finally {
             setIsDeleting(false);

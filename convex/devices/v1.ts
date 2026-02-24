@@ -19,15 +19,12 @@ export const getByMac = internalQuery({
 });
 
 /**
- * Find a device by its UUIDv4 id. No auth.
+ * Find a device by its Convex ID. No auth.
  */
 export const getById = internalQuery({
-    args: { id: v.string() },
+    args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        return ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        return ctx.db.get(args.id);
     },
 });
 
@@ -35,12 +32,9 @@ export const getById = internalQuery({
  * Update lastSeen timestamp.
  */
 export const heartbeat = internalMutation({
-    args: { id: v.string() },
+    args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        const device = await ctx.db.get(args.id);
         if (!device) return null;
 
         await ctx.db.patch(device._id, { lastSeen: Date.now() });
@@ -60,12 +54,9 @@ export const heartbeat = internalMutation({
  * Returns true if a promotion occurred.
  */
 export const promoteNext = internalMutation({
-    args: { id: v.string() },
+    args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.id))
-            .unique();
+        const device = await ctx.db.get(args.id);
         if (!device || !device.next) return false;
 
         if (device.current?.storageId) {
@@ -96,12 +87,9 @@ export const getStorageUrl = internalQuery({
  * Returns -1 if no bindings or no data.
  */
 export const getMinTtl = internalQuery({
-    args: { deviceId: v.string() },
+    args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.deviceId))
-            .unique();
+        const device = await ctx.db.get(args.deviceId);
         if (!device?.dataBindings?.length) return -1;
 
         let minTtl = Infinity;
@@ -132,12 +120,9 @@ export const getMinTtl = internalQuery({
  * Used to store in access logs what data the device received.
  */
 export const getBindingData = internalQuery({
-    args: { deviceId: v.string() },
+    args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.deviceId))
-            .unique();
+        const device = await ctx.db.get(args.deviceId);
         if (!device?.dataBindings?.length) return null;
 
         const data: Record<string, unknown> = {};

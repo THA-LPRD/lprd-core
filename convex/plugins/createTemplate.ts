@@ -5,11 +5,9 @@ import type { TemplateVariant } from '../lib/template';
 
 // Direct function references avoid traversing the full `internal` type tree,
 // which would exceed TypeScript's type instantiation depth limit.
-const getPluginByUuid = makeFunctionReference<
-    'query',
-    { uuid: string },
-    { _id: Id<'plugins'> } | null
->('plugins/registration:getByUuid');
+const getPluginById = makeFunctionReference<'query', { id: Id<'plugins'> }, { _id: Id<'plugins'> } | null>(
+    'plugins/registration:getById',
+);
 
 const upsertGlobal = makeFunctionReference<
     'mutation',
@@ -33,8 +31,8 @@ const upsertGlobal = makeFunctionReference<
  */
 export const handleCreateTemplate = httpAction(async (ctx, request) => {
     try {
-        const pluginUuid = request.headers.get('X-Plugin-Id');
-        if (!pluginUuid) {
+        const pluginId = request.headers.get('X-Plugin-Id');
+        if (!pluginId) {
             return new Response(JSON.stringify({ error: 'X-Plugin-Id header is required' }), {
                 status: 400,
                 headers: { 'Content-Type': 'application/json' },
@@ -51,7 +49,7 @@ export const handleCreateTemplate = httpAction(async (ctx, request) => {
             );
         }
 
-        const plugin = await ctx.runQuery(getPluginByUuid, { uuid: pluginUuid });
+        const plugin = await ctx.runQuery(getPluginById, { id: pluginId as Id<'plugins'> });
         if (!plugin) {
             return new Response(JSON.stringify({ error: 'Plugin not found' }), {
                 status: 404,

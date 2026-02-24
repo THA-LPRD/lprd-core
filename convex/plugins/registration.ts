@@ -1,32 +1,27 @@
 import { v } from 'convex/values';
 import { httpAction, internalMutation, internalQuery } from '../_generated/server';
 import { internal } from '../_generated/api';
-import { v4 as uuidv4 } from 'uuid';
 import { pluginTopic } from '../schema';
 
 const DEFAULT_HEALTH_CHECK_INTERVAL_MS = 30_000;
 
 /**
- * Get a plugin by its UUID string.
+ * Get a plugin by its Convex ID.
  * Used by httpAction endpoints that receive plugin ID from headers.
  */
-export const getByUuid = internalQuery({
-    args: { uuid: v.string() },
+export const getById = internalQuery({
+    args: { id: v.id('plugins') },
     handler: async (ctx, args) => {
-        return ctx.db
-            .query('plugins')
-            .withIndex('by_plugin_id', (q) => q.eq('id', args.uuid))
-            .unique();
+        return ctx.db.get(args.id);
     },
 });
 
 /**
  * Register a new plugin. Called from the /api/v2/plugin/register httpAction.
- * Generates a UUID and inserts with status 'pending'.
+ * Inserts with status 'pending'. Returns the Convex _id.
  */
 export const registerPlugin = internalMutation({
     args: {
-        id: v.string(),
         name: v.string(),
         version: v.string(),
         description: v.optional(v.string()),
@@ -41,11 +36,10 @@ export const registerPlugin = internalMutation({
             .filter((q) => q.eq(q.field('baseUrl'), args.baseUrl))
             .first();
 
-        if (existing) return { pluginId: existing._id, id: existing.id, alreadyExists: true };
+        if (existing) return { pluginId: existing._id, alreadyExists: true };
 
         const now = Date.now();
         const pluginId = await ctx.db.insert('plugins', {
-            id: args.id,
             name: args.name,
             version: args.version,
             description: args.description,
@@ -58,7 +52,7 @@ export const registerPlugin = internalMutation({
             updatedAt: now,
         });
 
-        return { pluginId, id: args.id, alreadyExists: false };
+        return { pluginId, alreadyExists: false };
     },
 });
 
@@ -78,12 +72,10 @@ export const handlePluginRegister = httpAction(async (ctx, request) => {
             });
         }
 
-        const id = uuidv4();
-
-        // Generate UUIDs for each topic entry
+        // Generate internal IDs for each topic entry
         const topicsWithIds = Array.isArray(topics)
             ? topics.map((t: { key: string; label: string; description?: string }) => ({
-                  id: uuidv4(),
+                  id: crypto.randomUUID(),
                   key: t.key,
                   label: t.label,
                   description: t.description,
@@ -91,7 +83,6 @@ export const handlePluginRegister = httpAction(async (ctx, request) => {
             : [];
 
         const result = await ctx.runMutation(internal.plugins.registration.registerPlugin, {
-            id,
             name,
             version,
             description: description ?? undefined,
@@ -101,7 +92,7 @@ export const handlePluginRegister = httpAction(async (ctx, request) => {
         });
 
         const status = result.alreadyExists ? 200 : 201;
-        return new Response(JSON.stringify({ registration_id: result.id }), {
+        return new Response(JSON.stringify({ registration_id: result.pluginId }), {
             status,
             headers: { 'Content-Type': 'application/json' },
         });

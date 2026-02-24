@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
 import type { FunctionReference } from 'convex/server';
+import type { Id } from '@convex/dataModel';
 import { getConvexClient } from '@/lib/convex-server';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,7 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? undefined;
 
     try {
-        const device = await convex.query(asPublic(internal.devices.v1.getById), { id: deviceId });
+        const device = await convex.query(asPublic(internal.devices.v1.getById), { id: deviceId as Id<'devices'> });
 
         if (!device) {
             return NextResponse.json({ error: 'Device not found' }, { status: 404 });
@@ -47,12 +48,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
 
         // Promote next→current before serving
         const imageChanged = await convex.mutation(asPublic(internal.devices.v1.promoteNext), {
-            id: device.id,
+            id: device._id,
         });
 
         // Re-fetch device to get the current storageId after potential promotion
         const updatedDevice = await convex.query(asPublic(internal.devices.v1.getById), {
-            id: deviceId,
+            id: deviceId as Id<'devices'>,
         });
 
         const storageId = updatedDevice?.current?.storageId ?? null;

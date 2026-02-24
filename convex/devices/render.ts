@@ -10,15 +10,12 @@ import { isTemplateData, resolveImageUrls } from '../lib/template_data';
  */
 export const setNext = mutation({
     args: {
-        deviceId: v.string(),
+        deviceId: v.id('devices'),
         storageId: v.id('_storage'),
         renderedAt: v.number(),
     },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.deviceId))
-            .unique();
+        const device = await ctx.db.get(args.deviceId);
         if (!device) return;
 
         if (device.next?.storageId) {
@@ -50,12 +47,9 @@ export const generateUploadUrl = mutation({
  * TODO: should be removed in favor of auth-protected fetches
  */
 export const getRenderBundle = query({
-    args: { deviceId: v.string() },
+    args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.deviceId))
-            .unique();
+        const device = await ctx.db.get(args.deviceId);
         if (!device?.frameId) return null;
 
         const frame = await ctx.db.get(device.frameId);

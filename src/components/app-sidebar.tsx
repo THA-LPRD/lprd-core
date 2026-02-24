@@ -77,16 +77,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive: pathname.startsWith(`/org/${currentOrg.slug}/devices`),
               },
               {
-                  title: 'Templates',
-                  url: `/org/${currentOrg.slug}/templates`,
-                  icon: LayoutTemplate,
-                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/templates`),
-              },
-              {
                   title: 'Frames',
                   url: `/org/${currentOrg.slug}/frames`,
                   icon: LayoutGrid,
                   isActive: pathname.startsWith(`/org/${currentOrg.slug}/frames`),
+              },
+              {
+                  title: 'Templates',
+                  url: `/org/${currentOrg.slug}/templates`,
+                  icon: LayoutTemplate,
+                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/templates`),
               },
               {
                   title: 'Settings',

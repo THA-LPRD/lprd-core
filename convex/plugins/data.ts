@@ -12,7 +12,7 @@ import { getPermissions } from '../lib/acl';
  */
 export const storeWebhookData = internalMutation({
     args: {
-        pluginUuid: v.string(),
+        pluginId: v.id('plugins'),
         orgSlug: v.string(),
         contentType: v.string(),
         data: v.any(),
@@ -21,10 +21,7 @@ export const storeWebhookData = internalMutation({
         entry: v.string(),
     },
     handler: async (ctx, args) => {
-        const plugin = await ctx.db
-            .query('plugins')
-            .withIndex('by_plugin_id', (q) => q.eq('id', args.pluginUuid))
-            .unique();
+        const plugin = await ctx.db.get(args.pluginId);
 
         if (!plugin) throw new Error('Plugin not found');
         if (plugin.status !== 'active') throw new Error(`Plugin is not active (status: ${plugin.status})`);
@@ -42,7 +39,11 @@ export const storeWebhookData = internalMutation({
         const existing = await ctx.db
             .query('pluginData')
             .withIndex('by_plugin_org_topic_entry', (q) =>
-                q.eq('pluginId', plugin._id).eq('organizationId', org._id).eq('topic', args.topic).eq('entry', args.entry),
+                q
+                    .eq('pluginId', plugin._id)
+                    .eq('organizationId', org._id)
+                    .eq('topic', args.topic)
+                    .eq('entry', args.entry),
             )
             .unique();
 
@@ -102,15 +103,12 @@ export const generateRenderUploadUrl = internalMutation({
  */
 export const setDeviceNext = internalMutation({
     args: {
-        deviceId: v.string(),
+        deviceId: v.id('devices'),
         storageId: v.id('_storage'),
         renderedAt: v.number(),
     },
     handler: async (ctx, args) => {
-        const device = await ctx.db
-            .query('devices')
-            .withIndex('by_device_id', (q) => q.eq('id', args.deviceId))
-            .unique();
+        const device = await ctx.db.get(args.deviceId);
         if (!device) return;
 
         if (device.next?.storageId) {
@@ -139,7 +137,7 @@ export const deletePluginData = internalMutation({
 
 /**
  * Find devices affected by a data change.
- * Returns device UUIDs whose bindings match the given plugin + topic + entry.
+ * Returns device Convex IDs whose bindings match the given plugin + topic + entry.
  * Called from the Next.js webhook route to know which devices need re-rendering.
  */
 export const listAffectedDevices = internalQuery({
@@ -162,7 +160,7 @@ export const listAffectedDevices = internalQuery({
                     (b) => b.pluginId === args.pluginId && b.topic === args.topic && b.entry === args.entry,
                 );
             })
-            .map((d) => d.id);
+            .map((d) => d._id);
     },
 });
 
@@ -183,7 +181,6 @@ export const listPluginsWithTopics = query({
 
         return plugins.filter((p) => p.topics.length > 0).map((p) => ({
             _id: p._id,
-            id: p.id,
             name: p.name,
             topics: p.topics,
         }));
@@ -226,4 +223,3 @@ export const listEntries = query({
             .map((r) => r.entry);
     },
 });
-

@@ -12,6 +12,7 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { slugToLabel } from '@/lib/slug';
 import React from 'react';
 
 export function DynamicBreadcrumbs() {
@@ -33,17 +34,22 @@ export function DynamicBreadcrumbs() {
 
         if (segments[2] === 'devices') {
             if (segments[3]) {
-                // Device detail page
                 items.push({ label: 'Devices', href: `/org/${orgSlug}/devices` });
-                items.push({ label: segments[3] }); // Device ID as current
+                items.push({ label: slugToLabel(segments[3]) });
             } else {
-                // Devices list
                 items.push({ label: 'Devices' });
+            }
+        } else if (segments[2] === 'frames') {
+            if (segments[3]) {
+                items.push({ label: 'Frames', href: `/org/${orgSlug}/frames` });
+                items.push({ label: slugToLabel(segments[3]) });
+            } else {
+                items.push({ label: 'Frames' });
             }
         } else if (segments[2] === 'templates') {
             if (segments[3]) {
                 items.push({ label: 'Templates', href: `/org/${orgSlug}/templates` });
-                items.push({ label: 'Editor' });
+                items.push({ label: slugToLabel(segments[3]) });
             } else {
                 items.push({ label: 'Templates' });
             }

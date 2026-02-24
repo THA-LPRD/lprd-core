@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
 import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { buildEntitySlug } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
 export default function FramesPage() {
@@ -42,11 +43,13 @@ export default function FramesPage() {
             ],
         });
 
-        router.push(`/org/${params.slug}/frames/${id}`);
+        router.push(`/org/${params.slug}/frames/${buildEntitySlug(data.name, id)}`);
     };
 
     const handleEdit = (id: string) => {
-        router.push(`/org/${params.slug}/frames/${id}`);
+        const frame = frames?.find((f) => f._id === id);
+        const slug = frame ? buildEntitySlug(frame.name, id) : id;
+        router.push(`/org/${params.slug}/frames/${slug}`);
     };
 
     const handleDelete = async (id: string) => {

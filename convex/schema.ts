@@ -120,7 +120,6 @@ export default defineSchema({
         .index('by_user_and_org', ['userId', 'organizationId']),
 
     devices: defineTable({
-        id: v.string(), // UUIDv4
         organizationId: v.id('organizations'),
         name: v.string(),
         macAddress: v.optional(v.string()),
@@ -136,7 +135,6 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
     })
-        .index('by_device_id', ['id'])
         .index('by_organization', ['organizationId'])
         .index('by_mac_address', ['macAddress']),
 
@@ -163,7 +161,6 @@ export default defineSchema({
         .index('by_log', ['logId']),
 
     plugins: defineTable({
-        id: v.string(), // UUIDv4
         name: v.string(),
         version: v.string(),
         description: v.optional(v.string()),
@@ -175,9 +172,7 @@ export default defineSchema({
         lastHealthCheckAt: v.optional(v.number()),
         createdAt: v.number(),
         updatedAt: v.number(),
-    })
-        .index('by_plugin_id', ['id'])
-        .index('by_status', ['status']),
+    }).index('by_status', ['status']),
 
     pluginHealthChecks: defineTable({
         pluginId: v.id('plugins'),

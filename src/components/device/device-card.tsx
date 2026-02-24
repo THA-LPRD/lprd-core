@@ -6,11 +6,11 @@ import { Badge } from '@/components/ui/badge';
 import { DeviceStatusDot } from './device-status-dot';
 import { Monitor } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/date';
+import { buildEntitySlug } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
 type Device = {
     _id: Id<'devices'>;
-    id: string;
     organizationId: Id<'organizations'>;
     name: string;
     description?: string;
@@ -24,7 +24,7 @@ type Device = {
 
 export function DeviceCard({ device, orgSlug }: { device: Device; orgSlug: string }) {
     return (
-        <Link href={`/org/${orgSlug}/devices/${device.id}`}>
+        <Link href={`/org/${orgSlug}/devices/${buildEntitySlug(device.name, device._id)}`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden">
                 {/* Device preview area */}
                 <div className="aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">

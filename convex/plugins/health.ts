@@ -19,7 +19,6 @@ export const listDueForHealthCheck = internalQuery({
             .filter((p) => now - (p.lastHealthCheckAt ?? 0) >= p.healthCheckIntervalMs)
             .map((p) => ({
                 _id: p._id,
-                id: p.id,
                 baseUrl: p.baseUrl,
                 healthCheckIntervalMs: p.healthCheckIntervalMs,
                 lastHealthCheckAt: p.lastHealthCheckAt,

@@ -9,7 +9,6 @@ export type Binding = {
 
 export type DeviceData = {
     _id: Id<'devices'>;
-    id: string;
     name: string;
     description?: string;
     tags: string[];

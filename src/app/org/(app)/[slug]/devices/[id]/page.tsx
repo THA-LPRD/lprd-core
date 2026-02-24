@@ -1,15 +1,29 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import * as React from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { DeviceDetail } from '@/components/device/device-detail';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeviceNotFound } from '@/components/ui/not-found';
+import { buildEntitySlug, extractId } from '@/lib/slug';
+import type { Id } from '@convex/dataModel';
 
 export default function DeviceDetailPage() {
     const params = useParams<{ slug: string; id: string }>();
-    const device = useQuery(api.devices.crud.getById, { id: params.id });
+    const router = useRouter();
+    const rawId = extractId(params.id) as Id<'devices'>;
+    const device = useQuery(api.devices.crud.getById, { id: rawId });
+
+    React.useEffect(() => {
+        if (device) {
+            const correctSlug = buildEntitySlug(device.name, device._id);
+            if (params.id !== correctSlug) {
+                router.replace(`/org/${params.slug}/devices/${correctSlug}`);
+            }
+        }
+    }, [device, params.id, params.slug, router]);
 
     if (device === undefined) {
         return (

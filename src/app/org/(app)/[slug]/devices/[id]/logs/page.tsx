@@ -8,10 +8,13 @@ import Link from 'next/link';
 import { DeviceLogTable } from '@/components/device/device-log-table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeviceNotFound } from '@/components/ui/not-found';
+import { extractId } from '@/lib/slug';
+import type { Id } from '@convex/dataModel';
 
 export default function DeviceLogbookPage() {
     const params = useParams<{ slug: string; id: string }>();
-    const device = useQuery(api.devices.crud.getById, { id: params.id });
+    const rawId = extractId(params.id) as Id<'devices'>;
+    const device = useQuery(api.devices.crud.getById, { id: rawId });
 
     if (device === undefined) {
         return (

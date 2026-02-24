@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { buildEntitySlug } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
 export default function TemplatesPage() {
@@ -108,11 +109,13 @@ export default function TemplatesPage() {
             // Non-critical — template is created, thumbnail can be generated on first save
         }
 
-        router.push(`/org/${params.slug}/templates/${id}`);
+        router.push(`/org/${params.slug}/templates/${buildEntitySlug(data.name, id)}`);
     };
 
     const handleEdit = (id: string) => {
-        router.push(`/org/${params.slug}/templates/${id}`);
+        const template = templates?.find((t) => t._id === id);
+        const slug = template ? buildEntitySlug(template.name, id) : id;
+        router.push(`/org/${params.slug}/templates/${slug}`);
     };
 
     const handleDelete = async (id: string) => {

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { DeviceGrid } from '@/components/device/device-grid';
@@ -9,11 +9,12 @@ import { DeviceForm } from '@/components/device/device-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useOrg } from '@/components/org/org-context';
+import { buildEntitySlug } from '@/lib/slug';
 import { Plus } from 'lucide-react';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function DevicesPage() {
     const params = useParams<{ slug: string }>();
+    const router = useRouter();
     const [showAddForm, setShowAddForm] = React.useState(false);
 
     const { org, permissions } = useOrg();
@@ -23,13 +24,13 @@ export default function DevicesPage() {
     const createDevice = useMutation(api.devices.crud.create);
 
     const handleCreateDevice = async (data: { name: string; description: string; tags: string[] }) => {
-        await createDevice({
-            id: uuidv4(),
+        const newId = await createDevice({
             organizationId: org._id,
             name: data.name,
             description: data.description || undefined,
             tags: data.tags,
         });
+        router.push(`/org/${params.slug}/devices/${buildEntitySlug(data.name, newId)}`);
     };
 
     if (devices === undefined) {

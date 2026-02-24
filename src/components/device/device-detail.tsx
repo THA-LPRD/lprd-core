@@ -136,7 +136,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Device ID</p>
-                                <p className="font-mono text-sm">{device.id}</p>
+                                <p className="font-mono text-sm">{device._id}</p>
                             </div>
 
                             <div>

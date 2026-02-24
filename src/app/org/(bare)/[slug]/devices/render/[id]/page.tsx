@@ -8,13 +8,14 @@ import { ShadowLayer } from '@/components/render/shadow-layer';
 import { RenderPageShell } from '@/components/render/render-page-shell';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { isTemplateData, resolveForRender } from '@/lib/template-data';
+import type { Id } from '@convex/dataModel';
 
 const CANVAS_W = GRID_COLS * DEFAULT_CELL_SIZE;
 const CANVAS_H = GRID_ROWS * DEFAULT_CELL_SIZE;
 
 export default function DeviceRenderPage() {
     const params = useParams<{ id: string }>();
-    const bundle = useQuery(api.devices.render.getRenderBundle, { deviceId: params.id });
+    const bundle = useQuery(api.devices.render.getRenderBundle, { deviceId: params.id as Id<'devices'> });
 
     const getWidgetData = React.useCallback(
         (widgetId: string, sampleData?: unknown): Record<string, unknown> => {

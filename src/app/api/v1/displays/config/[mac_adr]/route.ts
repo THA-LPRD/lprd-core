@@ -48,7 +48,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
 
         // Update lastSeen only (no promotion — that's the image endpoint's job)
         const result = await convex.mutation(asPublic(internal.devices.v1.heartbeat), {
-            id: device.id,
+            id: device._id,
         });
 
         if (!result) {
@@ -57,15 +57,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
 
         // Build the proxy URL for this device
         const hasImage = result.storageId != null;
-        const filePath = hasImage ? `/api/v1/displays/image/${device.id}` : null;
+        const filePath = hasImage ? `/api/v1/displays/image/${device._id}` : null;
 
         // Get min TTL and binding data snapshot in parallel
         const [validFor, bindingData] = await Promise.all([
             convex.query(asPublic(internal.devices.v1.getMinTtl), {
-                deviceId: device.id,
+                deviceId: device._id,
             }),
             convex.query(asPublic(internal.devices.v1.getBindingData), {
-                deviceId: device.id,
+                deviceId: device._id,
             }),
         ]);
 

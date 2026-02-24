@@ -28,8 +28,8 @@ const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
  */
 export async function POST(request: Request) {
     try {
-        const pluginUuid = request.headers.get('X-Plugin-Id');
-        if (!pluginUuid) {
+        const pluginId = request.headers.get('X-Plugin-Id');
+        if (!pluginId) {
             return NextResponse.json({ error: 'X-Plugin-Id header is required' }, { status: 400 });
         }
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
 
         // Store the data in Convex
         const result = await convex.mutation(asPublic(internal.plugins.data.storeWebhookData), {
-            pluginUuid,
+            pluginId,
             orgSlug: org_slug,
             contentType: 'plugin_data',
             data,

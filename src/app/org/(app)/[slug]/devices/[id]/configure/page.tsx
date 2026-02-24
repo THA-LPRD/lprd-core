@@ -6,10 +6,13 @@ import { api } from '@convex/api';
 import { DeviceConfigure } from '@/components/device/device-configure';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DeviceNotFound } from '@/components/ui/not-found';
+import { extractId } from '@/lib/slug';
+import type { Id } from '@convex/dataModel';
 
 export default function DeviceConfigurePage() {
     const params = useParams<{ slug: string; id: string }>();
-    const device = useQuery(api.devices.crud.getById, { id: params.id });
+    const rawId = extractId(params.id) as Id<'devices'>;
+    const device = useQuery(api.devices.crud.getById, { id: rawId });
 
     if (device === undefined) {
         return (
