@@ -1,12 +1,11 @@
 import { v } from 'convex/values';
 import { internalAction, internalMutation, internalQuery } from '../_generated/server';
 import { internal } from '../_generated/api';
-import type { TemplateData } from '../lib/template_data';
-import { isTemplateData } from '../lib/template_data';
+import { extractImageUrls, replaceImgUrls } from '../lib/template_data';
 
 /**
- * Download external images from img fields, store them in Convex storage,
- * and patch the template's sampleData with the storageId.
+ * Download external images from img() markers in sampleData,
+ * store them in Convex storage, and patch the template with resolved URLs.
  */
 export const processTemplateImages = internalAction({
     args: { templateId: v.id('templates') },
@@ -17,33 +16,41 @@ export const processTemplateImages = internalAction({
         if (!template) return;
 
         const data = template.sampleData;
-        if (!isTemplateData(data)) return;
+        const urls = extractImageUrls(data);
+        if (urls.length === 0) return;
 
-        let changed = false;
-        const updated: TemplateData = { ...data };
+        const urlMap = new Map<string, { url: string; storageId: string }>();
+        const imageBlobs: Record<string, string> = {};
 
-        for (const [key, field] of Object.entries(updated)) {
-            if (field.type !== 'img' || field.storageId) continue;
-
+        for (const externalUrl of urls) {
             try {
-                const response = await fetch(field.url);
+                const response = await fetch(externalUrl);
                 if (!response.ok) continue;
 
                 const blob = await response.blob();
                 const storageId = await ctx.storage.store(blob);
-                updated[key] = { ...field, storageId };
-                changed = true;
+                const servingUrl = await ctx.storage.getUrl(storageId);
+                if (!servingUrl) continue;
+
+                urlMap.set(externalUrl, { url: servingUrl, storageId });
+                imageBlobs[externalUrl] = storageId;
             } catch {
-                // Skip fields that fail to download
+                // Skip URLs that fail to download
             }
         }
 
-        if (changed) {
-            await ctx.runMutation(internal.templates.images.patchSampleData, {
-                templateId: args.templateId,
-                sampleData: updated,
-            });
-        }
+        if (urlMap.size === 0) return;
+
+        const updated = replaceImgUrls(data, urlMap);
+        const withBlobs =
+            typeof updated === 'object' && updated !== null && !Array.isArray(updated)
+                ? { ...(updated as Record<string, unknown>), _imageBlobs: imageBlobs }
+                : updated;
+
+        await ctx.runMutation(internal.templates.images.patchSampleData, {
+            templateId: args.templateId,
+            sampleData: withBlobs,
+        });
     },
 });
 

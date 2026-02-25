@@ -7,7 +7,7 @@ import { api } from '@convex/api';
 import { ShadowLayer } from '@/components/render/shadow-layer';
 import { RenderPageShell } from '@/components/render/render-page-shell';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
-import { isTemplateData, resolveForRender } from '@/lib/template-data';
+import { resolveForRender } from '@/lib/template-data';
 import type { Id } from '@convex/dataModel';
 
 const CANVAS_W = GRID_COLS * DEFAULT_CELL_SIZE;
@@ -19,14 +19,13 @@ export default function DeviceRenderPage() {
 
     const getWidgetData = React.useCallback(
         (widgetId: string, sampleData?: unknown): Record<string, unknown> => {
-            const base = (sampleData as Record<string, unknown>) ?? {};
-            const resolvedBase = isTemplateData(base) ? resolveForRender(base) : base;
+            const base = resolveForRender(sampleData ?? {}) as Record<string, unknown>;
 
             const bound = bundle?.bindingData[widgetId];
-            if (!bound) return resolvedBase;
+            if (!bound) return base;
 
-            const resolvedBound = isTemplateData(bound) ? resolveForRender(bound) : bound;
-            return { ...resolvedBase, ...resolvedBound };
+            const resolvedBound = resolveForRender(bound) as Record<string, unknown>;
+            return { ...base, ...resolvedBound };
         },
         [bundle?.bindingData],
     );

@@ -98,7 +98,7 @@ export function OrgSwitcher({
                                     onClick={() => router.push(`/org/${org.slug}/devices`)}
                                     className="gap-2 p-2"
                                 >
-                                    <Avatar className="size-6 rounded-md">
+                                    <Avatar className="size-6 rounded-md after:border-0">
                                         <AvatarImage src={org.logoUrl} alt={org.name} />
                                         <AvatarFallback className="rounded-md text-xs">
                                             {getOrgInitials(org.name)}

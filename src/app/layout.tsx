@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     return (
         <html lang="en" suppressHydrationWarning>
             <body
-                className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased h-screen w-screen flex overflow-hidden`}
+                className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased h-screen w-screen overflow-hidden`}
             >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     <ConvexClientProvider>{children}</ConvexClientProvider>

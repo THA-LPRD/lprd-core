@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery, query } from '../_generated/server';
 import { internal } from '../_generated/api';
-import { deleteImageBlobs, isTemplateData } from '../lib/template_data';
+import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 import { getCurrentUser, getMembership } from '../users';
 import { getPermissions } from '../lib/acl';
 
@@ -73,14 +73,11 @@ export const storeWebhookData = internalMutation({
             });
         }
 
-        // Schedule image processing if data has img fields
-        if (isTemplateData(args.data)) {
-            const hasUnprocessed = Object.values(args.data).some((f) => f.type === 'img' && !f.storageId);
-            if (hasUnprocessed) {
-                await ctx.scheduler.runAfter(0, internal.plugins.images.processPluginDataImages, {
-                    pluginDataId: id,
-                });
-            }
+        // Schedule image processing if data has img() markers
+        if (containsImgFuncs(args.data)) {
+            await ctx.scheduler.runAfter(0, internal.plugins.images.processPluginDataImages, {
+                pluginDataId: id,
+            });
         }
 
         return { pluginId: plugin._id, organizationId: org._id, orgSlug: org.slug };

@@ -3,7 +3,7 @@ import { mutation, query } from '../_generated/server';
 import { internal } from '../_generated/api';
 import { templateVariant } from '../schema';
 import { getPermissions } from '../lib/acl';
-import { deleteImageBlobs, isTemplateData, resolveImageUrls } from '../lib/template_data';
+import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 import { getCurrentUser, getMembership } from '../users';
 
 /**
@@ -70,13 +70,7 @@ export const getById = query({
             thumbnailUrl = await ctx.storage.getUrl(template.thumbnailStorageId);
         }
 
-        // Resolve image URLs in sampleData
-        let sampleData = template.sampleData;
-        if (isTemplateData(sampleData)) {
-            sampleData = await resolveImageUrls(ctx, sampleData);
-        }
-
-        return { ...template, sampleData, thumbnailUrl };
+        return { ...template, thumbnailUrl };
     },
 });
 
@@ -117,14 +111,11 @@ export const create = mutation({
             updatedAt: now,
         });
 
-        // Schedule image processing if sampleData has img fields
-        if (isTemplateData(args.sampleData)) {
-            const hasUnprocessed = Object.values(args.sampleData).some((f) => f.type === 'img' && !f.storageId);
-            if (hasUnprocessed) {
-                await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                    templateId: id,
-                });
-            }
+        // Schedule image processing if sampleData has img() markers
+        if (containsImgFuncs(args.sampleData)) {
+            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
+                templateId: id,
+            });
         }
 
         return id;
@@ -162,14 +153,11 @@ export const update = mutation({
         void id;
         await ctx.db.patch(template._id, { ...updates, updatedAt: Date.now() });
 
-        // Schedule image processing if sampleData changed and has img fields
-        if (args.sampleData !== undefined && isTemplateData(args.sampleData)) {
-            const hasUnprocessed = Object.values(args.sampleData).some((f) => f.type === 'img' && !f.storageId);
-            if (hasUnprocessed) {
-                await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                    templateId: template._id,
-                });
-            }
+        // Schedule image processing if sampleData changed and has img() markers
+        if (args.sampleData !== undefined && containsImgFuncs(args.sampleData)) {
+            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
+                templateId: template._id,
+            });
         }
     },
 });

@@ -2,7 +2,6 @@ import { v } from 'convex/values';
 import { mutation, query } from '../_generated/server';
 import type { Id } from '../_generated/dataModel';
 import { getCurrentUser } from '../users';
-import { isTemplateData, resolveImageUrls } from '../lib/template_data';
 
 /**
  * Set the next render for a device. Cleans up old next blob if present.
@@ -89,10 +88,7 @@ export const getRenderBundle = query({
 
                 if (!record) continue;
 
-                let data = record.data as Record<string, unknown>;
-                if (isTemplateData(data)) {
-                    data = await resolveImageUrls(ctx, data);
-                }
+                const data = record.data as Record<string, unknown>;
 
                 if (!bindingData[binding.widgetId]) {
                     bindingData[binding.widgetId] = {};

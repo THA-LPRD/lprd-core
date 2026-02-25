@@ -1,53 +1,95 @@
-/** A plain text field. */
-export type DataFieldText = { type: 'text'; value: string };
+const IMG_FUNC_RE = /^img\((.+)\)$/;
 
-/** An image field — `storageId` is set after server-side processing. */
-export type DataFieldImage = { type: 'img'; url: string; storageId?: string };
-
-/** A single data field in a template's sample/plugin data. */
-export type DataField = DataFieldText | DataFieldImage;
-
-/** The top-level data shape stored in `sampleData` / `pluginData.data`. */
-export type TemplateData = Record<string, DataField>;
-
-export function isTemplateData(value: unknown): value is TemplateData {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
-    for (const field of Object.values(value as Record<string, unknown>)) {
-        if (typeof field !== 'object' || field === null) return false;
-        const f = field as Record<string, unknown>;
-        if (f.type === 'text' && typeof f.value === 'string') continue;
-        if (f.type === 'img' && typeof f.url === 'string') continue;
-        return false;
-    }
-    return true;
+/** Extract URL from `img(url)` string marker. Returns URL or null. */
+export function isImgFunc(value: string): string | null {
+	const match = IMG_FUNC_RE.exec(value);
+	return match ? match[1] : null;
 }
 
-/** Resolve img storageId → serving URL, returning a new data object. */
-export async function resolveImageUrls(
-    ctx: { storage: { getUrl: (id: string) => Promise<string | null> } },
-    data: TemplateData,
-): Promise<TemplateData> {
-    const resolved = { ...data };
-    for (const [key, field] of Object.entries(resolved)) {
-        if (field.type === 'img' && field.storageId) {
-            const url = await ctx.storage.getUrl(field.storageId);
-            if (url) {
-                resolved[key] = { ...field, url };
-            }
-        }
-    }
-    return resolved;
+/** Recursively collect all URLs from `img()` markers in any JSON tree. */
+export function extractImageUrls(data: unknown): string[] {
+	const urls: string[] = [];
+	function walk(node: unknown) {
+		if (typeof node === 'string') {
+			const url = isImgFunc(node);
+			if (url) urls.push(url);
+		} else if (Array.isArray(node)) {
+			for (const item of node) walk(item);
+		} else if (typeof node === 'object' && node !== null) {
+			for (const [key, val] of Object.entries(node as Record<string, unknown>)) {
+				if (key === '_imageBlobs') continue;
+				walk(val);
+			}
+		}
+	}
+	walk(data);
+	return urls;
 }
 
-/** Delete all storage blobs referenced by img fields. */
+/** Recursively check if any `img()` markers exist in the data. */
+export function containsImgFuncs(data: unknown): boolean {
+	if (typeof data === 'string') return IMG_FUNC_RE.test(data);
+	if (Array.isArray(data)) return data.some((item) => containsImgFuncs(item));
+	if (typeof data === 'object' && data !== null) {
+		for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+			if (key === '_imageBlobs') continue;
+			if (containsImgFuncs(val)) return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * Recursively replace `img(externalUrl)` with `img(resolvedUrl)`.
+ * `urlMap` maps original external URLs → `{ url: servingUrl, storageId }`.
+ */
+export function replaceImgUrls(
+	data: unknown,
+	urlMap: Map<string, { url: string; storageId: string }>,
+): unknown {
+	if (typeof data === 'string') {
+		const originalUrl = isImgFunc(data);
+		if (originalUrl) {
+			const resolved = urlMap.get(originalUrl);
+			if (resolved) return `img(${resolved.url})`;
+		}
+		return data;
+	}
+	if (Array.isArray(data)) {
+		return data.map((item) => replaceImgUrls(item, urlMap));
+	}
+	if (typeof data === 'object' && data !== null) {
+		const result: Record<string, unknown> = {};
+		for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+			if (key === '_imageBlobs') {
+				result[key] = val;
+				continue;
+			}
+			result[key] = replaceImgUrls(val, urlMap);
+		}
+		return result;
+	}
+	return data;
+}
+
+/** Recursively collect storageIds from the `_imageBlobs` metadata field. */
+export function collectStorageIds(data: unknown): string[] {
+	if (typeof data !== 'object' || data === null || Array.isArray(data)) return [];
+	const record = data as Record<string, unknown>;
+	const blobs = record._imageBlobs;
+	if (typeof blobs !== 'object' || blobs === null || Array.isArray(blobs)) return [];
+	return Object.values(blobs as Record<string, unknown>).filter(
+		(v): v is string => typeof v === 'string',
+	);
+}
+
+/** Delete all storage blobs tracked in `_imageBlobs`. */
 export async function deleteImageBlobs(
     ctx: { storage: { delete: (id: string) => Promise<void> } },
     data: unknown,
 ): Promise<void> {
-    if (!isTemplateData(data)) return;
-    for (const field of Object.values(data)) {
-        if (field.type === 'img' && field.storageId) {
-            await ctx.storage.delete(field.storageId);
-        }
+    const ids = collectStorageIds(data);
+    for (const id of ids) {
+        await ctx.storage.delete(id);
     }
 }

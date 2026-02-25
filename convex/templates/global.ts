@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { internalMutation } from '../_generated/server';
 import { internal } from '../_generated/api';
 import { templateVariant } from '../schema';
-import { deleteImageBlobs, isTemplateData } from '../lib/template_data';
+import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 
 /**
  * Upsert a global template from a plugin.
@@ -43,14 +43,11 @@ export const upsertGlobal = internalMutation({
                 updatedAt: now,
             });
 
-            // Schedule image processing
-            if (isTemplateData(args.sampleData)) {
-                const hasUnprocessed = Object.values(args.sampleData).some((f) => f.type === 'img' && !f.storageId);
-                if (hasUnprocessed) {
-                    await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                        templateId: existing._id,
-                    });
-                }
+            // Schedule image processing if data has img() markers
+            if (containsImgFuncs(args.sampleData)) {
+                await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
+                    templateId: existing._id,
+                });
             }
 
             return { id: existing._id, created: false };
@@ -70,14 +67,11 @@ export const upsertGlobal = internalMutation({
             updatedAt: now,
         });
 
-        // Schedule image processing
-        if (isTemplateData(args.sampleData)) {
-            const hasUnprocessed = Object.values(args.sampleData).some((f) => f.type === 'img' && !f.storageId);
-            if (hasUnprocessed) {
-                await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                    templateId: id,
-                });
-            }
+        // Schedule image processing if data has img() markers
+        if (containsImgFuncs(args.sampleData)) {
+            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
+                templateId: id,
+            });
         }
 
         return { id, created: true };

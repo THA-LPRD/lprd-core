@@ -12,7 +12,6 @@ import nunjucks from 'nunjucks';
 import { useTheme } from 'next-themes';
 import { type CSSProperties, useMemo, useState } from 'react';
 import { DataFieldsEditor } from './data-fields-editor';
-import { isTemplateData, type TemplateData } from '@/lib/template-data';
 
 const nunjucksEnv = new nunjucks.Environment(null, { autoescape: true });
 
@@ -71,15 +70,9 @@ export function CodePanel({
         }
     }, [sampleDataJson]);
 
-    // Determine initial mode: if existing data is typed, default to form
-    const [dataMode, setDataMode] = useState<DataMode>(() => (isTemplateData(sampleData) ? 'form' : 'json'));
+    const [dataMode, setDataMode] = useState<DataMode>('form');
 
-    const typedData = useMemo<TemplateData | null>(() => {
-        if (isTemplateData(sampleData)) return sampleData as TemplateData;
-        return null;
-    }, [sampleData]);
-
-    const handleFormChange = (data: TemplateData) => {
+    const handleFormChange = (data: unknown) => {
         onSampleDataJsonChange(JSON.stringify(data, null, 2));
     };
 
@@ -161,7 +154,7 @@ export function CodePanel({
                             extensions={jsonExtensions}
                             editable={editableConfig.editable}
                             readOnly={editableConfig.readOnly}
-                            placeholder='{"content": {"type": "text", "value": "Hello"}}'
+                            placeholder='{"title": "Hello", "photo": "img(https://...)"}'
                             height="100%"
                             width="100%"
                             style={cmStyle}
@@ -170,7 +163,7 @@ export function CodePanel({
                         />
                     ) : (
                         <div className="p-2">
-                            <DataFieldsEditor data={typedData ?? {}} onChange={handleFormChange} disabled={disabled} />
+                            <DataFieldsEditor data={sampleData} onChange={handleFormChange} disabled={disabled} />
                         </div>
                     )}
                 </div>

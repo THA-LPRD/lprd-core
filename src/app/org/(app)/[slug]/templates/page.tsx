@@ -12,6 +12,7 @@ import { useOrg } from '@/components/org/org-context';
 import { Plus } from 'lucide-react';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { buildEntitySlug } from '@/lib/slug';
+import { STARTER_HTML, STARTER_SAMPLE_DATA } from '@/lib/template';
 import type { Id } from '@convex/dataModel';
 
 export default function TemplatesPage() {
@@ -29,52 +30,13 @@ export default function TemplatesPage() {
     const generateUploadUrl = useMutation(api.templates.crud.generateUploadUrl);
     const storeTemplateThumbnail = useMutation(api.templates.crud.storeThumbnail);
 
-    const starterHtml = `<div>
-  <style>
-    .title { font-size: 1.2em; font-weight: bold; }
-    .row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-  </style>
-
-  <div class="title">{{ title }}</div>
-  <span>{{ message }}</span>
-
-  <!-- Font Awesome solid (default) — fontawesome.com/icons?f=classic&s=solid -->
-  <div class="row">
-    <img-fa name="sun"></img-fa>
-    <span>FA solid: sun</span>
-  </div>
-
-  <!-- Font Awesome regular — fontawesome.com/icons?f=classic&s=regular -->
-  <div class="row">
-    <img-fa name="heart" set="regular"></img-fa>
-    <span>FA regular: heart</span>
-  </div>
-
-  <!-- Font Awesome brands — fontawesome.com/icons?f=brands -->
-  <div class="row">
-    <img-fa name="github" set="brands"></img-fa>
-    <span>FA brands: github</span>
-  </div>
-
-  <!-- Lucide icon — lucide.dev/icons -->
-  <div class="row">
-    <img-lucide name="moon"></img-lucide>
-    <span>Lucide: moon</span>
-  </div>
-</div>`;
-
-    const starterSampleData = {
-        title: 'Hello World',
-        message: 'Edit this template to get started.',
-    };
-
     const handleCreate = async (data: { name: string; description: string }) => {
         const id = await createTemplate({
             organizationId: org._id,
             name: data.name,
             description: data.description || undefined,
-            templateHtml: starterHtml,
-            sampleData: starterSampleData,
+            templateHtml: STARTER_HTML,
+            sampleData: STARTER_SAMPLE_DATA,
             variants: [{ type: 'content', w: 3, h: 2 }],
             preferredVariantIndex: 0,
         });

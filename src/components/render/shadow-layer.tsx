@@ -4,7 +4,7 @@ import * as React from 'react';
 import { getTemplateBaseCSS, renderAndSanitize } from '@/lib/render/template-document';
 import { DEFAULT_CELL_SIZE } from '@/lib/render/constants';
 import { resolveIconsInRoot } from '@/lib/render/icons';
-import { isTemplateData, resolveForRender } from '@/lib/template-data';
+import { resolveForRender } from '@/lib/template-data';
 
 export function ShadowLayer({
     html,
@@ -43,7 +43,7 @@ export function ShadowLayer({
         const hostCSS = extraHostCSS ? `${baseCSS}; ${extraHostCSS}` : baseCSS;
         const baseStyles = `<style>:host { ${hostCSS} }</style>`;
         try {
-            const resolvedData = isTemplateData(sampleData) ? resolveForRender(sampleData) : sampleData;
+            const resolvedData = resolveForRender(sampleData) as Record<string, unknown>;
             const rendered = renderAndSanitize(html, resolvedData, cellSize, width, height);
             shadowRef.current.innerHTML = baseStyles + rendered;
             resolveIconsInRoot(shadowRef.current);
