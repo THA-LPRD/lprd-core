@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
     return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-screen flex flex-1 items-center justify-center">
             <div className="flex flex-col gap-6 max-w-sm text-center">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Welcome to LPRD</h1>

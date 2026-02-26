@@ -100,7 +100,8 @@ export function jsonToRows(data: unknown): SimpleRow[] {
         } else if (typeof node === 'object' && node !== null) {
             const entries = Object.entries(node as Record<string, unknown>);
             if (entries.length === 0) {
-                rows.push({ key: prefix, value: '{}' });
+                // Only emit a row for nested empty objects, not the root
+                if (prefix) rows.push({ key: prefix, value: '{}' });
                 return;
             }
             for (const [key, val] of entries) {

@@ -33,6 +33,7 @@ export const pluginStatus = v.union(
     v.literal('inactive'),
     v.literal('suspended'),
     v.literal('removed'),
+    v.literal('system'),
 );
 
 // Health check status

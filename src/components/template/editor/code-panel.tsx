@@ -11,7 +11,7 @@ import { type Diagnostic, linter, lintGutter } from '@codemirror/lint';
 import nunjucks from 'nunjucks';
 import { useTheme } from 'next-themes';
 import { type CSSProperties, useMemo, useState } from 'react';
-import { DataFieldsEditor } from './data-fields-editor';
+import { DataFieldsEditor } from '@/components/ui/data-fields-editor';
 
 const nunjucksEnv = new nunjucks.Environment(null, { autoescape: true });
 

@@ -9,7 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 
     return (
         <html lang="en">
-            <body className="bg-background text-foreground">
+            <body className="flex-1 bg-background text-foreground">
                 <div className="flex min-h-screen flex-col">
                     <main className="flex-1 container mx-auto p-8 flex items-center justify-center">
                         <div className="mx-auto max-w-md text-center space-y-6">
