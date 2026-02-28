@@ -8,6 +8,7 @@ import { Monitor } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/date';
 import { buildEntitySlug } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
+import Image from 'next/image';
 
 type Device = {
     _id: Id<'devices'>;
@@ -27,10 +28,9 @@ export function DeviceCard({ device, orgSlug }: { device: Device; orgSlug: strin
         <Link href={`/org/${orgSlug}/devices/${buildEntitySlug(device.name, device._id)}`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden">
                 {/* Device preview area */}
-                <div className="aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">
+                <div className="relative aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">
                     {device.currentUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={device.currentUrl} alt={device.name} className="w-full h-full object-contain" />
+                        <Image objectFit="contain" fill src={device.currentUrl} alt={device.name} />
                     ) : (
                         <Monitor className="size-12 text-muted-foreground/50" />
                     )}

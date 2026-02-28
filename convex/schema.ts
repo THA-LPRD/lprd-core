@@ -131,6 +131,7 @@ export default defineSchema({
         lastSeen: v.optional(v.number()),
         frameId: v.optional(v.id('frames')),
         dataBindings: v.optional(v.array(deviceDataBinding)),
+        last: v.optional(deviceRender),
         current: v.optional(deviceRender),
         next: v.optional(deviceRender),
         createdAt: v.number(),

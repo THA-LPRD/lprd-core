@@ -59,17 +59,19 @@ export const promoteNext = internalMutation({
         const device = await ctx.db.get(args.id);
         if (!device || !device.next) return false;
 
-        if (device.current?.storageId) {
-            await ctx.storage.delete(device.current.storageId);
+        // Delete the old last blob before shifting
+        if (device.last?.storageId) {
+            await ctx.storage.delete(device.last.storageId);
         }
 
         await ctx.db.patch(device._id, {
+            last: device.current,
             current: device.next,
             next: undefined,
         });
 
         return true;
-    },
+    };,
 });
 
 /**

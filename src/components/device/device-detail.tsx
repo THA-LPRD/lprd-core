@@ -12,12 +12,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useOrg } from '@/components/org/org-context';
 import { formatDate, formatRelativeTime } from '@/lib/date';
 
 export function DeviceDetail({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
-    const [previewTab, setPreviewTab] = React.useState<'current' | 'queued'>('current');
+    const [previewTab, setPreviewTab] = React.useState<'last' | 'current' | 'queued'>('current');
 
     const { org, permissions } = useOrg();
 
@@ -84,6 +85,13 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                             <CardTitle className="text-lg">Preview</CardTitle>
                             <div className="flex gap-1">
                                 <Button
+                                    variant={previewTab === 'last' ? 'default' : 'outline'}
+                                    size="sm"
+                                    onClick={() => setPreviewTab('last')}
+                                >
+                                    Last
+                                </Button>
+                                <Button
                                     variant={previewTab === 'current' ? 'default' : 'outline'}
                                     size="sm"
                                     onClick={() => setPreviewTab('current')}
@@ -105,21 +113,13 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                         </div>
                     </CardHeader>
                     <CardContent>
-                        <div className="aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
-                            {previewTab === 'current' && device.currentUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={device.currentUrl}
-                                    alt="Current render"
-                                    className="w-full h-full object-contain"
-                                />
+                        <div className="relative aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
+                            {previewTab === 'last' && device.lastUrl ? (
+                                <Image objectFit="contain" fill unoptimized src={device.lastUrl} alt="Last" />
+                            ) : previewTab === 'current' && device.currentUrl ? (
+                                <Image objectFit="contain" fill unoptimized src={device.currentUrl} alt="Current" />
                             ) : previewTab === 'queued' && device.nextUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={device.nextUrl}
-                                    alt="Queued render"
-                                    className="w-full h-full object-contain"
-                                />
+                                <Image objectFit="contain" fill unoptimized src={device.nextUrl} alt="Queued" />
                             ) : (
                                 <ImageIcon className="size-16 text-muted-foreground/50" />
                             )}

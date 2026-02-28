@@ -111,9 +111,13 @@ export const getById = query({
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return null;
 
+        let lastUrl: string | null = null;
         let currentUrl: string | null = null;
         let nextUrl: string | null = null;
 
+        if (device.last?.storageId) {
+            lastUrl = await ctx.storage.getUrl(device.last.storageId);
+        }
         if (device.current?.storageId) {
             currentUrl = await ctx.storage.getUrl(device.current.storageId);
         }
@@ -121,7 +125,7 @@ export const getById = query({
             nextUrl = await ctx.storage.getUrl(device.next.storageId);
         }
 
-        return { ...device, currentUrl, nextUrl };
+        return { ...device, lastUrl, currentUrl, nextUrl };
     },
 });
 
@@ -226,6 +230,9 @@ export const remove = mutation({
             await deleteManualDataForDevice(ctx, manualPluginId, device.organizationId, device._id);
         }
 
+        if (device.last?.storageId) {
+            await ctx.storage.delete(device.last.storageId);
+        }
         if (device.current?.storageId) {
             await ctx.storage.delete(device.current.storageId);
         }

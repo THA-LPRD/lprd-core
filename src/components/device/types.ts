@@ -14,6 +14,7 @@ export type DeviceData = {
     tags: string[];
     status: 'pending' | 'active';
     lastSeen?: number;
+    lastUrl?: string | null;
     currentUrl?: string | null;
     nextUrl?: string | null;
     frameId?: Id<'frames'>;
