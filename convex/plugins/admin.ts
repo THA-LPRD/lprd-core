@@ -178,6 +178,46 @@ export const updateTokenIssuedAt = internalMutation({
 });
 
 /**
+ * Permanently delete a removed plugin and all associated data.
+ * Only works on plugins with status 'removed'. AppAdmin only.
+ */
+export const permanentDelete = mutation({
+    args: { id: v.id('plugins') },
+    handler: async (ctx, args) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) throw new Error('Not authenticated');
+        const perms = getPermissions(user, null);
+        if (!perms.plugin.manage) throw new Error('Not authorized');
+
+        const plugin = await ctx.db.get(args.id);
+        if (!plugin) throw new Error('Plugin not found');
+        if (plugin.status !== 'removed') throw new Error('Plugin must be removed before permanent deletion');
+
+        // Cascade delete pluginData
+        const data = await ctx.db.query('pluginData').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        for (const row of data) await ctx.db.delete(row._id);
+
+        // Cascade delete pluginOrgAccess
+        const access = await ctx.db.query('pluginOrgAccess').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        for (const row of access) await ctx.db.delete(row._id);
+
+        // Cascade delete pluginHealthChecks
+        const checks = await ctx.db.query('pluginHealthChecks').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        for (const row of checks) await ctx.db.delete(row._id);
+
+        // Cascade delete templates + their thumbnail storage
+        const templates = await ctx.db.query('templates').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        for (const t of templates) {
+            if (t.thumbnailStorageId) await ctx.storage.delete(t.thumbnailStorageId);
+            await ctx.db.delete(t._id);
+        }
+
+        // Delete the plugin itself
+        await ctx.db.delete(args.id);
+    },
+});
+
+/**
  * Reissue token — appAdmin only. Updates tokenIssuedAt to invalidate old tokens.
  * JWT signing happens in the API route.
  */
