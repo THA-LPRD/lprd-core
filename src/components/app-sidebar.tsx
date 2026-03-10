@@ -130,8 +130,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             name: user.name,
                             email: user.email,
                             avatar: user.avatarUrl ?? undefined,
+                            role: user.role,
                         }}
                         onSignOut={handleSignOut}
+                        context="org"
                     />
                 )}
             </SidebarFooter>

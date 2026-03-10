@@ -1,13 +1,6 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import type { FunctionReference } from 'convex/server';
-import { getConvexClient } from '@/lib/convex-server';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function asPublic<Type extends FunctionReference<any, 'internal'>>(fn: Type): FunctionReference<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return fn as any;
-}
+import { asPublic, getConvexClient } from '@/lib/convex-server';
 
 /**
  * GET /api/v1/displays/config/:mac_adr
@@ -60,7 +53,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
         const filePath = hasImage ? `/api/v1/displays/image/${device._id}` : null;
 
         // Get min TTL and binding data snapshot in parallel
-        const [validFor, bindingData] = await Promise.all([
+        const [minTTL, bindingData] = await Promise.all([
             convex.query(asPublic(internal.devices.v1.getMinTtl), {
                 deviceId: device._id,
             }),
@@ -68,6 +61,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
                 deviceId: device._id,
             }),
         ]);
+        const validFor = Math.max(minTTL, 3600); // Default to 1h if no bindings or data
 
         // Log the config fetch (with snapshot if image is changing)
         await convex.mutation(asPublic(internal.devices.accessLogs.logWithSnapshot), {

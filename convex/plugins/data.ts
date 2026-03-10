@@ -162,25 +162,49 @@ export const listAffectedDevices = internalQuery({
 });
 
 /**
- * List active plugins that have topics.
+ * List active plugins that have topics and are enabled for the given org.
  * Used by the device config UI plugin picker.
  */
 export const listPluginsWithTopics = query({
-    args: {},
-    handler: async (ctx) => {
+    args: { organizationId: v.id('organizations') },
+    handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
+
+        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const perms = getPermissions(user, membership);
+        if (!perms.device.view) return [];
 
         const plugins = await ctx.db
             .query('plugins')
             .withIndex('by_status', (q) => q.eq('status', 'active'))
             .collect();
 
-        return plugins.filter((p) => p.topics.length > 0).map((p) => ({
-            _id: p._id,
-            name: p.name,
-            topics: p.topics,
-        }));
+        const results = [];
+        for (const p of plugins) {
+            if (p.topics.length === 0) continue;
+
+            // System plugins are internal — not shown in the data binding picker
+            if (p.type === 'system') continue;
+
+            // External plugins need org access
+            const access = await ctx.db
+                .query('pluginOrgAccess')
+                .withIndex('by_plugin_and_org', (q) =>
+                    q.eq('pluginId', p._id).eq('organizationId', args.organizationId),
+                )
+                .unique();
+
+            if (!access || !access.enabledByAdmin || !access.enabledByOrg) continue;
+
+            results.push({
+                _id: p._id,
+                name: p.name,
+                topics: p.topics,
+            });
+        }
+
+        return results;
     },
 });
 

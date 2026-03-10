@@ -146,6 +146,21 @@ export const me = query({
 });
 
 /**
+ * List all users. AppAdmin only.
+ */
+export const listAll = query({
+    args: {},
+    handler: async (ctx) => {
+        const user = await getCurrentUser(ctx);
+        if (!user) return [];
+        const perms = getPermissions(user, null);
+        if (!perms.platform.setUserRoles) return [];
+
+        return ctx.db.query('users').collect();
+    },
+});
+
+/**
  * Get a user by ID.
  */
 export const getById = query({

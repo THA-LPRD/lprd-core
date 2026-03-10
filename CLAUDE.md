@@ -112,22 +112,43 @@ if (permissions.org.manage) { /* show settings */ }
 if (permissions.template.manage) { /* show edit controls */ }
 ```
 
-Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{view,manage}`, `template.{view,manage}`
+Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{view,manage}`, `template.{view,manage}`, `plugin.{manage,orgManage}`
 
 **Note:** Only applies to `(app)` route group pages. `(bare)` pages and the org listing page (`src/app/org/(app)/page.tsx`) are not wrapped by this provider.
 
 ### Plugin System
 
-- Plugins register via `POST /api/v2/plugin/register` (Convex httpAction)
-- Registration includes **topics** — named data categories the plugin can push (e.g. `room`, `weather`)
-- Action-based webhook endpoints use `X-Plugin-Id` header (not URL path):
-  - `POST /api/v2/plugin/webhook/createTemplate` — upserts a global template
-  - `POST /api/v2/plugin/webhook/data` — pushes org-scoped data with **topic** + **entry** (upsert semantics)
+**Two-phase authentication:**
+1. AppAdmin creates a plugin slot via `/admin/plugins` → gets a one-time registration key
+2. Plugin self-registers via `POST /api/v2/plugin/register` with the key → receives an ES256 JWT token
+3. All subsequent API calls use `Authorization: Bearer <token>` header
+
+**Endpoints (Next.js API routes):**
+- `POST /api/v2/plugin/register` — self-registration with registration key, returns JWT
+- `POST /api/v2/plugin/webhook/createTemplate` — upserts a global template (JWT auth, `create_template` scope)
+- `POST /api/v2/plugin/webhook/data` — pushes org-scoped data with **topic** + **entry** (JWT auth, `push_data` scope)
+- `POST /api/v2/plugin/reissue-token` — reissue JWT token (admin only)
+
+**Three-level access control:**
+1. **Global kill switch**: Plugin `status` field — if suspended, ALL orgs lose access
+2. **Per-org admin control**: `pluginOrgAccess.enabledByAdmin` — appAdmin can block specific orgs
+3. **Per-org user control**: `pluginOrgAccess.enabledByOrg` — orgAdmin enables/disables for their org
+
+Enforcement: JWT valid → plugin `active` → token not revoked → scope allowed → `enabledByAdmin` → `enabledByOrg`
+
+**Key files:**
+- `src/lib/plugin/jwt.ts` — ES256 JWT sign/verify using `jose`
+- `src/lib/plugin/auth.ts` — request auth helpers (`authenticatePlugin`, `requireScope`, `requireOrgAccess`)
+- `convex/plugins/admin.ts` — platform admin functions (create slot, suspend, reissue)
+- `convex/plugins/orgAccess.ts` — org-level plugin access control
+
+**Admin UI:** `/admin/plugins` — appAdmin-only platform management (plugin list, create, suspend, org access)
+**Org settings:** Plugins card in org settings for orgAdmin to enable/disable plugins
+
 - Plugin data is keyed by `(pluginId, orgId, topic, entry)` — pushing the same key overwrites the previous record
 - Plugin health checks run via a BullMQ worker (`src/worker/`) that polls Convex for active plugins and hits their `/health` endpoint
 - Plugin data is org-scoped — plugins specify `org_slug` in webhook payloads
-- Auth is not yet implemented
-- **Mock plugin script**: `./scripts/mock-plugin.sh` simulates registration and data pushes for testing. Set `PLUGIN_ID` and `ORG_SLUG` env vars after first registration.
+- **Mock plugin script**: `./scripts/mock-plugin.sh` simulates registration and data pushes. Set `REGISTRATION_KEY` and `AUTH_TOKEN` env vars.
 
 ### Device–Frame–Plugin Integration
 

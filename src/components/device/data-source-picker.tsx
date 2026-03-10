@@ -24,7 +24,7 @@ export function DataSourcePicker({
     value?: DataSource;
     onChange: (source: DataSource) => void;
 }) {
-    const plugins = useQuery(api.plugins.data.listPluginsWithTopics);
+    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, { organizationId });
     const [selectedPluginId, setSelectedPluginId] = React.useState<string>(value?.pluginId ?? NONE);
     const [selectedTopic, setSelectedTopic] = React.useState<string>(value?.topic ?? NONE);
     const [selectedEntry, setSelectedEntry] = React.useState<string>(value?.entry ?? NONE);

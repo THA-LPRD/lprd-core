@@ -1,14 +1,7 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import type { FunctionReference } from 'convex/server';
 import type { Id } from '@convex/dataModel';
-import { getConvexClient } from '@/lib/convex-server';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function asPublic<Type extends FunctionReference<any, 'internal'>>(fn: Type): FunctionReference<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return fn as any;
-}
+import { asPublic, getConvexClient } from '@/lib/convex-server';
 
 /**
  * GET /api/v1/displays/image/:deviceId

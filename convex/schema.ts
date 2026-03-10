@@ -25,6 +25,9 @@ export const deviceLogStatus = v.union(
 // Device API version
 export const deviceApiVersion = v.union(v.literal('v1'), v.literal('v2'));
 
+// Plugin type
+export const pluginType = v.union(v.literal('external'), v.literal('system'));
+
 // Plugin status
 export const pluginStatus = v.union(
     v.literal('pending'),
@@ -33,11 +36,21 @@ export const pluginStatus = v.union(
     v.literal('inactive'),
     v.literal('suspended'),
     v.literal('removed'),
-    v.literal('system'),
 );
 
-// Health check status
+// Plugin scope (allowed actions)
+export const pluginScope = v.union(v.literal('push_data'), v.literal('create_template'));
+
+// Health check status (individual check result)
 export const healthCheckStatus = v.union(v.literal('healthy'), v.literal('unhealthy'), v.literal('error'));
+
+// Plugin health status (derived from recent checks)
+export const pluginHealthStatus = v.union(
+    v.literal('unknown'), // no checks yet
+    v.literal('healthy'), // last check healthy
+    v.literal('degraded'), // 1-2 consecutive failures
+    v.literal('unhealthy'), // 3+ consecutive failures
+);
 
 // Template variant
 export const templateVariant = v.union(
@@ -164,6 +177,7 @@ export default defineSchema({
 
     plugins: defineTable({
         name: v.string(),
+        type: pluginType, // 'external' or 'system'
         version: v.string(),
         description: v.optional(v.string()),
         configSchema: v.optional(v.any()),
@@ -172,9 +186,32 @@ export default defineSchema({
         topics: v.array(pluginTopic),
         healthCheckIntervalMs: v.number(), // minimum 30000 (30s)
         lastHealthCheckAt: v.optional(v.number()),
+        healthStatus: v.optional(pluginHealthStatus), // derived from recent checks
+        // Auth fields
+        registrationKey: v.optional(v.string()), // plaintext one-time key, present while pending
+        registrationKeyExpiresAt: v.optional(v.number()), // expiry timestamp for the registration key
+        tokenIssuedAt: v.optional(v.number()), // for token revocation
+        scopes: v.optional(v.array(pluginScope)), // allowed actions
+        createdBy: v.optional(v.id('users')), // appAdmin who created the slot
         createdAt: v.number(),
         updatedAt: v.number(),
-    }).index('by_status', ['status']),
+    })
+        .index('by_status', ['status'])
+        .index('by_registrationKey', ['registrationKey']),
+
+    pluginOrgAccess: defineTable({
+        pluginId: v.id('plugins'),
+        organizationId: v.id('organizations'),
+        enabledByAdmin: v.boolean(), // appAdmin per-org control (default true)
+        enabledByOrg: v.boolean(), // orgAdmin choice (default false — opt-in)
+        updatedByAdmin: v.optional(v.id('users')),
+        updatedByOrg: v.optional(v.id('users')),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index('by_plugin', ['pluginId'])
+        .index('by_organization', ['organizationId'])
+        .index('by_plugin_and_org', ['pluginId', 'organizationId']),
 
     pluginHealthChecks: defineTable({
         pluginId: v.id('plugins'),

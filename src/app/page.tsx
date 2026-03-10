@@ -23,7 +23,7 @@ function UnauthenticatedRedirect() {
 
 export default function RootPage() {
     return (
-        <main className="min-h-screen flex items-center justify-center">
+        <main className="flex-1 min-h-screen flex items-center justify-center">
             <AuthLoading>
                 <Spinner className="size-8" />
             </AuthLoading>

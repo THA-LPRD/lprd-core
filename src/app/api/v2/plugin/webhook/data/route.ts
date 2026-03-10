@@ -1,22 +1,9 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import type { FunctionReference } from 'convex/server';
-import { getConvexClient } from '@/lib/convex-server';
+import { asPublic, getConvexClient } from '@/lib/convex-server';
 import { generateThumbnail } from '@/lib/render/thumbnail';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
-
-/** Admin-authed client can call internal functions; this cast satisfies TypeScript. */
-function asPublic<
-    // oxlint-disable-next-line @typescript-eslint/no-explicit-any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Type extends FunctionReference<any, 'internal'>,
->(
-    fn: Type,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-): FunctionReference<any> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return fn as any;
-}
+import { authenticatePlugin, AuthError, requireOrgAccess, requireScope } from '@/lib/plugin/auth';
 
 const WIDTH = GRID_COLS * DEFAULT_CELL_SIZE;
 const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
@@ -25,13 +12,13 @@ const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
  * POST /api/v2/plugin/webhook/data
  * Receives data pushed by a plugin, stores it in Convex,
  * then renders affected devices via Playwright.
+ * Authenticated via Bearer JWT token.
  */
 export async function POST(request: Request) {
     try {
-        const pluginId = request.headers.get('X-Plugin-Id');
-        if (!pluginId) {
-            return NextResponse.json({ error: 'X-Plugin-Id header is required' }, { status: 400 });
-        }
+        // Authenticate plugin via JWT
+        const plugin = await authenticatePlugin(request);
+        requireScope(plugin, 'push_data');
 
         const body = await request.json();
         const { data, ttl_seconds, org_slug, topic, entry } = body;
@@ -45,9 +32,12 @@ export async function POST(request: Request) {
 
         const convex = getConvexClient();
 
+        // Check org access (plugin active + enabledByAdmin + enabledByOrg)
+        await requireOrgAccess(convex, plugin._id, org_slug);
+
         // Store the data in Convex
         const result = await convex.mutation(asPublic(internal.plugins.data.storeWebhookData), {
-            pluginId,
+            pluginId: plugin._id,
             orgSlug: org_slug,
             contentType: 'plugin_data',
             data,
@@ -79,7 +69,10 @@ export async function POST(request: Request) {
                     });
 
                     // Upload PNG to Convex storage
-                    const uploadUrl = await convex.mutation(asPublic(internal.plugins.data.generateRenderUploadUrl), {});
+                    const uploadUrl = await convex.mutation(
+                        asPublic(internal.plugins.data.generateRenderUploadUrl),
+                        {},
+                    );
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'image/png' },
@@ -101,6 +94,10 @@ export async function POST(request: Request) {
 
         return new Response(null, { status: 202 });
     } catch (error) {
+        if (error instanceof AuthError) {
+            return NextResponse.json({ error: error.message }, { status: error.statusCode });
+        }
+
         const message = error instanceof Error ? error.message : 'Internal Server Error';
 
         if (message.includes('not found') || message.includes('not active')) {

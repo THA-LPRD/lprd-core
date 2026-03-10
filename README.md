@@ -37,8 +37,18 @@ Required environment variables:
 | `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | Webhook secret for user.created events (from WorkOS dashboard) |
 | `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | Webhook secret for user.updated events (from WorkOS dashboard) |
 | `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | Webhook secret for user.deleted events (from WorkOS dashboard) |
+| `PLUGIN_JWT_PRIVATE_KEY`              | ES256 private key for plugin JWT signing (PEM, `\n`-escaped)   |
+| `PLUGIN_JWT_PUBLIC_KEY`               | ES256 public key for plugin JWT verification (PEM, `\n`-escaped)|
 
-3. Set Convex environment variables:
+3. Generate the plugin JWT key pair:
+
+```bash
+bash scripts/generate-plugin-keys.sh
+```
+
+The script outputs ready-to-paste `KEY=VALUE` lines — copy them into your `.env.local`.
+
+4. Set Convex environment variables:
 
 The following environment variables must be set in Convex using `convex env set`:
 
@@ -54,13 +64,13 @@ convex env set SITE_URL "http://localhost:3000"
 
 Note: The webhook secrets will be provided by WorkOS after creating the webhook endpoints (see step 6).
 
-4. Start the Convex development server (in a separate terminal):
+5. Start the Convex development server (in a separate terminal):
 
 ```bash
 npx convex dev
 ```
 
-5. Start the Next.js development server:
+6. Start the Next.js development server:
 
 ```bash
 bun dev
@@ -68,7 +78,7 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-6. Configure WorkOS Webhooks:
+7. Configure WorkOS Webhooks:
 
 User data is synchronized from WorkOS to Convex via webhooks. Create three webhook endpoints in the [WorkOS Dashboard](https://dashboard.workos.com):
 

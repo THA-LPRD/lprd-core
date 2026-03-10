@@ -58,20 +58,27 @@ export function startWorker() {
                 const responseTimeMs = Date.now() - start;
                 const message = err instanceof Error ? err.message : String(err);
 
-                await convexClient.mutation(internal.plugins.health.recordHealthCheck, {
-                    pluginId,
-                    status: 'error',
-                    responseTimeMs,
-                    errorMessage: message,
-                });
+                try {
+                    await convexClient.mutation(internal.plugins.health.recordHealthCheck, {
+                        pluginId,
+                        status: 'error',
+                        responseTimeMs,
+                        errorMessage: message,
+                    });
+                } catch (recordErr) {
+                    console.error(`[worker] ${pluginId}: failed to record health check:`, recordErr);
+                }
 
                 console.error(`[worker] ${pluginId}: error - ${message} (${responseTimeMs}ms)`);
-
-                throw err; // Re-throw for BullMQ retry
+                // Don't re-throw — the error was recorded, the job is done
             }
         },
         { connection: config.redis, concurrency: 10 },
     );
+
+    worker.on('failed', (job, err) => {
+        console.error(`[worker] Job ${job?.id ?? 'unknown'} failed:`, err.message);
+    });
 
     return worker;
 }

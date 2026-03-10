@@ -71,7 +71,7 @@ export const promoteNext = internalMutation({
         });
 
         return true;
-    };,
+    },
 });
 
 /**
@@ -85,7 +85,8 @@ export const getStorageUrl = internalQuery({
 });
 
 /**
- * Get the minimum TTL (in seconds) across all plugin data bindings for a device.
+ * Get the minimum remaining TTL (in seconds) across all plugin data bindings for a device.
+ * Computed as the closest expiresAt minus the current time.
  * Returns -1 if no bindings or no data.
  */
 export const getMinTtl = internalQuery({
@@ -94,7 +95,8 @@ export const getMinTtl = internalQuery({
         const device = await ctx.db.get(args.deviceId);
         if (!device?.dataBindings?.length) return -1;
 
-        let minTtl = Infinity;
+        const now = Date.now();
+        let minRemainingSeconds = Infinity;
 
         for (const binding of device.dataBindings) {
             const record = await ctx.db
@@ -109,11 +111,12 @@ export const getMinTtl = internalQuery({
                 .unique();
 
             if (record) {
-                minTtl = Math.min(minTtl, record.ttlSeconds);
+                const remainingSeconds = Math.max(0, Math.floor((record.expiresAt - now) / 1000));
+                minRemainingSeconds = Math.min(minRemainingSeconds, remainingSeconds);
             }
         }
 
-        return minTtl === Infinity ? -1 : minTtl;
+        return minRemainingSeconds === Infinity ? -1 : minRemainingSeconds;
     },
 });
 

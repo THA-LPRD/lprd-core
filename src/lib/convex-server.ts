@@ -1,4 +1,12 @@
 import { ConvexHttpClient } from 'convex/browser';
+import type { FunctionReference } from 'convex/server';
+
+/** Cast an internal function reference to public so ConvexHttpClient accepts it (admin auth can call internal functions at runtime). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function asPublic<Type extends FunctionReference<any, 'internal'>>(fn: Type): FunctionReference<any> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return fn as any;
+}
 
 let client: ConvexHttpClient | null = null;
 
@@ -16,6 +24,6 @@ export function getConvexClient(): ConvexHttpClient {
     if (!deployKey) throw new Error('CONVEX_DEPLOY_KEY is required');
 
     client = new ConvexHttpClient(url);
-    client.setAdminAuth(deployKey);
+    client.setAuth(deployKey);
     return client;
 }

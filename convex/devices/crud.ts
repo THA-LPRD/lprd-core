@@ -11,11 +11,8 @@ const MANUAL_PLUGIN_NAME = '__manual__';
 
 /** Find the system manual plugin. Returns its ID or null. */
 async function findManualPlugin(ctx: MutationCtx) {
-    const plugins = await ctx.db
-        .query('plugins')
-        .withIndex('by_status', (q) => q.eq('status', 'system'))
-        .collect();
-    return plugins.find((p) => p.name === MANUAL_PLUGIN_NAME)?._id ?? null;
+    const allPlugins = await ctx.db.query('plugins').collect();
+    return allPlugins.find((p) => p.type === 'system' && p.name === MANUAL_PLUGIN_NAME)?._id ?? null;
 }
 
 /** Find or create the system manual plugin. Returns its ID. */
@@ -26,9 +23,10 @@ async function getOrCreateManualPlugin(ctx: MutationCtx) {
     const now = Date.now();
     return ctx.db.insert('plugins', {
         name: MANUAL_PLUGIN_NAME,
+        type: 'system',
         version: '1.0.0',
         description: 'System plugin for manual data entries',
-        status: 'system',
+        status: 'active',
         baseUrl: '',
         topics: [{ id: 'manual', key: 'manual', label: 'Manual Data' }],
         healthCheckIntervalMs: 0,
@@ -316,7 +314,7 @@ export const saveManualData = mutation({
                     entry,
                     contentType: 'application/json',
                     data,
-                    ttlSeconds: 0,
+                    ttlSeconds: 3600,
                     expiresAt: 0,
                     receivedAt: now,
                 });
@@ -376,13 +374,9 @@ export const getManualData = query({
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return {};
 
-        // Find system plugin
-        const plugins = await ctx.db
-            .query('plugins')
-            .withIndex('by_status', (q) => q.eq('status', 'system'))
-            .collect();
-
-        const manualPlugin = plugins.find((p) => p.name === MANUAL_PLUGIN_NAME);
+        // Find system manual plugin
+        const allPlugins = await ctx.db.query('plugins').collect();
+        const manualPlugin = allPlugins.find((p) => p.name === MANUAL_PLUGIN_NAME);
         if (!manualPlugin) return {};
 
         // Query manual data for this device

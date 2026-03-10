@@ -1,6 +1,7 @@
 'use client';
 
-import { BadgeCheck, ChevronsUpDown, LogOut, Settings } from 'lucide-react';
+import { BadgeCheck, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Shield } from 'lucide-react';
+import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -27,14 +28,17 @@ export function NavUser({
     user,
     onSettingsClick,
     onSignOut,
+    context,
 }: {
     user: {
         name?: string;
         email: string;
         avatar?: string;
+        role?: string;
     };
     onSettingsClick?: () => void;
     onSignOut?: () => void;
+    context?: 'org' | 'admin';
 }) {
     const { isMobile } = useSidebar();
 
@@ -89,6 +93,24 @@ export function NavUser({
                                 Account
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
+                        {user.role === 'appAdmin' && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuGroup>
+                                    {context === 'admin' ? (
+                                        <DropdownMenuItem render={<Link href="/" />}>
+                                            <LayoutDashboard />
+                                            My Organizations
+                                        </DropdownMenuItem>
+                                    ) : (
+                                        <DropdownMenuItem render={<Link href="/admin" />}>
+                                            <Shield />
+                                            Admin Panel
+                                        </DropdownMenuItem>
+                                    )}
+                                </DropdownMenuGroup>
+                            </>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
                             <DropdownMenuItem onClick={onSignOut}>

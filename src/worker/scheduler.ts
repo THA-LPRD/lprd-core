@@ -29,7 +29,11 @@ export async function startScheduler() {
                 duePlugins.map((plugin) => ({
                     name: 'health-check',
                     data: { pluginId: plugin._id, baseUrl: plugin.baseUrl },
-                    opts: { jobId: `hc-${plugin._id}` },
+                    opts: {
+                        jobId: `hc-${plugin._id}`,
+                        removeOnComplete: true,
+                        removeOnFail: true,
+                    },
                 })),
             );
         },

@@ -30,6 +30,10 @@ export interface Permissions {
         view: boolean;
         manage: boolean;
     };
+    plugin: {
+        manage: boolean; // appAdmin: create slots, suspend, reissue tokens
+        orgManage: boolean; // appAdmin or orgAdmin: enable/disable plugins per org
+    };
 }
 
 /**
@@ -63,6 +67,10 @@ export function getPermissions(user: User, membership: OrgMembership): Permissio
         frame: {
             view: isAppAdmin || !!membership,
             manage: isAppAdmin || !!isOrgAdmin,
+        },
+        plugin: {
+            manage: isAppAdmin,
+            orgManage: isAppAdmin || !!isOrgAdmin,
         },
     };
 }

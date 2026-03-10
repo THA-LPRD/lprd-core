@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PlusIcon, TrashIcon } from 'lucide-react';
 import { jsonToRows, rowsToJson, type SimpleRow } from '@/lib/template-data';
+import Image from 'next/image';
 
 const IMG_FUNC_RE = /^img\((.+)\)$/;
 
@@ -86,14 +87,17 @@ export function DataFieldsEditor({
                             </Button>
                         </div>
                         {imgUrl && (
-                            <img
-                                src={imgUrl}
-                                alt=""
-                                className="ml-36 h-8 w-auto rounded border object-contain"
-                                onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
-                                    e.currentTarget.style.display = 'none';
-                                }}
-                            />
+                            <div className="relative h-8 items-center rounded border">
+                                <Image
+                                    objectFit="contain"
+                                    fill
+                                    src={imgUrl}
+                                    alt="user provided image"
+                                    onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                                        e.currentTarget.style.display = 'none';
+                                    }}
+                                />
+                            </div>
                         )}
                     </div>
                 );

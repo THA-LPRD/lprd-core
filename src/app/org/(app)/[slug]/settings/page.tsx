@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
 import { useOrg } from '@/components/org/org-context';
+import { OrgPluginSettings } from '@/components/plugin/org-settings';
 
 export default function OrgSettingsPage() {
     const router = useRouter();
@@ -128,6 +129,19 @@ export default function OrgSettingsPage() {
                         />
                     </CardContent>
                 </Card>
+
+                {/* Plugins */}
+                {permissions.plugin.orgManage && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Plugins</CardTitle>
+                            <CardDescription>Enable or disable plugins for this organization</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <OrgPluginSettings organizationId={org._id} />
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Danger Zone */}
                 <Card className="border-destructive/50">
