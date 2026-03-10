@@ -27,33 +27,64 @@ export default function PluginDetailPage() {
     }
 
     return (
-        <div className="p-6 space-y-6">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                    <ArrowLeft className="size-4 mr-1" />
-                    Back
-                </Button>
-            </div>
-
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">{plugin.name}</h1>
-                    {plugin.description && <p className="text-muted-foreground">{plugin.description}</p>}
+        <div className="flex h-full flex-col overflow-hidden p-6">
+            {/* Header */}
+            <div className="flex-shrink-0 space-y-6 pb-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" size="sm" onClick={() => router.back()}>
+                        <ArrowLeft className="size-4 mr-1" />
+                        Back
+                    </Button>
                 </div>
-                <PluginActions plugin={plugin} />
+
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">{plugin.name}</h1>
+                        {plugin.description && <p className="text-muted-foreground">{plugin.description}</p>}
+                    </div>
+                    <PluginActions plugin={plugin} />
+                </div>
             </div>
 
-            <PluginDetailsCard plugin={plugin} />
+            {/* Small viewport: stacked scroll */}
+            <div className="flex-1 space-y-6 overflow-y-auto lg:hidden">
+                <PluginDetailsCard plugin={plugin} />
 
-            {plugin.status === 'pending' && plugin.registrationKey && plugin.registrationKeyExpiresAt && (
-                <PluginRegKeyCard
-                    registrationKey={plugin.registrationKey}
-                    registrationKeyExpiresAt={plugin.registrationKeyExpiresAt}
-                />
-            )}
+                {plugin.status === 'pending' && plugin.registrationKey && plugin.registrationKeyExpiresAt && (
+                    <PluginRegKeyCard
+                        registrationKey={plugin.registrationKey}
+                        registrationKeyExpiresAt={plugin.registrationKeyExpiresAt}
+                    />
+                )}
 
-            <PluginHealthCard pluginId={plugin._id} />
-            <PluginOrgAccessCard pluginId={plugin._id} />
+                <PluginOrgAccessCard pluginId={plugin._id} />
+                <PluginHealthCard pluginId={plugin._id} />
+            </div>
+
+            {/* Large viewport: two-column layout */}
+            <div className="hidden flex-1 gap-6 overflow-hidden lg:flex">
+                {/* Left column: metadata top, permissions bottom (scrollable) */}
+                <div className="flex w-1/2 flex-col gap-6 overflow-hidden">
+                    <div className="flex-shrink-0 space-y-6">
+                        <PluginDetailsCard plugin={plugin} />
+
+                        {plugin.status === 'pending' && plugin.registrationKey && plugin.registrationKeyExpiresAt && (
+                            <PluginRegKeyCard
+                                registrationKey={plugin.registrationKey}
+                                registrationKeyExpiresAt={plugin.registrationKeyExpiresAt}
+                            />
+                        )}
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-y-auto">
+                        <PluginOrgAccessCard pluginId={plugin._id} />
+                    </div>
+                </div>
+
+                {/* Right column: health log (scrollable) */}
+                <div className="w-1/2 overflow-y-auto">
+                    <PluginHealthCard pluginId={plugin._id} />
+                </div>
+            </div>
         </div>
     );
 }
