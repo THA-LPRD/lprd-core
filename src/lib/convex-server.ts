@@ -24,6 +24,7 @@ export function getConvexClient(): ConvexHttpClient {
     if (!deployKey) throw new Error('CONVEX_DEPLOY_KEY is required');
 
     client = new ConvexHttpClient(url);
-    client.setAuth(deployKey);
+    // setAdminAuth exists at runtime but isn't in the public type declarations
+    (client as unknown as { setAdminAuth(token: string): void }).setAdminAuth(deployKey);
     return client;
 }
