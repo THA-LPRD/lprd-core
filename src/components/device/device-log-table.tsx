@@ -6,21 +6,8 @@ import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ImageIcon } from 'lucide-react';
 import type { DeviceLogType, DeviceLogStatus } from '@/lib/deviceLogs';
 import { LOG_TYPE_LABELS, LOG_STATUS_LABELS, LOG_TYPE_VARIANTS, LOG_STATUS_VARIANTS } from '@/lib/deviceLogs';

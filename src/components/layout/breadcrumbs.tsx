@@ -17,7 +17,7 @@ import React from 'react';
 
 export function DynamicBreadcrumbs() {
     const pathname = usePathname();
-    const organizations = useQuery(api.organizations.list);
+    const sites = useQuery(api.sites.list);
 
     // Parse the path
     const segments = pathname.split('/').filter(Boolean);
@@ -25,30 +25,30 @@ export function DynamicBreadcrumbs() {
     // Build breadcrumb items
     const items: { label: string; href?: string }[] = [];
 
-    if (segments[0] === 'org' && segments[1]) {
-        const orgSlug = segments[1];
-        const org = organizations?.find((o) => o.slug === orgSlug);
-        const orgName = org?.name ?? orgSlug;
+    if (segments[0] === 'site' && segments[1]) {
+        const siteSlug = segments[1];
+        const site = sites?.find((o) => o.slug === siteSlug);
+        const siteName = site?.name ?? siteSlug;
 
-        items.push({ label: orgName, href: `/org/${orgSlug}/devices` });
+        items.push({ label: siteName, href: `/site/${siteSlug}/devices` });
 
         if (segments[2] === 'devices') {
             if (segments[3]) {
-                items.push({ label: 'Devices', href: `/org/${orgSlug}/devices` });
+                items.push({ label: 'Devices', href: `/site/${siteSlug}/devices` });
                 items.push({ label: slugToLabel(segments[3]) });
             } else {
                 items.push({ label: 'Devices' });
             }
         } else if (segments[2] === 'frames') {
             if (segments[3]) {
-                items.push({ label: 'Frames', href: `/org/${orgSlug}/frames` });
+                items.push({ label: 'Frames', href: `/site/${siteSlug}/frames` });
                 items.push({ label: slugToLabel(segments[3]) });
             } else {
                 items.push({ label: 'Frames' });
             }
         } else if (segments[2] === 'templates') {
             if (segments[3]) {
-                items.push({ label: 'Templates', href: `/org/${orgSlug}/templates` });
+                items.push({ label: 'Templates', href: `/site/${siteSlug}/templates` });
                 items.push({ label: slugToLabel(segments[3]) });
             } else {
                 items.push({ label: 'Templates' });
@@ -57,7 +57,7 @@ export function DynamicBreadcrumbs() {
             items.push({ label: 'Settings' });
         }
     } else if (pathname === '/') {
-        items.push({ label: 'Organizations' });
+        items.push({ label: 'Sites' });
     }
 
     if (items.length === 0) {

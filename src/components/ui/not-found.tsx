@@ -35,11 +35,11 @@ function NotFound({ title, description, backHref, backLabel, className }: NotFou
 
 type PresetProps = Pick<NotFoundProps, 'backHref' | 'backLabel'>;
 
-function OrgNotFound(props: PresetProps) {
+function SiteNotFound(props: PresetProps) {
     return (
         <NotFound
-            title="Organization not found"
-            description="The organization you're looking for doesn't exist or you don't have access."
+            title="Site not found"
+            description="The site you're looking for doesn't exist or you don't have access."
             {...props}
         />
     );
@@ -79,4 +79,4 @@ function AccessDenied(props: PresetProps) {
     return <NotFound title="Access Denied" description="You don't have permission to access this page." {...props} />;
 }
 
-export { NotFound, OrgNotFound, TemplateNotFound, DeviceNotFound, FrameNotFound, AccessDenied };
+export { NotFound, SiteNotFound, TemplateNotFound, DeviceNotFound, FrameNotFound, AccessDenied };

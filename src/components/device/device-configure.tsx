@@ -20,14 +20,14 @@ import {
 } from '@/components/ui/dialog';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useOrg } from '@/components/org/org-context';
+import { useSite } from '@/components/site/site-context';
 import { extractId } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
 export function DeviceConfigure({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
     const router = useRouter();
-    const { org, permissions } = useOrg();
+    const { site, permissions } = useSite();
     const rawId = extractId(params.id) as Id<'devices'>;
 
     // Metadata fields
@@ -73,9 +73,9 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
         return () => observer.disconnect();
     }, []);
 
-    const frames = useQuery(api.frames.listByOrganization, org ? { organizationId: org._id } : 'skip');
-    const templates = useQuery(api.templates.crud.listByOrganization, org ? { organizationId: org._id } : 'skip');
-    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, org ? { organizationId: org._id } : 'skip');
+    const frames = useQuery(api.frames.listBySite, site ? { siteId: site._id } : 'skip');
+    const templates = useQuery(api.templates.crud.listBySite, site ? { siteId: site._id } : 'skip');
+    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, site ? { siteId: site._id } : 'skip');
 
     const selectedFrame = frames?.find((f) => f._id === selectedFrameId);
 
@@ -126,7 +126,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                 const res = await fetch('/api/v2/devices/render', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId: rawId, orgSlug: params.slug }),
+                    body: JSON.stringify({ deviceId: rawId, siteSlug: params.slug }),
                 });
 
                 if (res.ok) {
@@ -138,7 +138,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                 }
             }
 
-            router.push(`/org/${params.slug}/devices/${params.id}`);
+            router.push(`/site/${params.slug}/devices/${params.id}`);
         } finally {
             setIsSaving(false);
         }
@@ -148,7 +148,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
         setIsDeleting(true);
         try {
             await deleteDevice({ id: rawId });
-            router.push(`/org/${params.slug}/devices`);
+            router.push(`/site/${params.slug}/devices`);
         } finally {
             setIsDeleting(false);
         }
@@ -166,7 +166,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                 <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
                         <Link
-                            href={`/org/${params.slug}/devices/${params.id}`}
+                            href={`/site/${params.slug}/devices/${params.id}`}
                             className="inline-flex items-center text-muted-foreground hover:text-foreground shrink-0"
                         >
                             <ArrowLeft className="size-4" />
@@ -176,7 +176,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                     <div className="flex items-center gap-2 shrink-0">
                         <Button
                             variant="outline"
-                            render={<Link href={`/org/${params.slug}/devices/${params.id}`} />}
+                            render={<Link href={`/site/${params.slug}/devices/${params.id}`} />}
                             nativeButton={false}
                         >
                             Cancel
@@ -212,7 +212,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                             }}
                         />
 
-                        {selectedFrame && org && (
+                        {selectedFrame && site && (
                             <DataBindingsCard
                                 widgets={selectedFrame.widgets}
                                 bindings={bindings}
@@ -221,7 +221,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                                 onManualDataChange={(widgetId, data) => {
                                     setManualData((prev) => ({ ...prev, [widgetId]: data }));
                                 }}
-                                organizationId={org._id}
+                                siteId={site._id}
                                 getTemplateName={getTemplateName}
                                 getPluginName={getPluginName}
                             />

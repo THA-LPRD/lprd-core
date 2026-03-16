@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 function AuthenticatedRedirect() {
     const router = useRouter();
     useEffect(() => {
-        router.push('/org/');
+        router.push('/site/');
     }, [router]);
     return null;
 }

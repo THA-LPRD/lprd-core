@@ -16,15 +16,15 @@ export type DataSource = {
 };
 
 export function DataSourcePicker({
-    organizationId,
+    siteId,
     value,
     onChange,
 }: {
-    organizationId: Id<'organizations'>;
+    siteId: Id<'sites'>;
     value?: DataSource;
     onChange: (source: DataSource) => void;
 }) {
-    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, { organizationId });
+    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, { siteId });
     const [selectedPluginId, setSelectedPluginId] = React.useState<string>(value?.pluginId ?? NONE);
     const [selectedTopic, setSelectedTopic] = React.useState<string>(value?.topic ?? NONE);
     const [selectedEntry, setSelectedEntry] = React.useState<string>(value?.entry ?? NONE);
@@ -35,7 +35,7 @@ export function DataSourcePicker({
     const entries = useQuery(
         api.plugins.data.listEntries,
         selectedPluginId !== NONE && selectedTopic !== NONE
-            ? { pluginId: selectedPluginId as Id<'plugins'>, organizationId, topic: selectedTopic }
+            ? { pluginId: selectedPluginId as Id<'plugins'>, siteId, topic: selectedTopic }
             : 'skip',
     );
 

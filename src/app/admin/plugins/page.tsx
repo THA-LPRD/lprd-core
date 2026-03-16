@@ -16,8 +16,7 @@ export default function AdminPluginsPage() {
     const router = useRouter();
     const plugins = useQuery(api.plugins.admin.listAll);
     const [showCreate, setShowCreate] = React.useState(false);
-    const { search, statusFilters, filteredPlugins, setSearch, toggleStatus, selectAll } =
-        usePluginFilters(plugins);
+    const { search, statusFilters, filteredPlugins, setSearch, toggleStatus, selectAll } = usePluginFilters(plugins);
 
     if (plugins === undefined) {
         return <div className="animate-pulse text-muted-foreground p-6">Loading plugins...</div>;

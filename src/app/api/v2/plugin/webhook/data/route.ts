@@ -3,7 +3,7 @@ import { internal } from '@convex/api';
 import { asPublic, getConvexClient } from '@/lib/convex-server';
 import { generateScreenshot } from '@/lib/render/thumbnail';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
-import { authenticatePlugin, AuthError, requireOrgAccess, requireScope } from '@/lib/plugin/auth';
+import { authenticatePlugin, AuthError, requireSiteAccess, requireScope } from '@/lib/plugin/auth';
 
 const WIDTH = GRID_COLS * DEFAULT_CELL_SIZE;
 const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
@@ -32,13 +32,13 @@ export async function POST(request: Request) {
 
         const convex = getConvexClient();
 
-        // Check org access (plugin active + enabledByAdmin + enabledByOrg)
-        await requireOrgAccess(convex, plugin._id, org_slug);
+        // Check site access (plugin active + enabledByAdmin + enabledByOrg)
+        await requireSiteAccess(convex, plugin._id, org_slug);
 
         // Store the data in Convex
         const result = await convex.mutation(asPublic(internal.plugins.data.storeWebhookData), {
             pluginId: plugin._id,
-            orgSlug: org_slug,
+            siteSlug: org_slug,
             contentType: 'plugin_data',
             data,
             ttlSeconds: ttl_seconds,
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
         // Find affected devices
         const affectedDeviceIds = await convex.query(asPublic(internal.plugins.data.listAffectedDevices), {
             pluginId: result.pluginId,
-            organizationId: result.organizationId,
+            siteId: result.siteId,
             topic,
             entry,
         });
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
             affectedDeviceIds.map(async (deviceId: string) => {
                 try {
                     const png = await generateScreenshot({
-                        renderPath: `/org/${result.orgSlug}/devices/render/${deviceId}`,
+                        renderPath: `/site/${result.siteSlug}/devices/render/${deviceId}`,
                         width: WIDTH,
                         height: HEIGHT,
                         origin,

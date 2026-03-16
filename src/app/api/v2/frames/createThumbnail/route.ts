@@ -4,16 +4,16 @@ import { generateScreenshot } from '@/lib/render/thumbnail';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { frameId, orgSlug, width, height } = body;
+        const { frameId, siteSlug, width, height } = body;
 
-        if (!frameId || !orgSlug || !width || !height) {
-            return NextResponse.json({ error: 'frameId, orgSlug, width, and height are required' }, { status: 400 });
+        if (!frameId || !siteSlug || !width || !height) {
+            return NextResponse.json({ error: 'frameId, siteSlug, width, and height are required' }, { status: 400 });
         }
 
         const { origin } = new URL(request.url);
 
         const png = await generateScreenshot({
-            renderPath: `/org/${orgSlug}/frames/render/${frameId}`,
+            renderPath: `/site/${siteSlug}/frames/render/${frameId}`,
             width,
             height,
             origin,

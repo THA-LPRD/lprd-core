@@ -13,23 +13,23 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useOrg } from '@/components/org/org-context';
+import { useSite } from '@/components/site/site-context';
 import { formatDate, formatRelativeTime } from '@/lib/date';
 
 export function DeviceDetail({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
     const [previewTab, setPreviewTab] = React.useState<'last' | 'current' | 'queued'>('current');
 
-    const { org, permissions } = useOrg();
+    const { site, permissions } = useSite();
 
-    const frames = useQuery(api.frames.listByOrganization, org ? { organizationId: org._id } : 'skip');
+    const frames = useQuery(api.frames.listBySite, site ? { siteId: site._id } : 'skip');
     const assignedFrame = frames?.find((f) => f._id === device.frameId);
 
     return (
         <div className="p-6 overflow-auto h-full">
             {/* Back link */}
             <Link
-                href={`/org/${params.slug}/devices`}
+                href={`/site/${params.slug}/devices`}
                 className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground mb-6"
             >
                 <ArrowLeft className="size-4" />
@@ -48,7 +48,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                 {permissions.device.manage && (
                     <Button
                         variant="outline"
-                        render={<Link href={`/org/${params.slug}/devices/${params.id}/configure`} />}
+                        render={<Link href={`/site/${params.slug}/devices/${params.id}/configure`} />}
                         nativeButton={false}
                     >
                         <Settings className="size-4 mr-2" />
@@ -65,7 +65,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                         <Button
                             variant="ghost"
                             size="sm"
-                            render={<Link href={`/org/${params.slug}/devices/${params.id}/logs`} />}
+                            render={<Link href={`/site/${params.slug}/devices/${params.id}/logs`} />}
                             nativeButton={false}
                         >
                             View logbook

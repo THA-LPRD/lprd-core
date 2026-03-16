@@ -73,12 +73,8 @@ All backend code uses **Effect** for structured logging. Never use raw `console.
 
 ```ts
 // Use Effect logging with structured annotations — never console.log
-yield* Effect.logInfo("Plugin registered").pipe(
-  Effect.annotateLogs({ pluginId, orgSlug })
-)
-yield* Effect.logError("Render failed").pipe(
-  Effect.annotateLogs({ deviceId, error: String(e) })
-)
+yield * Effect.logInfo('Plugin registered').pipe(Effect.annotateLogs({ pluginId, orgSlug }));
+yield * Effect.logError('Render failed').pipe(Effect.annotateLogs({ deviceId, error: String(e) }));
 ```
 
 Client-side logging is not yet implemented.
@@ -107,9 +103,15 @@ Pages should **not** fetch org/user/members themselves. Use `useOrg()` instead:
 const { org, permissions } = useOrg();
 
 // Check permissions using the permissions object
-if (permissions.device.manage) { /* show admin UI */ }
-if (permissions.org.manage) { /* show settings */ }
-if (permissions.template.manage) { /* show edit controls */ }
+if (permissions.device.manage) {
+    /* show admin UI */
+}
+if (permissions.org.manage) {
+    /* show settings */
+}
+if (permissions.template.manage) {
+    /* show edit controls */
+}
 ```
 
 Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{view,manage}`, `template.{view,manage}`, `plugin.{manage,orgManage}`
@@ -119,17 +121,20 @@ Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{v
 ### Plugin System
 
 **Two-phase authentication:**
+
 1. AppAdmin creates a plugin slot via `/admin/plugins` → gets a one-time registration key
 2. Plugin self-registers via `POST /api/v2/plugin/register` with the key → receives an ES256 JWT token
 3. All subsequent API calls use `Authorization: Bearer <token>` header
 
 **Endpoints (Next.js API routes):**
+
 - `POST /api/v2/plugin/register` — self-registration with registration key, returns JWT
 - `POST /api/v2/plugin/webhook/createTemplate` — upserts a global template (JWT auth, `create_template` scope)
 - `POST /api/v2/plugin/webhook/data` — pushes org-scoped data with **topic** + **entry** (JWT auth, `push_data` scope)
 - `POST /api/v2/plugin/reissue-token` — reissue JWT token (admin only)
 
 **Three-level access control:**
+
 1. **Global kill switch**: Plugin `status` field — if suspended, ALL orgs lose access
 2. **Per-org admin control**: `pluginOrgAccess.enabledByAdmin` — appAdmin can block specific orgs
 3. **Per-org user control**: `pluginOrgAccess.enabledByOrg` — orgAdmin enables/disables for their org
@@ -137,6 +142,7 @@ Permission keys: `platform.setUserRoles`, `org.{create,view,manage}`, `device.{v
 Enforcement: JWT valid → plugin `active` → token not revoked → scope allowed → `enabledByAdmin` → `enabledByOrg`
 
 **Key files:**
+
 - `src/lib/plugin/jwt.ts` — ES256 JWT sign/verify using `jose`
 - `src/lib/plugin/auth.ts` — request auth helpers (`authenticatePlugin`, `requireScope`, `requireOrgAccess`)
 - `convex/plugins/admin.ts` — platform admin functions (create slot, suspend, reissue)
@@ -155,6 +161,7 @@ Enforcement: JWT valid → plugin `active` → token not revoked → scope allow
 Devices display frames with live plugin data, pre-rendered as images.
 
 **Data flow:**
+
 1. Plugins declare **topics** on registration
 2. Plugins push data with **topic + entry** per org (upsert)
 3. A **frame** is a reusable layout (widgets + layers)
@@ -162,11 +169,13 @@ Devices display frames with live plugin data, pre-rendered as images.
 5. On data push, affected devices get a new image rendered via Playwright (stored as `next`)
 
 **Schema additions (devices table):**
+
 - `frameId` — optional reference to assigned frame
 - `dataBindings` — array of `{ widgetId, pluginId, topic, entry }`
 - `current` / `next` — `{ storageId, renderedAt }` double-buffer for rendered images
 
 **Key files:**
+
 - `convex/devices/crud.ts` — CRUD queries and mutations
 - `convex/devices/render.ts` — `renderDevice` (internalAction), `setNext`, `getDataForBindings`
 - `convex/devices/v1.ts` — internal functions for the v1 device API (`getByMac`, `getById`, `heartbeat`, `promoteNext`, etc.)
@@ -204,6 +213,7 @@ All template rendering flows through a single module: `src/lib/template-document
 - **`renderAndSanitize(html, data)`** — Nunjucks render + DOMPurify sanitize in one call; throws on render errors
 
 Consumers:
+
 - **Shadow DOM preview** (`shadow-preview.tsx`): injects `<style>:host { ${TEMPLATE_BASE_CSS} }</style>` and calls `renderAndSanitize()`
 - **Render page** (`src/app/org/(bare)/[slug]/templates/render/[id]/page.tsx`): client component that fetches the template via `useQuery(api.templates.getById)`, renders into Shadow DOM (same as preview), and outputs clean HTML. Lives in the `(bare)` route group so it renders without sidebar/header chrome. Also usable as an iframe source.
 
@@ -231,6 +241,7 @@ Thumbnails are generated server-side via Playwright headless Chromium navigating
 ### UI Components
 
 Using shadcn/ui with Base-ui. Add components via:
+
 ```bash
 bunx shadcn@latest add <component-name>
 ```
@@ -247,10 +258,10 @@ Use the predefined components from `src/components/ui/not-found.tsx` for not-fou
 
 ```tsx
 // Simple usage
-if (!org) return <OrgNotFound />
+if (!org) return <OrgNotFound />;
 
 // With back button
-if (!device) return <DeviceNotFound backHref={`/org/${slug}/devices`} backLabel="Back to devices" />
+if (!device) return <DeviceNotFound backHref={`/org/${slug}/devices`} backLabel="Back to devices" />;
 ```
 
 #### Nested Button Pitfall
@@ -280,6 +291,7 @@ This applies to any component using `useRender` with `defaultTagName: "button"` 
 #### No `asChild` — Base-UI uses `render`
 
 Base-UI does **not** support the `asChild` prop (that's a Radix concept). Passing `asChild` to a Base-UI component like `TooltipTrigger` will:
+
 1. Forward it as a DOM attribute, causing: `React does not recognize the 'asChild' prop on a DOM element`
 2. Still render its default `<button>`, causing nested button errors
 

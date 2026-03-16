@@ -9,7 +9,7 @@ import { PluginActions } from '@/components/plugin/plugin-actions';
 import { PluginDetailsCard } from '@/components/plugin/plugin-details-card';
 import { PluginRegKeyCard } from '@/components/plugin/plugin-reg-key-card';
 import { PluginHealthCard } from '@/components/plugin/plugin-health-card';
-import { PluginOrgAccessCard } from '@/components/plugin/plugin-org-access-card';
+import { PluginSiteAccessCard } from '@/components/plugin/plugin-site-access-card';
 import type { Id } from '@convex/dataModel';
 
 export default function PluginDetailPage() {
@@ -57,7 +57,7 @@ export default function PluginDetailPage() {
                     />
                 )}
 
-                <PluginOrgAccessCard pluginId={plugin._id} />
+                <PluginSiteAccessCard pluginId={plugin._id} />
                 <PluginHealthCard pluginId={plugin._id} />
             </div>
 
@@ -76,7 +76,7 @@ export default function PluginDetailPage() {
                         )}
                     </div>
                     <div className="min-h-0 flex-1 overflow-y-auto">
-                        <PluginOrgAccessCard pluginId={plugin._id} />
+                        <PluginSiteAccessCard pluginId={plugin._id} />
                     </div>
                 </div>
 

@@ -35,12 +35,12 @@ export async function withAvatarUrl<T extends { avatarStorageId?: Id<'_storage'>
 }
 
 /**
- * Get membership for a user in an organization.
+ * Get membership for a user in a site.
  */
-export async function getMembership(ctx: Ctx, userId: Id<'users'>, orgId: Id<'organizations'>) {
+export async function getMembership(ctx: Ctx, userId: Id<'users'>, siteId: Id<'sites'>) {
     return ctx.db
-        .query('organizationMembers')
-        .withIndex('by_user_and_org', (q) => q.eq('userId', userId).eq('organizationId', orgId))
+        .query('siteMembers')
+        .withIndex('by_user_and_site', (q) => q.eq('userId', userId).eq('siteId', siteId))
         .unique();
 }
 
@@ -121,7 +121,7 @@ export const deleteFromWebhook = internalMutation({
 
         // Delete memberships first
         const memberships = await ctx.db
-            .query('organizationMembers')
+            .query('siteMembers')
             .withIndex('by_user', (q) => q.eq('userId', user._id))
             .collect();
 
@@ -193,15 +193,15 @@ export const setRole = mutation({
 });
 
 /**
- * Set current user's last visited organization slug.
- * Used for auto-redirecting to last org.
+ * Set current user's last visited site slug.
+ * Used for auto-redirecting to last site.
  */
-export const setLastOrg = mutation({
+export const setLastSite = mutation({
     args: { slug: v.string() },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        await ctx.db.patch(user._id, { lastOrgSlug: args.slug, updatedAt: Date.now() });
+        await ctx.db.patch(user._id, { lastSiteSlug: args.slug, updatedAt: Date.now() });
     },
 });

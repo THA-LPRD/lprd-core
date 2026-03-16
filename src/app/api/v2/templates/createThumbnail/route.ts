@@ -7,10 +7,10 @@ import type { TemplateVariant } from '@/lib/template';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { templateId, orgSlug } = body;
+        const { templateId, siteSlug } = body;
 
-        if (!templateId || !orgSlug) {
-            return NextResponse.json({ error: 'templateId and orgSlug are required' }, { status: 400 });
+        if (!templateId || !siteSlug) {
+            return NextResponse.json({ error: 'templateId and siteSlug are required' }, { status: 400 });
         }
 
         const convex = getConvexClient();
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         const { width, height } = getVariantPixelSize(preferred);
 
         const png = await generateScreenshot({
-            renderPath: `/org/${orgSlug}/templates/render/${templateId}`,
+            renderPath: `/site/${siteSlug}/templates/render/${templateId}`,
             width,
             height,
             origin,

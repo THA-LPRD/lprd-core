@@ -12,7 +12,7 @@ import type { TemplateVariant } from '@/lib/template';
 
 export type Template = {
     _id: Id<'templates'>;
-    scope: 'global' | 'org';
+    scope: 'global' | 'site';
     name: string;
     description?: string;
     variants: TemplateVariant[];

@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { ArrowLeft, Save } from 'lucide-react';
 
 export function EditorToolbar({
-    orgSlug,
+    siteSlug,
     name,
     onNameChange,
     scope,
@@ -16,10 +16,10 @@ export function EditorToolbar({
     isSaving,
     onSave,
 }: {
-    orgSlug: string;
+    siteSlug: string;
     name: string;
     onNameChange: (name: string) => void;
-    scope: 'global' | 'org';
+    scope: 'global' | 'site';
     isDirty: boolean;
     isSaving: boolean;
     onSave: () => void;
@@ -28,7 +28,7 @@ export function EditorToolbar({
 
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b bg-background">
-            <Link href={`/org/${orgSlug}/templates`}>
+            <Link href={`/site/${siteSlug}/templates`}>
                 <Button variant="ghost" size="icon" className="size-8">
                     <ArrowLeft className="size-4" />
                 </Button>
@@ -41,7 +41,7 @@ export function EditorToolbar({
                 className="max-w-xs font-medium border-transparent hover:border-input focus:border-input transition-colors"
             />
 
-            <Badge variant={isGlobal ? 'outline' : 'secondary'}>{isGlobal ? 'Global' : 'Org'}</Badge>
+            <Badge variant={isGlobal ? 'outline' : 'secondary'}>{isGlobal ? 'Global' : 'Site'}</Badge>
 
             {isDirty && !isGlobal && <span className="text-xs text-muted-foreground">Unsaved changes</span>}
 

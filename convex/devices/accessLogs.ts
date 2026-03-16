@@ -89,7 +89,7 @@ export const list = query({
         const device = await ctx.db.get(args.deviceId);
         if (!device) return { page: [], isDone: true, continueCursor: '' };
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return { page: [], isDone: true, continueCursor: '' };
 
@@ -117,7 +117,7 @@ export const getDailyStats = query({
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return [];
 
@@ -166,7 +166,7 @@ export const listByDay = query({
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return [];
 

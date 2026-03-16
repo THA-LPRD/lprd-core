@@ -8,16 +8,16 @@ import { generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from '..
 import { getCurrentUser, getMembership } from '../users';
 
 /**
- * List all templates available to an organization (global + org-scoped).
+ * List all templates available to a site (global + site-scoped).
  * Requires template.view permission.
  */
-export const listByOrganization = query({
-    args: { organizationId: v.id('organizations') },
+export const listBySite = query({
+    args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.template.view) return [];
 
@@ -28,7 +28,7 @@ export const listByOrganization = query({
 
         const orgTemplates = await ctx.db
             .query('templates')
-            .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
+            .withIndex('by_site', (q) => q.eq('siteId', args.siteId))
             .collect();
 
         // Resolve thumbnail URLs
@@ -47,7 +47,7 @@ export const listByOrganization = query({
 
 /**
  * Get a single template by ID.
- * Requires template.view permission for org-scoped templates.
+ * Requires template.view permission for site-scoped templates.
  * Resolves img field storageIds to serving URLs.
  */
 export const getById = query({
@@ -60,8 +60,8 @@ export const getById = query({
         if (!template) return null;
 
         // Global templates are visible to any authenticated user
-        if (template.scope === 'org' && template.organizationId) {
-            const membership = await getMembership(ctx, user._id, template.organizationId);
+        if (template.scope === 'site' && template.siteId) {
+            const membership = await getMembership(ctx, user._id, template.siteId);
             const perms = getPermissions(user, membership);
             if (!perms.template.view) return null;
         }
@@ -76,12 +76,12 @@ export const getById = query({
 });
 
 /**
- * Create a new org-scoped template.
+ * Create a new site-scoped template.
  * Requires template.manage permission.
  */
 export const create = mutation({
     args: {
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
         name: v.string(),
         description: v.optional(v.string()),
         templateHtml: v.string(),
@@ -93,14 +93,14 @@ export const create = mutation({
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         const now = Date.now();
         const id = await ctx.db.insert('templates', {
-            scope: 'org',
-            organizationId: args.organizationId,
+            scope: 'site',
+            siteId: args.siteId,
             createdBy: user._id,
             name: args.name,
             description: args.description,
@@ -124,7 +124,7 @@ export const create = mutation({
 });
 
 /**
- * Update an org-scoped template.
+ * Update an site-scoped template.
  * Requires template.manage permission. Rejects global templates.
  */
 export const update = mutation({
@@ -146,7 +146,7 @@ export const update = mutation({
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot edit global templates');
 
-        const membership = await getMembership(ctx, user._id, template.organizationId!);
+        const membership = await getMembership(ctx, user._id, template.siteId!);
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
@@ -164,7 +164,7 @@ export const update = mutation({
 });
 
 /**
- * Delete an org-scoped template.
+ * Delete an site-scoped template.
  * Requires template.manage permission. Rejects global templates.
  * Cleans up thumbnail and image storage blobs.
  */
@@ -178,7 +178,7 @@ export const remove = mutation({
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot delete global templates');
 
-        const membership = await getMembership(ctx, user._id, template.organizationId!);
+        const membership = await getMembership(ctx, user._id, template.siteId!);
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
@@ -194,19 +194,19 @@ export const remove = mutation({
 });
 
 /**
- * Duplicate any template as a new org-scoped template.
- * Requires template.manage permission on the target org.
+ * Duplicate any template as a new site-scoped template.
+ * Requires template.manage permission on the target site.
  */
 export const duplicate = mutation({
     args: {
         id: v.id('templates'),
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
@@ -215,8 +215,8 @@ export const duplicate = mutation({
 
         const now = Date.now();
         return ctx.db.insert('templates', {
-            scope: 'org',
-            organizationId: args.organizationId,
+            scope: 'site',
+            siteId: args.siteId,
             createdBy: user._id,
             name: `${source.name} (Copy)`,
             description: source.description,
@@ -247,7 +247,7 @@ export const storeThumbnail = mutation({
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot modify global templates');
 
-        const membership = await getMembership(ctx, user._id, template.organizationId!);
+        const membership = await getMembership(ctx, user._id, template.siteId!);
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 

@@ -194,19 +194,31 @@ export const permanentDelete = mutation({
         if (plugin.status !== 'removed') throw new Error('Plugin must be removed before permanent deletion');
 
         // Cascade delete pluginData
-        const data = await ctx.db.query('pluginData').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        const data = await ctx.db
+            .query('pluginData')
+            .withIndex('by_plugin', (q) => q.eq('pluginId', args.id))
+            .collect();
         for (const row of data) await ctx.db.delete(row._id);
 
-        // Cascade delete pluginOrgAccess
-        const access = await ctx.db.query('pluginOrgAccess').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        // Cascade delete pluginSiteAccess
+        const access = await ctx.db
+            .query('pluginSiteAccess')
+            .withIndex('by_plugin', (q) => q.eq('pluginId', args.id))
+            .collect();
         for (const row of access) await ctx.db.delete(row._id);
 
         // Cascade delete pluginHealthChecks
-        const checks = await ctx.db.query('pluginHealthChecks').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        const checks = await ctx.db
+            .query('pluginHealthChecks')
+            .withIndex('by_plugin', (q) => q.eq('pluginId', args.id))
+            .collect();
         for (const row of checks) await ctx.db.delete(row._id);
 
         // Cascade delete templates + their thumbnail storage
-        const templates = await ctx.db.query('templates').withIndex('by_plugin', (q) => q.eq('pluginId', args.id)).collect();
+        const templates = await ctx.db
+            .query('templates')
+            .withIndex('by_plugin', (q) => q.eq('pluginId', args.id))
+            .collect();
         for (const t of templates) {
             if (t.thumbnailStorageId) await ctx.storage.delete(t.thumbnailStorageId);
             await ctx.db.delete(t._id);

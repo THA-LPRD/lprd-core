@@ -17,14 +17,14 @@ import {
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-type Organization = {
+type Site = {
     _id: string;
     name: string;
     slug: string;
     logoUrl?: string;
 };
 
-function getOrgInitials(name: string): string {
+function getSiteInitials(name: string): string {
     const words = name.split(' ');
     if (words.length >= 2) {
         return (words[0][0] + words[1][0]).toUpperCase();
@@ -32,17 +32,11 @@ function getOrgInitials(name: string): string {
     return name.slice(0, 2).toUpperCase();
 }
 
-export function OrgSwitcher({
-    organizations,
-    currentOrg,
-}: {
-    organizations: Organization[];
-    currentOrg?: Organization;
-}) {
+export function SiteSwitcher({ sites, currentSite }: { sites: Site[]; currentSite?: Site }) {
     const { isMobile } = useSidebar();
     const router = useRouter();
 
-    if (!currentOrg) {
+    if (!currentSite) {
         return (
             <SidebarMenu>
                 <SidebarMenuItem>
@@ -51,8 +45,8 @@ export function OrgSwitcher({
                             <Building2 className="size-4" />
                         </div>
                         <div className="grid flex-1 text-left text-sm leading-tight">
-                            <span className="truncate font-medium">Select Organization</span>
-                            <span className="truncate text-xs">Choose an org to continue</span>
+                            <span className="truncate font-medium">Select Site</span>
+                            <span className="truncate text-xs">Choose a site to continue</span>
                         </div>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -70,14 +64,14 @@ export function OrgSwitcher({
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         >
                             <Avatar className="size-8 rounded-lg">
-                                <AvatarImage src={currentOrg.logoUrl} alt={currentOrg.name} />
+                                <AvatarImage src={currentSite.logoUrl} alt={currentSite.name} />
                                 <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                                    {getOrgInitials(currentOrg.name)}
+                                    {getSiteInitials(currentSite.name)}
                                 </AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">{currentOrg.name}</span>
-                                <span className="truncate text-xs">{currentOrg.slug}</span>
+                                <span className="truncate font-medium">{currentSite.name}</span>
+                                <span className="truncate text-xs">{currentSite.slug}</span>
                             </div>
                             <ChevronsUpDown className="ml-auto" />
                         </SidebarMenuButton>
@@ -89,23 +83,21 @@ export function OrgSwitcher({
                         sideOffset={4}
                     >
                         <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-muted-foreground text-xs">
-                                Organizations
-                            </DropdownMenuLabel>
-                            {organizations.map((org) => (
+                            <DropdownMenuLabel className="text-muted-foreground text-xs">Sites</DropdownMenuLabel>
+                            {sites.map((site) => (
                                 <DropdownMenuItem
-                                    key={org._id}
-                                    onClick={() => router.push(`/org/${org.slug}/devices`)}
+                                    key={site._id}
+                                    onClick={() => router.push(`/site/${site.slug}/devices`)}
                                     className="gap-2 p-2"
                                 >
                                     <Avatar className="size-6 rounded-md after:border-0">
-                                        <AvatarImage src={org.logoUrl} alt={org.name} />
+                                        <AvatarImage src={site.logoUrl} alt={site.name} />
                                         <AvatarFallback className="rounded-md text-xs">
-                                            {getOrgInitials(org.name)}
+                                            {getSiteInitials(site.name)}
                                         </AvatarFallback>
                                     </Avatar>
-                                    <span className="flex-1 truncate">{org.name}</span>
-                                    {org._id === currentOrg._id && (
+                                    <span className="flex-1 truncate">{site.name}</span>
+                                    {site._id === currentSite._id && (
                                         <span className="text-xs text-muted-foreground">Current</span>
                                     )}
                                 </DropdownMenuItem>
@@ -117,7 +109,7 @@ export function OrgSwitcher({
                                 <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                                     <Plus className="size-4" />
                                 </div>
-                                <span className="text-muted-foreground font-medium">View all orgs</span>
+                                <span className="text-muted-foreground font-medium">View all sites</span>
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                     </DropdownMenuContent>

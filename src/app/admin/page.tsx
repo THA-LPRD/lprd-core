@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default function AdminDashboardPage() {
     const plugins = useQuery(api.plugins.admin.listAll);
     const users = useQuery(api.users.listAll);
-    const organizations = useQuery(api.organizations.list);
+    const sites = useQuery(api.sites.list);
 
     const activePlugins = plugins?.filter((p) => p.status === 'active').length ?? 0;
     const pendingPlugins = plugins?.filter((p) => p.status === 'pending').length ?? 0;
@@ -50,12 +50,12 @@ export default function AdminDashboardPage() {
 
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium">Organizations</CardTitle>
+                        <CardTitle className="text-sm font-medium">Sites</CardTitle>
                         <Building2 className="size-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{organizations?.length ?? '-'}</div>
-                        <CardDescription>Active organizations</CardDescription>
+                        <div className="text-2xl font-bold">{sites?.length ?? '-'}</div>
+                        <CardDescription>Active sites</CardDescription>
                     </CardContent>
                 </Card>
             </div>

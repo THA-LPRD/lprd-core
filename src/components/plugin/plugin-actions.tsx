@@ -35,10 +35,7 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
                     </>
                 )}
                 {plugin.status === 'suspended' && (
-                    <Button
-                        variant="outline"
-                        onClick={() => updateStatus({ id: plugin._id, status: 'active' })}
-                    >
+                    <Button variant="outline" onClick={() => updateStatus({ id: plugin._id, status: 'active' })}>
                         <Play className="size-4 mr-2" />
                         Activate
                     </Button>
@@ -70,7 +67,7 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
                 open={showSuspendConfirm}
                 onOpenChange={setShowSuspendConfirm}
                 title="Suspend Plugin"
-                description={`This will immediately block all API calls from "${plugin.name}" across all organizations. You can reactivate it later.`}
+                description={`This will immediately block all API calls from "${plugin.name}" across all sites. You can reactivate it later.`}
                 confirmLabel="Suspend"
                 onConfirm={async () => {
                     await updateStatus({ id: plugin._id, status: 'suspended' });

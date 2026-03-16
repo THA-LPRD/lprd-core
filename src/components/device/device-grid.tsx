@@ -5,7 +5,7 @@ import type { Id } from '@convex/dataModel';
 
 type Device = {
     _id: Id<'devices'>;
-    organizationId: Id<'organizations'>;
+    siteId: Id<'sites'>;
     name: string;
     description?: string;
     tags: string[];
@@ -16,7 +16,7 @@ type Device = {
     updatedAt: number;
 };
 
-export function DeviceGrid({ devices, orgSlug }: { devices: Device[]; orgSlug: string }) {
+export function DeviceGrid({ devices, siteSlug }: { devices: Device[]; siteSlug: string }) {
     if (devices.length === 0) {
         return (
             <div className="text-center py-12 border rounded-lg bg-muted/20">
@@ -29,7 +29,7 @@ export function DeviceGrid({ devices, orgSlug }: { devices: Device[]; orgSlug: s
     return (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {devices.map((device) => (
-                <DeviceCard key={device._id} device={device} orgSlug={orgSlug} />
+                <DeviceCard key={device._id} device={device} siteSlug={siteSlug} />
             ))}
         </div>
     );

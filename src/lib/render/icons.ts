@@ -7,7 +7,10 @@ type LucideIconNode = [string, Record<string, string>][];
 type FAIconDef = { icon: [number, number, unknown, string, string | string[]] };
 
 function kebabToPascal(name: string): string {
-    return name.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join('');
+    return name
+        .split('-')
+        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('');
 }
 
 const FA_SETS: Record<string, Record<string, unknown>> = {
@@ -68,10 +71,7 @@ export function getLucideIconSVG(name: string): string | null {
  */
 export function resolveIconsInRoot(root: ShadowRoot | Element): void {
     root.querySelectorAll('img-fa[name]').forEach((el) => {
-        const svgStr = getFAIconSVG(
-            el.getAttribute('name') ?? '',
-            el.getAttribute('set') ?? 'solid',
-        );
+        const svgStr = getFAIconSVG(el.getAttribute('name') ?? '', el.getAttribute('set') ?? 'solid');
         if (svgStr) {
             el.replaceWith(document.createRange().createContextualFragment(svgStr));
         } else {

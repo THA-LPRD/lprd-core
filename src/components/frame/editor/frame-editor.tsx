@@ -33,7 +33,7 @@ type LayerRef = {
 
 type FrameDoc = {
     _id: Id<'frames'>;
-    organizationId: Id<'organizations'>;
+    siteId: Id<'sites'>;
     name: string;
     description?: string;
     widgets: Widget[];
@@ -44,7 +44,7 @@ type FrameDoc = {
 
 type PickerTarget = 'widget' | 'background' | 'foreground';
 
-export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: string }) {
+export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: string }) {
     const [name, setName] = React.useState(frame.name);
     const [widgets, setWidgets] = React.useState<Widget[]>(frame.widgets);
     const [background, setBackground] = React.useState<LayerRef | undefined>(frame.background);
@@ -61,8 +61,8 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
     const generateUploadUrl = useMutation(api.frames.generateUploadUrl);
 
     // Fetch templates for this org
-    const templates = useQuery(api.templates.crud.listByOrganization, {
-        organizationId: frame.organizationId,
+    const templates = useQuery(api.templates.crud.listBySite, {
+        siteId: frame.siteId,
     });
 
     const templateOptions: TemplateOption[] = React.useMemo(
@@ -114,7 +114,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     frameId: frame._id,
-                    orgSlug,
+                    siteSlug,
                     width: GRID_COLS * DEFAULT_CELL_SIZE,
                     height: GRID_ROWS * DEFAULT_CELL_SIZE,
                 }),
@@ -137,7 +137,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
             console.error('Failed to generate thumbnail:', error);
             return null;
         }
-    }, [frame._id, orgSlug, generateUploadUrl]);
+    }, [frame._id, siteSlug, generateUploadUrl]);
 
     const handleSave = async () => {
         if (!isDirty) return;
@@ -230,7 +230,7 @@ export function FrameEditor({ frame, orgSlug }: { frame: FrameDoc; orgSlug: stri
     return (
         <div className="flex flex-col h-[calc(100vh-52px)] overflow-hidden">
             <EditorToolbar
-                orgSlug={orgSlug}
+                siteSlug={siteSlug}
                 name={name}
                 onNameChange={setName}
                 isDirty={isDirty}

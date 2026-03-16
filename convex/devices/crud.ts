@@ -39,14 +39,14 @@ async function getOrCreateManualPlugin(ctx: MutationCtx) {
 async function deleteManualDataForDevice(
     ctx: MutationCtx,
     pluginId: Id<'plugins'>,
-    organizationId: Id<'organizations'>,
+    siteId: Id<'sites'>,
     deviceId: Id<'devices'>,
 ) {
     const prefix = `${deviceId}:`;
     const records = await ctx.db
         .query('pluginData')
-        .withIndex('by_plugin_org_topic_entry', (q) =>
-            q.eq('pluginId', pluginId).eq('organizationId', organizationId).eq('topic', 'manual'),
+        .withIndex('by_plugin_site_topic_entry', (q) =>
+            q.eq('pluginId', pluginId).eq('siteId', siteId).eq('topic', 'manual'),
         )
         .collect();
 
@@ -64,7 +64,7 @@ async function deleteManualDataForDevice(
  */
 export const create = mutation({
     args: {
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
         name: v.string(),
         description: v.optional(v.string()),
         tags: v.optional(v.array(v.string())),
@@ -73,13 +73,13 @@ export const create = mutation({
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         const now = Date.now();
         return ctx.db.insert('devices', {
-            organizationId: args.organizationId,
+            siteId: args.siteId,
             name: args.name,
             description: args.description,
             tags: args.tags ?? [],
@@ -105,7 +105,7 @@ export const getById = query({
         const device = await ctx.db.get(args.id);
         if (!device) return null;
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return null;
 
@@ -128,23 +128,23 @@ export const getById = query({
 });
 
 /**
- * List devices in an organization.
+ * List devices in a site.
  * Requires device.view permission.
  * Resolves current storage URLs for card display.
  */
-export const listByOrganization = query({
-    args: { organizationId: v.id('organizations') },
+export const listBySite = query({
+    args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return [];
 
         const devices = await ctx.db
             .query('devices')
-            .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
+            .withIndex('by_site', (q) => q.eq('siteId', args.siteId))
             .collect();
 
         return Promise.all(
@@ -181,7 +181,7 @@ export const update = mutation({
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
@@ -197,7 +197,7 @@ export const update = mutation({
             // Clean up manual data when frame is cleared
             const manualPluginId = await findManualPlugin(ctx);
             if (manualPluginId) {
-                await deleteManualDataForDevice(ctx, manualPluginId, device.organizationId, device._id);
+                await deleteManualDataForDevice(ctx, manualPluginId, device.siteId, device._id);
             }
         }
 
@@ -218,14 +218,14 @@ export const remove = mutation({
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         // Clean up manual data
         const manualPluginId = await findManualPlugin(ctx);
         if (manualPluginId) {
-            await deleteManualDataForDevice(ctx, manualPluginId, device.organizationId, device._id);
+            await deleteManualDataForDevice(ctx, manualPluginId, device.siteId, device._id);
         }
 
         if (device.last?.storageId) {
@@ -264,7 +264,7 @@ export const saveManualData = mutation({
         const device = await ctx.db.get(args.deviceId);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
@@ -281,12 +281,8 @@ export const saveManualData = mutation({
 
             const existing = await ctx.db
                 .query('pluginData')
-                .withIndex('by_plugin_org_topic_entry', (q) =>
-                    q
-                        .eq('pluginId', pluginId)
-                        .eq('organizationId', device.organizationId)
-                        .eq('topic', 'manual')
-                        .eq('entry', entry),
+                .withIndex('by_plugin_site_topic_entry', (q) =>
+                    q.eq('pluginId', pluginId).eq('siteId', device.siteId).eq('topic', 'manual').eq('entry', entry),
                 )
                 .unique();
 
@@ -309,7 +305,7 @@ export const saveManualData = mutation({
             } else {
                 recordId = await ctx.db.insert('pluginData', {
                     pluginId,
-                    organizationId: device.organizationId,
+                    siteId: device.siteId,
                     topic: 'manual',
                     entry,
                     contentType: 'application/json',
@@ -370,7 +366,7 @@ export const getManualData = query({
         const device = await ctx.db.get(args.deviceId);
         if (!device) return {};
 
-        const membership = await getMembership(ctx, user._id, device.organizationId);
+        const membership = await getMembership(ctx, user._id, device.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return {};
 
@@ -383,8 +379,8 @@ export const getManualData = query({
         const prefix = `${args.deviceId}:`;
         const records = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_org_topic_entry', (q) =>
-                q.eq('pluginId', manualPlugin._id).eq('organizationId', device.organizationId).eq('topic', 'manual'),
+            .withIndex('by_plugin_site_topic_entry', (q) =>
+                q.eq('pluginId', manualPlugin._id).eq('siteId', device.siteId).eq('topic', 'manual'),
             )
             .collect();
 

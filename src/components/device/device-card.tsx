@@ -12,7 +12,7 @@ import Image from 'next/image';
 
 type Device = {
     _id: Id<'devices'>;
-    organizationId: Id<'organizations'>;
+    siteId: Id<'sites'>;
     name: string;
     description?: string;
     tags: string[];
@@ -23,9 +23,9 @@ type Device = {
     updatedAt: number;
 };
 
-export function DeviceCard({ device, orgSlug }: { device: Device; orgSlug: string }) {
+export function DeviceCard({ device, siteSlug }: { device: Device; siteSlug: string }) {
     return (
-        <Link href={`/org/${orgSlug}/devices/${buildEntitySlug(device.name, device._id)}`}>
+        <Link href={`/site/${siteSlug}/devices/${buildEntitySlug(device.name, device._id)}`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden">
                 {/* Device preview area */}
                 <div className="relative aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">

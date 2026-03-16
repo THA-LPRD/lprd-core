@@ -1,11 +1,11 @@
 'use client';
 
-import {useQuery} from 'convex/react';
-import {api} from '@convex/api';
-import {redirect} from 'next/navigation';
-import {AdminSidebar} from '@/components/admin/admin-sidebar';
-import {SidebarInset, SidebarProvider, SidebarTrigger} from '@/components/ui/sidebar';
-import {Separator} from '@/components/ui/separator';
+import { useQuery } from 'convex/react';
+import { api } from '@convex/api';
+import { redirect } from 'next/navigation';
+import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const user = useQuery(api.users.me);

@@ -8,13 +8,13 @@ import { getPermissions } from '../lib/acl';
 
 /**
  * Store data pushed by a plugin via webhook.
- * Upserts by (pluginId, organizationId, topic, entry).
+ * Upserts by (pluginId, siteId, topic, entry).
  * Schedules image processing if data contains img fields.
  */
 export const storeWebhookData = internalMutation({
     args: {
         pluginId: v.id('plugins'),
-        orgSlug: v.string(),
+        siteSlug: v.string(),
         contentType: v.string(),
         data: v.any(),
         ttlSeconds: v.number(),
@@ -27,24 +27,20 @@ export const storeWebhookData = internalMutation({
         if (!plugin) throw new Error('Plugin not found');
         if (plugin.status !== 'active') throw new Error(`Plugin is not active (status: ${plugin.status})`);
 
-        const org = await ctx.db
-            .query('organizations')
-            .withIndex('by_slug', (q) => q.eq('slug', args.orgSlug))
+        const site = await ctx.db
+            .query('sites')
+            .withIndex('by_slug', (q) => q.eq('slug', args.siteSlug))
             .unique();
 
-        if (!org) throw new Error(`Organization not found: ${args.orgSlug}`);
+        if (!site) throw new Error(`Site not found: ${args.siteSlug}`);
 
         const now = Date.now();
 
         // Check for existing record (upsert)
         const existing = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_org_topic_entry', (q) =>
-                q
-                    .eq('pluginId', plugin._id)
-                    .eq('organizationId', org._id)
-                    .eq('topic', args.topic)
-                    .eq('entry', args.entry),
+            .withIndex('by_plugin_site_topic_entry', (q) =>
+                q.eq('pluginId', plugin._id).eq('siteId', site._id).eq('topic', args.topic).eq('entry', args.entry),
             )
             .unique();
 
@@ -63,7 +59,7 @@ export const storeWebhookData = internalMutation({
         } else {
             id = await ctx.db.insert('pluginData', {
                 pluginId: plugin._id,
-                organizationId: org._id,
+                siteId: site._id,
                 topic: args.topic,
                 entry: args.entry,
                 contentType: args.contentType,
@@ -81,7 +77,7 @@ export const storeWebhookData = internalMutation({
             });
         }
 
-        return { pluginId: plugin._id, organizationId: org._id, orgSlug: org.slug };
+        return { pluginId: plugin._id, siteId: site._id, siteSlug: site.slug };
     },
 });
 
@@ -141,14 +137,14 @@ export const deletePluginData = internalMutation({
 export const listAffectedDevices = internalQuery({
     args: {
         pluginId: v.id('plugins'),
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
         topic: v.string(),
         entry: v.string(),
     },
     handler: async (ctx, args) => {
         const devices = await ctx.db
             .query('devices')
-            .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
+            .withIndex('by_site', (q) => q.eq('siteId', args.siteId))
             .collect();
 
         return devices
@@ -163,16 +159,16 @@ export const listAffectedDevices = internalQuery({
 });
 
 /**
- * List active plugins that have topics and are enabled for the given org.
+ * List active plugins that have topics and are enabled for the given site.
  * Used by the device config UI plugin picker.
  */
 export const listPluginsWithTopics = query({
-    args: { organizationId: v.id('organizations') },
+    args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return [];
 
@@ -188,15 +184,13 @@ export const listPluginsWithTopics = query({
             // System plugins are internal — not shown in the data binding picker
             if (p.type === 'system') continue;
 
-            // External plugins need org access
+            // External plugins need site access
             const access = await ctx.db
-                .query('pluginOrgAccess')
-                .withIndex('by_plugin_and_org', (q) =>
-                    q.eq('pluginId', p._id).eq('organizationId', args.organizationId),
-                )
+                .query('pluginSiteAccess')
+                .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', p._id).eq('siteId', args.siteId))
                 .unique();
 
-            if (!access || !access.enabledByAdmin || !access.enabledByOrg) continue;
+            if (!access || !access.enabledByAdmin || !access.enabledBySite) continue;
 
             results.push({
                 _id: p._id,
@@ -210,27 +204,27 @@ export const listPluginsWithTopics = query({
 });
 
 /**
- * List distinct entries for a given plugin + org + topic.
+ * List distinct entries for a given plugin + site + topic.
  * Used by the entry picker in device config UI.
  */
 export const listEntries = query({
     args: {
         pluginId: v.id('plugins'),
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
         topic: v.string(),
     },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.device.view) return [];
 
         const records = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_org_topic_entry', (q) =>
-                q.eq('pluginId', args.pluginId).eq('organizationId', args.organizationId).eq('topic', args.topic),
+            .withIndex('by_plugin_site_topic_entry', (q) =>
+                q.eq('pluginId', args.pluginId).eq('siteId', args.siteId).eq('topic', args.topic),
             )
             .collect();
 

@@ -1,7 +1,4 @@
-export type {
-    DeviceLogType,
-    DeviceLogStatus,
-} from '../../convex/lib/deviceLogs';
+export type { DeviceLogType, DeviceLogStatus } from '../../convex/lib/deviceLogs';
 
 export {
     LOG_TYPE_LABELS,

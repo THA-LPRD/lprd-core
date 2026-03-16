@@ -9,11 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import type { Id } from '@convex/dataModel';
 
 export function PluginHealthCard({ pluginId }: { pluginId: Id<'plugins'> }) {
-    const { results: healthChecks, status: healthPagination, loadMore } = usePaginatedQuery(
-        api.plugins.health.listByPlugin,
-        { pluginId },
-        { initialNumItems: 20 },
-    );
+    const {
+        results: healthChecks,
+        status: healthPagination,
+        loadMore,
+    } = usePaginatedQuery(api.plugins.health.listByPlugin, { pluginId }, { initialNumItems: 20 });
 
     return (
         <Card>

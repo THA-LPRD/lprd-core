@@ -7,14 +7,14 @@ import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip';
 import { ArrowLeft, Save } from 'lucide-react';
 
 export function EditorToolbar({
-    orgSlug,
+    siteSlug,
     name,
     onNameChange,
     isDirty,
     isSaving,
     onSave,
 }: {
-    orgSlug: string;
+    siteSlug: string;
     name: string;
     onNameChange: (name: string) => void;
     isDirty: boolean;
@@ -23,7 +23,7 @@ export function EditorToolbar({
 }) {
     return (
         <div className="flex items-center gap-3 px-4 py-2 border-b bg-background">
-            <Link href={`/org/${orgSlug}/frames`}>
+            <Link href={`/site/${siteSlug}/frames`}>
                 <Button variant="ghost" size="icon" className="size-8">
                     <ArrowLeft className="size-4" />
                 </Button>

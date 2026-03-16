@@ -29,10 +29,7 @@ export const LOG_TYPE_VARIANTS: Record<DeviceLogType, 'default' | 'secondary' | 
 };
 
 /** Badge variant for each log status. */
-export const LOG_STATUS_VARIANTS: Record<
-    DeviceLogStatus,
-    'default' | 'secondary' | 'destructive' | 'outline'
-> = {
+export const LOG_STATUS_VARIANTS: Record<DeviceLogStatus, 'default' | 'secondary' | 'destructive' | 'outline'> = {
     ok: 'default',
     no_content: 'secondary',
     unauthorized: 'destructive',

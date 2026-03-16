@@ -35,9 +35,7 @@ export function FrameAssignmentCard({
                 >
                     <SelectTrigger className="w-1/2">
                         <SelectValue placeholder="Select a frame">
-                            <span className="truncate block">
-                                {selectedFrame ? selectedFrame.name : 'No frame'}
-                            </span>
+                            <span className="truncate block">{selectedFrame ? selectedFrame.name : 'No frame'}</span>
                         </SelectValue>
                     </SelectTrigger>
                     <SelectContent alignItemWithTrigger={false}>

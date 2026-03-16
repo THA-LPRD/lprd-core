@@ -6,22 +6,22 @@ import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl, replaceTh
 import { getCurrentUser, getMembership } from './users';
 
 /**
- * List all frames for an organization.
+ * List all frames for a site.
  * Requires frame.view permission.
  */
-export const listByOrganization = query({
-    args: { organizationId: v.id('organizations') },
+export const listBySite = query({
+    args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) return [];
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.view) return [];
 
         const frames = await ctx.db
             .query('frames')
-            .withIndex('by_organization', (q) => q.eq('organizationId', args.organizationId))
+            .withIndex('by_site', (q) => q.eq('siteId', args.siteId))
             .collect();
 
         return Promise.all(
@@ -49,7 +49,7 @@ export const getById = query({
         const frame = await ctx.db.get(args.id);
         if (!frame) return null;
 
-        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const membership = await getMembership(ctx, user._id, frame.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.view) return null;
 
@@ -68,7 +68,7 @@ export const getById = query({
  */
 export const create = mutation({
     args: {
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
         name: v.string(),
         description: v.optional(v.string()),
         widgets: v.array(frameWidget),
@@ -80,13 +80,13 @@ export const create = mutation({
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         const now = Date.now();
         return ctx.db.insert('frames', {
-            organizationId: args.organizationId,
+            siteId: args.siteId,
             createdBy: user._id,
             name: args.name,
             description: args.description,
@@ -124,7 +124,7 @@ export const update = mutation({
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const membership = await getMembership(ctx, user._id, frame.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
@@ -160,7 +160,7 @@ export const remove = mutation({
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const membership = await getMembership(ctx, user._id, frame.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
@@ -173,19 +173,19 @@ export const remove = mutation({
 });
 
 /**
- * Duplicate a frame within an org.
+ * Duplicate a frame within a site.
  * Requires frame.manage permission.
  */
 export const duplicate = mutation({
     args: {
         id: v.id('frames'),
-        organizationId: v.id('organizations'),
+        siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.organizationId);
+        const membership = await getMembership(ctx, user._id, args.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
@@ -194,7 +194,7 @@ export const duplicate = mutation({
 
         const now = Date.now();
         return ctx.db.insert('frames', {
-            organizationId: args.organizationId,
+            siteId: args.siteId,
             createdBy: user._id,
             name: `${source.name} (Copy)`,
             description: source.description,
@@ -223,7 +223,7 @@ export const storeThumbnail = mutation({
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.organizationId);
+        const membership = await getMembership(ctx, user._id, frame.siteId);
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 

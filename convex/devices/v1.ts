@@ -101,10 +101,10 @@ export const getMinTtl = internalQuery({
         for (const binding of device.dataBindings) {
             const record = await ctx.db
                 .query('pluginData')
-                .withIndex('by_plugin_org_topic_entry', (q) =>
+                .withIndex('by_plugin_site_topic_entry', (q) =>
                     q
                         .eq('pluginId', binding.pluginId)
-                        .eq('organizationId', device.organizationId)
+                        .eq('siteId', device.siteId)
                         .eq('topic', binding.topic)
                         .eq('entry', binding.entry),
                 )
@@ -134,10 +134,10 @@ export const getBindingData = internalQuery({
         for (const binding of device.dataBindings) {
             const record = await ctx.db
                 .query('pluginData')
-                .withIndex('by_plugin_org_topic_entry', (q) =>
+                .withIndex('by_plugin_site_topic_entry', (q) =>
                     q
                         .eq('pluginId', binding.pluginId)
-                        .eq('organizationId', device.organizationId)
+                        .eq('siteId', device.siteId)
                         .eq('topic', binding.topic)
                         .eq('entry', binding.entry),
                 )

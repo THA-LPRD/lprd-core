@@ -8,16 +8,16 @@ const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { deviceId, orgSlug } = body;
+        const { deviceId, siteSlug } = body;
 
-        if (!deviceId || !orgSlug) {
-            return NextResponse.json({ error: 'deviceId and orgSlug are required' }, { status: 400 });
+        if (!deviceId || !siteSlug) {
+            return NextResponse.json({ error: 'deviceId and siteSlug are required' }, { status: 400 });
         }
 
         const { origin } = new URL(request.url);
 
         const png = await generateScreenshot({
-            renderPath: `/org/${orgSlug}/devices/render/${deviceId}`,
+            renderPath: `/site/${siteSlug}/devices/render/${deviceId}`,
             width: WIDTH,
             height: HEIGHT,
             origin,

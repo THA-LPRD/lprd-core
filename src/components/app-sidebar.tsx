@@ -7,7 +7,7 @@ import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 
 import { NavUser } from '@/components/nav-user';
-import { OrgSwitcher } from '@/components/layout/org-switcher';
+import { SiteSwitcher } from '@/components/layout/org-switcher';
 import {
     Sidebar,
     SidebarContent,
@@ -31,29 +31,29 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Get current user
     const user = useQuery(api.users.me);
 
-    // Get all organizations user has access to
-    const organizations = useQuery(api.organizations.list);
+    // Get all sites user has access to
+    const sites = useQuery(api.sites.list);
 
-    // Get current org from URL
-    const slugMatch = pathname.match(/^\/org\/([^/]+)/);
+    // Get current site from URL
+    const slugMatch = pathname.match(/^\/site\/([^/]+)/);
     const currentSlug = slugMatch?.[1];
 
-    // Find current org
-    const currentOrg = React.useMemo(() => {
-        if (!currentSlug || !organizations) return undefined;
-        return organizations.find((org) => org.slug === currentSlug);
-    }, [currentSlug, organizations]);
+    // Find current site
+    const currentSite = React.useMemo(() => {
+        if (!currentSlug || !sites) return undefined;
+        return sites.find((s) => s.slug === currentSlug);
+    }, [currentSlug, sites]);
 
-    // Update lastOrgSlug when visiting an org
-    const setLastOrg = useMutation(api.users.setLastOrg);
+    // Update lastSiteSlug when visiting a site
+    const setLastSite = useMutation(api.users.setLastSite);
     const lastSetSlugRef = React.useRef<string | null>(null);
 
     React.useEffect(() => {
         if (currentSlug && user && lastSetSlugRef.current !== currentSlug) {
             lastSetSlugRef.current = currentSlug;
-            setLastOrg({ slug: currentSlug });
+            setLastSite({ slug: currentSlug });
         }
-    }, [currentSlug, user, setLastOrg]);
+    }, [currentSlug, user, setLastSite]);
 
     // Handle sign out
     const handleSignOut = async () => {
@@ -61,38 +61,38 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         router.push('/');
     };
 
-    // Navigation items for org context
-    const navItems = currentOrg
+    // Navigation items for site context
+    const navItems = currentSite
         ? [
               {
                   title: 'Dashboard',
-                  url: `/org/${currentOrg.slug}`,
+                  url: `/site/${currentSite.slug}`,
                   icon: LayoutDashboard,
-                  isActive: pathname === `/org/${currentOrg.slug}`,
+                  isActive: pathname === `/site/${currentSite.slug}`,
               },
               {
                   title: 'Devices',
-                  url: `/org/${currentOrg.slug}/devices`,
+                  url: `/site/${currentSite.slug}/devices`,
                   icon: Monitor,
-                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/devices`),
+                  isActive: pathname.startsWith(`/site/${currentSite.slug}/devices`),
               },
               {
                   title: 'Frames',
-                  url: `/org/${currentOrg.slug}/frames`,
+                  url: `/site/${currentSite.slug}/frames`,
                   icon: LayoutGrid,
-                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/frames`),
+                  isActive: pathname.startsWith(`/site/${currentSite.slug}/frames`),
               },
               {
                   title: 'Templates',
-                  url: `/org/${currentOrg.slug}/templates`,
+                  url: `/site/${currentSite.slug}/templates`,
                   icon: LayoutTemplate,
-                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/templates`),
+                  isActive: pathname.startsWith(`/site/${currentSite.slug}/templates`),
               },
               {
                   title: 'Settings',
-                  url: `/org/${currentOrg.slug}/settings`,
+                  url: `/site/${currentSite.slug}/settings`,
                   icon: Settings2,
-                  isActive: pathname.startsWith(`/org/${currentOrg.slug}/settings`),
+                  isActive: pathname.startsWith(`/site/${currentSite.slug}/settings`),
               },
           ]
         : [];
@@ -100,10 +100,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     return (
         <Sidebar collapsible="icon" {...props}>
             <SidebarHeader>
-                <OrgSwitcher organizations={organizations ?? []} currentOrg={currentOrg} />
+                <SiteSwitcher sites={sites ?? []} currentSite={currentSite} />
             </SidebarHeader>
             <SidebarContent>
-                {currentOrg && (
+                {currentSite && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Navigation</SidebarGroupLabel>
                         <SidebarMenu className={`gap-1.5`}>
@@ -133,7 +133,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             role: user.role,
                         }}
                         onSignOut={handleSignOut}
-                        context="org"
+                        context="site"
                     />
                 )}
             </SidebarFooter>

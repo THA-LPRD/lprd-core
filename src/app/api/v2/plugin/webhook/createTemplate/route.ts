@@ -45,7 +45,7 @@ export async function POST(request: Request) {
                 const { width, height } = getVariantPixelSize(preferred);
 
                 const png = await generateScreenshot({
-                    renderPath: `/org/_internal/templates/render/${result.id}`,
+                    renderPath: `/site/_internal/templates/render/${result.id}`,
                     width,
                     height,
                     origin,

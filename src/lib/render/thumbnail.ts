@@ -12,7 +12,7 @@ async function getBrowser(): Promise<Browser> {
 }
 
 export interface ScreenshotOptions {
-    /** URL path to navigate to (e.g. `/org/slug/devices/render/id`) */
+    /** URL path to navigate to (e.g. `/site/slug/devices/render/id`) */
     renderPath: string;
     width: number;
     height: number;

@@ -25,20 +25,20 @@ cp .env.local.example .env.local
 
 Required environment variables:
 
-| Variable                              | Description                                                    |
-|---------------------------------------|----------------------------------------------------------------|
-| `CONVEX_DEPLOYMENT`                   | Your Convex deployment name                                    |
-| `NEXT_PUBLIC_CONVEX_URL`              | Your Convex deployment URL                                     |
-| `WORKOS_CLIENT_ID`                    | WorkOS client ID                                               |
-| `WORKOS_API_KEY`                      | WorkOS API key                                                 |
-| `WORKOS_COOKIE_PASSWORD`              | Secure string, min 32 characters                               |
-| `NEXT_PUBLIC_WORKOS_REDIRECT_URI`     | OAuth callback URL (e.g., `http://localhost:3000/callback`)    |
-| `WORKOS_WEBHOOK_USERS_PATH_SECRET`    | Random 32-char string                                          |
-| `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | Webhook secret for user.created events (from WorkOS dashboard) |
-| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | Webhook secret for user.updated events (from WorkOS dashboard) |
-| `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | Webhook secret for user.deleted events (from WorkOS dashboard) |
-| `PLUGIN_JWT_PRIVATE_KEY`              | ES256 private key for plugin JWT signing (PEM, `\n`-escaped)   |
-| `PLUGIN_JWT_PUBLIC_KEY`               | ES256 public key for plugin JWT verification (PEM, `\n`-escaped)|
+| Variable                              | Description                                                      |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `CONVEX_DEPLOYMENT`                   | Your Convex deployment name                                      |
+| `NEXT_PUBLIC_CONVEX_URL`              | Your Convex deployment URL                                       |
+| `WORKOS_CLIENT_ID`                    | WorkOS client ID                                                 |
+| `WORKOS_API_KEY`                      | WorkOS API key                                                   |
+| `WORKOS_COOKIE_PASSWORD`              | Secure string, min 32 characters                                 |
+| `NEXT_PUBLIC_WORKOS_REDIRECT_URI`     | OAuth callback URL (e.g., `http://localhost:3000/callback`)      |
+| `WORKOS_WEBHOOK_USERS_PATH_SECRET`    | Random 32-char string                                            |
+| `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | Webhook secret for user.created events (from WorkOS dashboard)   |
+| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | Webhook secret for user.updated events (from WorkOS dashboard)   |
+| `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | Webhook secret for user.deleted events (from WorkOS dashboard)   |
+| `PLUGIN_JWT_PRIVATE_KEY`              | ES256 private key for plugin JWT signing (PEM, `\n`-escaped)     |
+| `PLUGIN_JWT_PUBLIC_KEY`               | ES256 public key for plugin JWT verification (PEM, `\n`-escaped) |
 
 3. Generate the plugin JWT key pair:
 
@@ -83,16 +83,19 @@ Open [http://localhost:3000](http://localhost:3000) to view the app.
 User data is synchronized from WorkOS to Convex via webhooks. Create three webhook endpoints in the [WorkOS Dashboard](https://dashboard.workos.com):
 
 **Webhook 1: User Created**
+
 - URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/create`
 - Event: `user.created`
 - Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_CREATED_SECRET "<secret>"`
 
 **Webhook 2: User Updated**
+
 - URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/update`
 - Event: `user.updated`
 - Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_UPDATED_SECRET "<secret>"`
 
 **Webhook 3: User Deleted**
+
 - URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/delete`
 - Event: `user.deleted`
 - Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_DELETED_SECRET "<secret>"`

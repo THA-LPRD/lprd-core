@@ -36,7 +36,9 @@ function CustomTooltip({ active, payload, label }: TooltipProps<number, string>)
             </p>
             {Object.entries(stats.byType).map(([type, count]) => (
                 <div key={type} className="flex items-center justify-between gap-4">
-                    <span className="text-muted-foreground">{LOG_TYPE_LABELS[type as keyof typeof LOG_TYPE_LABELS] ?? type}</span>
+                    <span className="text-muted-foreground">
+                        {LOG_TYPE_LABELS[type as keyof typeof LOG_TYPE_LABELS] ?? type}
+                    </span>
                     <span className="font-medium tabular-nums">{count}</span>
                 </div>
             ))}

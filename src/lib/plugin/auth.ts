@@ -83,20 +83,20 @@ export function requireScope(plugin: AuthenticatedPlugin, scope: 'push_data' | '
 }
 
 /**
- * Check that a plugin has access to the specified org.
+ * Check that a plugin has access to the specified site.
  * Requires: plugin active + enabledByAdmin + enabledByOrg.
  */
-export async function requireOrgAccess(
+export async function requireSiteAccess(
     convex: ConvexHttpClient,
     pluginId: Id<'plugins'>,
-    orgSlug: string,
+    siteSlug: string,
 ): Promise<void> {
-    const hasAccess = await convex.query(asPublic(internal.plugins.orgAccess.checkAccess), {
+    const hasAccess = await convex.query(asPublic(internal.plugins.siteAccess.checkAccess), {
         pluginId,
-        orgSlug,
+        siteSlug,
     });
 
     if (!hasAccess) {
-        throw new AuthError('Plugin does not have access to this organization', 403);
+        throw new AuthError('Plugin does not have access to this site', 403);
     }
 }

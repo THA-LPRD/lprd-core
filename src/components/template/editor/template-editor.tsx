@@ -15,7 +15,7 @@ import type { TemplateVariant } from '@/lib/template';
 
 type TemplateDoc = {
     _id: Id<'templates'>;
-    scope: 'global' | 'org';
+    scope: 'global' | 'site';
     name: string;
     description?: string;
     templateHtml: string;
@@ -25,7 +25,7 @@ type TemplateDoc = {
     thumbnailStorageId?: Id<'_storage'>;
 };
 
-export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; orgSlug: string }) {
+export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; siteSlug: string }) {
     const isGlobal = template.scope === 'global';
 
     const [name, setName] = React.useState(template.name);
@@ -72,7 +72,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
             const res = await fetch('/api/v2/templates/createThumbnail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ templateId: template._id, orgSlug }),
+                body: JSON.stringify({ templateId: template._id, siteSlug }),
             });
 
             if (!res.ok) return null;
@@ -93,7 +93,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
             console.error('Failed to generate thumbnail:', error);
             return null;
         }
-    }, [template._id, orgSlug, generateUploadUrl]);
+    }, [template._id, siteSlug, generateUploadUrl]);
 
     const handleSave = async () => {
         if (isGlobal || !isDirty) return;
@@ -156,7 +156,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
     return (
         <div className="flex flex-col h-[calc(100vh-52px)] overflow-hidden">
             <EditorToolbar
-                orgSlug={orgSlug}
+                siteSlug={siteSlug}
                 name={name}
                 onNameChange={setName}
                 scope={template.scope}

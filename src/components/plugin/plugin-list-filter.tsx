@@ -47,15 +47,11 @@ export function usePluginFilters<T extends { name: string; description?: string;
         [router, searchParams],
     );
 
-    const setSearch = React.useCallback(
-        (value: string) => updateParams({ q: value || null }),
-        [updateParams],
-    );
+    const setSearch = React.useCallback((value: string) => updateParams({ q: value || null }), [updateParams]);
 
     const setStatusFilters = React.useCallback(
         (next: Set<PluginStatus>) => {
-            const isDefault =
-                next.size === DEFAULT_STATUSES.length && DEFAULT_STATUSES.every((s) => next.has(s));
+            const isDefault = next.size === DEFAULT_STATUSES.length && DEFAULT_STATUSES.every((s) => next.has(s));
             updateParams({ status: isDefault ? null : [...next].join(',') });
         },
         [updateParams],
@@ -71,10 +67,7 @@ export function usePluginFilters<T extends { name: string; description?: string;
         [statusFilters, setStatusFilters],
     );
 
-    const selectAll = React.useCallback(
-        () => setStatusFilters(new Set(ALL_STATUSES)),
-        [setStatusFilters],
-    );
+    const selectAll = React.useCallback(() => setStatusFilters(new Set(ALL_STATUSES)), [setStatusFilters]);
 
     const filteredPlugins = React.useMemo(() => {
         if (!plugins) return [];
@@ -123,9 +116,7 @@ export function PluginListFilter({
                         <Filter className="size-4 mr-2" />
                         Status
                         {!allSelected && (
-                            <span className="ml-1 text-xs text-muted-foreground">
-                                ({statusFilters.size})
-                            </span>
+                            <span className="ml-1 text-xs text-muted-foreground">({statusFilters.size})</span>
                         )}
                     </Button>
                 </PopoverTrigger>

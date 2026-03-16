@@ -23,7 +23,7 @@ export function DataBindingsCard({
     onBindingsChange,
     manualData,
     onManualDataChange,
-    organizationId,
+    siteId,
     getTemplateName,
     getPluginName,
 }: {
@@ -32,7 +32,7 @@ export function DataBindingsCard({
     onBindingsChange: (bindings: Binding[]) => void;
     manualData: Record<string, unknown>;
     onManualDataChange: (widgetId: string, data: unknown) => void;
-    organizationId: Id<'organizations'>;
+    siteId: Id<'sites'>;
     getTemplateName: (templateId?: string) => string;
     getPluginName: (pluginId: Id<'plugins'>) => string;
 }) {
@@ -50,13 +50,9 @@ export function DataBindingsCard({
                 <CardTitle className="text-lg">Data Bindings</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                {widgets.length === 0 && (
-                    <p className="text-sm text-muted-foreground">No widgets in this frame.</p>
-                )}
+                {widgets.length === 0 && <p className="text-sm text-muted-foreground">No widgets in this frame.</p>}
                 {widgets.map((widget) => {
-                    const widgetBindings = bindings.filter(
-                        (b) => b.widgetId === widget.id && b.topic !== 'manual',
-                    );
+                    const widgetBindings = bindings.filter((b) => b.widgetId === widget.id && b.topic !== 'manual');
                     return (
                         <div key={widget.id} className="space-y-2 space-x-2">
                             <p className="text-sm font-medium">
@@ -84,10 +80,7 @@ export function DataBindingsCard({
                                 );
                             })}
 
-                            <AddBindingRow
-                                organizationId={organizationId}
-                                onAdd={(source) => addBinding(widget.id, source)}
-                            />
+                            <AddBindingRow siteId={siteId} onAdd={(source) => addBinding(widget.id, source)} />
 
                             <ManualDataSection
                                 data={manualData[widget.id] ?? null}
@@ -101,13 +94,7 @@ export function DataBindingsCard({
     );
 }
 
-function AddBindingRow({
-    organizationId,
-    onAdd,
-}: {
-    organizationId: Id<'organizations'>;
-    onAdd: (source: DataSource) => void;
-}) {
+function AddBindingRow({ siteId, onAdd }: { siteId: Id<'sites'>; onAdd: (source: DataSource) => void }) {
     const [isOpen, setIsOpen] = React.useState(false);
 
     if (!isOpen) {
@@ -126,7 +113,7 @@ function AddBindingRow({
     return (
         <div className="flex items-start gap-2">
             <DataSourcePicker
-                organizationId={organizationId}
+                siteId={siteId}
                 onChange={(source) => {
                     onAdd(source);
                     setIsOpen(false);

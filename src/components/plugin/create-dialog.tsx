@@ -30,13 +30,7 @@ const KEY_TTL_OPTIONS = [
 
 const KEY_TTL_LABEL_MAP = new Map(KEY_TTL_OPTIONS.map((o) => [o.value, o.label]));
 
-export function CreatePluginDialog({
-    open,
-    onOpenChange,
-}: {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-}) {
+export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [scopePushData, setScopePushData] = React.useState(true);
@@ -154,9 +148,7 @@ export function CreatePluginDialog({
                             <FieldLabel>Key Expiry</FieldLabel>
                             <Select value={keyTtlMs} onValueChange={(v) => v && setKeyTtlMs(v)}>
                                 <SelectTrigger className="w-full">
-                                    <SelectValue>
-                                        {KEY_TTL_LABEL_MAP.get(keyTtlMs) ?? keyTtlMs}
-                                    </SelectValue>
+                                    <SelectValue>{KEY_TTL_LABEL_MAP.get(keyTtlMs) ?? keyTtlMs}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent alignItemWithTrigger={false}>
                                     {KEY_TTL_OPTIONS.map((opt) => (
