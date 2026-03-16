@@ -1,5 +1,7 @@
 import { type Browser, chromium } from 'playwright';
 
+export { getVariantPixelSize } from '@/lib/render/constants';
+
 let browser: Browser | null = null;
 
 async function getBrowser(): Promise<Browser> {
@@ -9,46 +11,34 @@ async function getBrowser(): Promise<Browser> {
     return browser;
 }
 
-export interface ThumbnailOptions {
+export interface ScreenshotOptions {
+    /** URL path to navigate to (e.g. `/org/slug/devices/render/id`) */
     renderPath: string;
     width: number;
     height: number;
-    cookieHeader?: string;
     origin: string;
-    hostname: string;
+    /** CSS selector to wait for before screenshotting. Defaults to `[data-rendered]`. */
     waitForSelector?: string;
 }
 
-export async function generateThumbnail(options: ThumbnailOptions): Promise<ArrayBuffer> {
-    const {
-        renderPath,
-        width,
-        height,
-        cookieHeader = '',
-        origin,
-        hostname,
-        waitForSelector = '[data-rendered]',
-    } = options;
+/**
+ * Generate a screenshot by navigating Playwright to a render page.
+ * Authenticates with the internal service token via Authorization header.
+ * Single rendering function for all screenshot needs (devices, frames, templates).
+ */
+export async function generateScreenshot(options: ScreenshotOptions): Promise<ArrayBuffer> {
+    const { renderPath, width, height, origin, waitForSelector = '[data-rendered]' } = options;
 
-    const cookies = cookieHeader
-        .split(';')
-        .map((c) => {
-            const [name, ...rest] = c.trim().split('=');
-            return {
-                name: name.trim(),
-                value: rest.join('=').trim(),
-                domain: hostname,
-                path: '/',
-            };
-        })
-        .filter((c) => c.name);
+    const serviceToken = process.env.INTERNAL_SERVICE_TOKEN;
+    if (!serviceToken) throw new Error('INTERNAL_SERVICE_TOKEN is required for internal rendering');
 
     const b = await getBrowser();
-    const context = await b.newContext({ viewport: { width, height } });
-
-    if (cookies.length > 0) {
-        await context.addCookies(cookies);
-    }
+    const context = await b.newContext({
+        viewport: { width, height },
+        extraHTTPHeaders: {
+            authorization: `Bearer internal:${serviceToken}`,
+        },
+    });
 
     const page = await context.newPage();
     await page.goto(`${origin}${renderPath}`);

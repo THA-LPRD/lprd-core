@@ -31,7 +31,10 @@ export async function authenticatePlugin(request: Request): Promise<Authenticate
         throw new AuthError('Missing or invalid Authorization header', 401);
     }
 
-    const token = authHeader.slice(7);
+    let token = authHeader.slice(7);
+    if (token.startsWith('plugin:')) {
+        token = token.slice(7);
+    }
 
     let pluginId: string;
     let issuedAt: number;

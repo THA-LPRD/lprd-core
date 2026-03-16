@@ -9,7 +9,6 @@ import { VariantBar } from './variant-bar';
 import { PreviewPanel } from './preview-panel';
 import { CodePanel } from './code-panel';
 import { AddVariantDialog } from './add-variant-dialog';
-import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
 
 import type { TemplateVariant } from '@/lib/template';
@@ -25,13 +24,6 @@ type TemplateDoc = {
     preferredVariantIndex: number;
     thumbnailStorageId?: Id<'_storage'>;
 };
-
-function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
-    if (variant.type === 'content') {
-        return { width: variant.w * DEFAULT_CELL_SIZE, height: variant.h * DEFAULT_CELL_SIZE };
-    }
-    return { width: GRID_COLS * DEFAULT_CELL_SIZE, height: GRID_ROWS * DEFAULT_CELL_SIZE };
-}
 
 export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; orgSlug: string }) {
     const isGlobal = template.scope === 'global';
@@ -77,21 +69,10 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
     // Generate thumbnail via server-side Playwright screenshot
     const generateThumbnail = React.useCallback(async (): Promise<Id<'_storage'> | null> => {
         try {
-            const preferred = variants[preferredVariantIndex];
-            if (!preferred) return null;
-
-            const { width, height } = getPreviewSize(preferred);
-
             const res = await fetch('/api/v2/templates/createThumbnail', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    templateId: template._id,
-                    orgSlug,
-                    variantIndex: preferredVariantIndex,
-                    width,
-                    height,
-                }),
+                body: JSON.stringify({ templateId: template._id, orgSlug }),
             });
 
             if (!res.ok) return null;
@@ -112,7 +93,7 @@ export function TemplateEditor({ template, orgSlug }: { template: TemplateDoc; o
             console.error('Failed to generate thumbnail:', error);
             return null;
         }
-    }, [template._id, orgSlug, variants, preferredVariantIndex, generateUploadUrl]);
+    }, [template._id, orgSlug, generateUploadUrl]);
 
     const handleSave = async () => {
         if (isGlobal || !isDirty) return;

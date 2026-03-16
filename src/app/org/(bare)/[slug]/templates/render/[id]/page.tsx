@@ -19,13 +19,13 @@ function getVariantDimensions(variant: TemplateVariant): { widthCells: number; h
 
 export default function TemplateRenderPage() {
     const params = useParams<{ id: string }>();
-    const template = useQuery(api.templates.crud.getById, { id: params.id as Id<'templates'> });
+    const bundle = useQuery(api.templates.crud.getRenderBundle, { templateId: params.id as Id<'templates'> });
     const [rendered, setRendered] = React.useState(false);
 
-    if (!template) return null;
+    if (!bundle) return null;
 
-    const sampleData = (template.sampleData as Record<string, unknown>) ?? {};
-    const preferred = (template.variants as TemplateVariant[])[template.preferredVariantIndex];
+    const sampleData = (bundle.sampleData as Record<string, unknown>) ?? {};
+    const preferred = (bundle.variants as TemplateVariant[])[bundle.preferredVariantIndex];
     const { widthCells, heightCells } = preferred
         ? getVariantDimensions(preferred)
         : { widthCells: GRID_COLS, heightCells: GRID_ROWS };
@@ -33,7 +33,7 @@ export default function TemplateRenderPage() {
     return (
         <RenderPageShell rendered={rendered}>
             <ShadowLayer
-                html={template.templateHtml}
+                html={bundle.templateHtml}
                 sampleData={sampleData}
                 width={widthCells}
                 height={heightCells}

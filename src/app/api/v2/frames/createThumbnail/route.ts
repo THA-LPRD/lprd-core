@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateThumbnail } from '@/lib/render/thumbnail';
+import { generateScreenshot } from '@/lib/render/thumbnail';
 
 export async function POST(request: Request) {
     try {
@@ -10,15 +10,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'frameId, orgSlug, width, and height are required' }, { status: 400 });
         }
 
-        const { origin, hostname } = new URL(request.url);
+        const { origin } = new URL(request.url);
 
-        const png = await generateThumbnail({
+        const png = await generateScreenshot({
             renderPath: `/org/${orgSlug}/frames/render/${frameId}`,
             width,
             height,
-            cookieHeader: request.headers.get('cookie') ?? '',
             origin,
-            hostname,
         });
 
         return new Response(png, {

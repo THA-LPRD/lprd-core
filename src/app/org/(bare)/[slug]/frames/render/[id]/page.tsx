@@ -14,44 +14,14 @@ const CANVAS_H = GRID_ROWS * DEFAULT_CELL_SIZE;
 
 export default function FrameRenderPage() {
     const params = useParams<{ id: string }>();
-    const frame = useQuery(api.frames.getById, { id: params.id as Id<'frames'> });
+    const bundle = useQuery(api.frames.getRenderBundle, { frameId: params.id as Id<'frames'> });
 
-    // Collect all template IDs we need
-    const templateIds = React.useMemo(() => {
-        if (!frame) return [];
-        const ids = new Set<string>();
-        for (const w of frame.widgets) {
-            if (w.templateId) ids.add(w.templateId);
-        }
-        if (frame.background) ids.add(frame.background.templateId);
-        if (frame.foreground) ids.add(frame.foreground.templateId);
-        return Array.from(ids);
-    }, [frame]);
+    if (!bundle) return null;
 
-    // Fetch all templates for this org to get their HTML
-    const templates = useQuery(
-        api.templates.crud.listByOrganization,
-        frame ? { organizationId: frame.organizationId } : 'skip',
-    );
-
-    const templateMap = React.useMemo(() => {
-        const map = new Map<string, { templateHtml: string; sampleData?: unknown }>();
-        if (!templates) return map;
-        for (const t of templates) {
-            if (templateIds.includes(t._id)) {
-                map.set(t._id, { templateHtml: t.templateHtml, sampleData: t.sampleData });
-            }
-        }
-        return map;
-    }, [templates, templateIds]);
-
-    // Mark as rendered when frame and all templates are loaded
-    const allLoaded = !!(frame && templates);
-
-    if (!frame) return null;
+    const { frame, templates } = bundle;
 
     return (
-        <RenderPageShell rendered={allLoaded}>
+        <RenderPageShell rendered>
             <div
                 style={{
                     position: 'relative',
@@ -64,7 +34,7 @@ export default function FrameRenderPage() {
                 {/* Background layer */}
                 {frame.background ? (
                     (() => {
-                        const doc = templateMap.get(frame.background.templateId);
+                        const doc = templates[frame.background.templateId];
                         if (!doc) return null;
                         return (
                             <ShadowLayer
@@ -87,7 +57,7 @@ export default function FrameRenderPage() {
                 {/* Content widgets */}
                 {frame.widgets.map((widget) => {
                     if (!widget.templateId) return null;
-                    const doc = templateMap.get(widget.templateId);
+                    const doc = templates[widget.templateId];
                     if (!doc) return null;
                     return (
                         <ShadowLayer
@@ -114,7 +84,7 @@ export default function FrameRenderPage() {
                 {/* Foreground layer */}
                 {frame.foreground &&
                     (() => {
-                        const doc = templateMap.get(frame.foreground.templateId);
+                        const doc = templates[frame.foreground.templateId];
                         if (!doc) return null;
                         return (
                             <ShadowLayer

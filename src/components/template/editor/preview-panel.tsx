@@ -2,7 +2,7 @@
 
 import { ShadowPreview } from './shadow-preview';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { GRID_COLS, GRID_ROWS, getVariantPixelSize } from '@/lib/render/constants';
 
 import type { TemplateVariant } from '@/lib/template';
 
@@ -13,13 +13,8 @@ function getVariantCells(variant: TemplateVariant): { widthCells: number; height
     return { widthCells: GRID_COLS, heightCells: GRID_ROWS };
 }
 
-function getPreviewSize(variant: TemplateVariant): { width: number; height: number } {
-    const { widthCells, heightCells } = getVariantCells(variant);
-    return { width: widthCells * DEFAULT_CELL_SIZE, height: heightCells * DEFAULT_CELL_SIZE };
-}
-
 function getSizeLabel(variant: TemplateVariant): string {
-    const { width, height } = getPreviewSize(variant);
+    const { width, height } = getVariantPixelSize(variant);
     if (variant.type === 'content') {
         return `${variant.w}×${variant.h} (${width} × ${height} px)`;
     }
@@ -39,7 +34,7 @@ export function PreviewPanel({
     activeVariant: TemplateVariant;
 }) {
     const { widthCells, heightCells } = getVariantCells(activeVariant);
-    const { width, height } = getPreviewSize(activeVariant);
+    const { width, height } = getVariantPixelSize(activeVariant);
 
     return (
         <div className="flex flex-col items-center gap-3 p-4 h-full">

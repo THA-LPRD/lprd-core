@@ -1,9 +1,10 @@
 import { v } from 'convex/values';
-import { mutation, query } from '../_generated/server';
+import { internalMutation, internalQuery, mutation, query } from '../_generated/server';
 import { internal } from '../_generated/api';
 import { templateVariant } from '../schema';
 import { getPermissions } from '../lib/acl';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
+import { generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from '../lib/storage';
 import { getCurrentUser, getMembership } from '../users';
 
 /**
@@ -250,14 +251,7 @@ export const storeThumbnail = mutation({
         const perms = getPermissions(user, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
-        if (template.thumbnailStorageId) {
-            await ctx.storage.delete(template.thumbnailStorageId);
-        }
-
-        await ctx.db.patch(template._id, {
-            thumbnailStorageId: args.storageId,
-            updatedAt: Date.now(),
-        });
+        await replaceThumbnail(ctx, args.id, args.storageId);
     },
 });
 
@@ -269,6 +263,59 @@ export const generateUploadUrl = mutation({
     handler: async (ctx) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
-        return ctx.storage.generateUploadUrl();
+        return generateUploadUrlImpl(ctx);
+    },
+});
+
+/**
+ * Get everything needed to render a template in one query.
+ * No auth — used only by the Playwright render page.
+ */
+export const getRenderBundle = query({
+    args: { templateId: v.id('templates') },
+    handler: async (ctx, args) => {
+        const template = await ctx.db.get(args.templateId);
+        if (!template) return null;
+        return {
+            templateHtml: template.templateHtml,
+            sampleData: template.sampleData,
+            variants: template.variants,
+            preferredVariantIndex: template.preferredVariantIndex,
+        };
+    },
+});
+
+// --- Internal functions (no user auth, called via admin ConvexHttpClient) ---
+
+/**
+ * Get a template by ID without auth. Used by server-side operations.
+ */
+export const getByIdInternal = internalQuery({
+    args: { id: v.id('templates') },
+    handler: async (ctx, args) => {
+        return ctx.db.get(args.id);
+    },
+});
+
+/**
+ * Generate an upload URL for internal use (no user auth required).
+ */
+export const generateUploadUrlInternal = internalMutation({
+    args: {},
+    handler: async (ctx) => {
+        return generateUploadUrlImpl(ctx);
+    },
+});
+
+/**
+ * Store a thumbnail on a template. No user auth — called from plugin API routes via admin client.
+ */
+export const storeThumbnailInternal = internalMutation({
+    args: {
+        id: v.id('templates'),
+        storageId: v.id('_storage'),
+    },
+    handler: async (ctx, args) => {
+        await replaceThumbnail(ctx, args.id, args.storageId);
     },
 });

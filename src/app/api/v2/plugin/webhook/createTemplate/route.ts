@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
 import { asPublic, getConvexClient } from '@/lib/convex-server';
-import { authenticatePlugin, requireScope, AuthError } from '@/lib/plugin/auth';
+import { authenticatePlugin, AuthError, requireScope } from '@/lib/plugin/auth';
+import { generateScreenshot, getVariantPixelSize } from '@/lib/render/thumbnail';
 
 /**
  * POST /api/v2/plugin/webhook/createTemplate
@@ -35,6 +36,40 @@ export async function POST(request: Request) {
             preferredVariantIndex: preferred_variant_index,
             version: version ?? undefined,
         });
+
+        // Generate and store thumbnail (best-effort — don't fail the request)
+        try {
+            const preferred = variants[preferred_variant_index];
+            if (preferred) {
+                const { origin } = new URL(request.url);
+                const { width, height } = getVariantPixelSize(preferred);
+
+                const png = await generateScreenshot({
+                    renderPath: `/org/_internal/templates/render/${result.id}`,
+                    width,
+                    height,
+                    origin,
+                });
+
+                const uploadUrl: string = await convex.mutation(
+                    asPublic(internal.templates.crud.generateUploadUrlInternal),
+                    {},
+                );
+                const uploadRes = await fetch(uploadUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'image/png' },
+                    body: png,
+                });
+                const { storageId } = await uploadRes.json();
+
+                await convex.mutation(asPublic(internal.templates.crud.storeThumbnailInternal), {
+                    id: result.id,
+                    storageId,
+                });
+            }
+        } catch (err) {
+            console.warn('Thumbnail generation failed for plugin template:', err);
+        }
 
         const status = result.created ? 201 : 200;
         return NextResponse.json({ id: result.id }, { status });

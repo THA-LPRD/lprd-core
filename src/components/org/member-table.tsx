@@ -29,7 +29,7 @@ type Member = {
         _id: Id<'users'>;
         name?: string;
         email: string;
-        avatarUrl?: string;
+        avatarUrl?: string | null;
     } | null;
     role: 'orgAdmin' | 'user';
 };
@@ -111,7 +111,7 @@ export function MemberTable({
                         >
                             <div className="flex items-center gap-3 min-w-0">
                                 <Avatar className="size-9">
-                                    <AvatarImage src={member.user.avatarUrl} alt={member.user.name} />
+                                    <AvatarImage src={member.user.avatarUrl ?? undefined} alt={member.user.name} />
                                     <AvatarFallback>{getInitials(member.user.name, member.user.email)}</AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">

@@ -16,6 +16,7 @@ import type * as frames from "../frames.js";
 import type * as http from "../http.js";
 import type * as lib_acl from "../lib/acl.js";
 import type * as lib_deviceLogs from "../lib/deviceLogs.js";
+import type * as lib_storage from "../lib/storage.js";
 import type * as lib_template from "../lib/template.js";
 import type * as lib_template_data from "../lib/template_data.js";
 import type * as organizations from "../organizations.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "lib/acl": typeof lib_acl;
   "lib/deviceLogs": typeof lib_deviceLogs;
+  "lib/storage": typeof lib_storage;
   "lib/template": typeof lib_template;
   "lib/template_data": typeof lib_template_data;
   organizations: typeof organizations;

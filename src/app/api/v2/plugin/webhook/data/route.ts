@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
 import { asPublic, getConvexClient } from '@/lib/convex-server';
-import { generateThumbnail } from '@/lib/render/thumbnail';
+import { generateScreenshot } from '@/lib/render/thumbnail';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { authenticatePlugin, AuthError, requireOrgAccess, requireScope } from '@/lib/plugin/auth';
 
@@ -55,17 +55,16 @@ export async function POST(request: Request) {
         });
 
         // Render affected devices in parallel
-        const { origin, hostname } = new URL(request.url);
+        const { origin } = new URL(request.url);
 
         await Promise.all(
             affectedDeviceIds.map(async (deviceId: string) => {
                 try {
-                    const png = await generateThumbnail({
+                    const png = await generateScreenshot({
                         renderPath: `/org/${result.orgSlug}/devices/render/${deviceId}`,
                         width: WIDTH,
                         height: HEIGHT,
                         origin,
-                        hostname,
                     });
 
                     // Upload PNG to Convex storage

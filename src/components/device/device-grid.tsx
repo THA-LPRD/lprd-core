@@ -5,13 +5,13 @@ import type { Id } from '@convex/dataModel';
 
 type Device = {
     _id: Id<'devices'>;
-    id: string;
     organizationId: Id<'organizations'>;
     name: string;
     description?: string;
     tags: string[];
     status: 'pending' | 'active';
     lastSeen?: number;
+    currentUrl?: string | null;
     createdAt: number;
     updatedAt: number;
 };

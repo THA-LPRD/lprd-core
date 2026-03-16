@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { internalMutation, internalQuery, query } from '../_generated/server';
 import { internal } from '../_generated/api';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
+import { generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
 import { getCurrentUser, getMembership } from '../users';
 import { getPermissions } from '../lib/acl';
 
@@ -91,7 +92,7 @@ export const storeWebhookData = internalMutation({
 export const generateRenderUploadUrl = internalMutation({
     args: {},
     handler: async (ctx) => {
-        return ctx.storage.generateUploadUrl();
+        return generateUploadUrlImpl(ctx);
     },
 });
 

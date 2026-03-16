@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, query } from '../_generated/server';
-import type { Id } from '../_generated/dataModel';
 import { getCurrentUser } from '../users';
+import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
 
 /**
  * Set the next render for a device. Cleans up old next blob if present.
@@ -35,7 +35,7 @@ export const generateUploadUrl = mutation({
     handler: async (ctx) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
-        return ctx.storage.generateUploadUrl();
+        return generateUploadUrlImpl(ctx);
     },
 });
 
@@ -43,7 +43,6 @@ export const generateUploadUrl = mutation({
  * Get everything needed to render a device in one query.
  * No auth — used only by the Playwright render page.
  * Returns device, frame, templates, and resolved binding data.
- * TODO: should be removed in favor of auth-protected fetches
  */
 export const getRenderBundle = query({
     args: { deviceId: v.id('devices') },
@@ -62,14 +61,7 @@ export const getRenderBundle = query({
         if (frame.background) templateIds.add(frame.background.templateId);
         if (frame.foreground) templateIds.add(frame.foreground.templateId);
 
-        // Fetch templates
-        const templates: Record<string, { templateHtml: string; sampleData?: unknown }> = {};
-        for (const tid of templateIds) {
-            const t = await ctx.db.get(tid as Id<'templates'>);
-            if (t) {
-                templates[tid] = { templateHtml: t.templateHtml, sampleData: t.sampleData };
-            }
-        }
+        const templates = await fetchTemplateMap(ctx, templateIds);
 
         // Resolve binding data
         const bindingData: Record<string, Record<string, unknown>> = {};

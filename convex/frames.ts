@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { frameLayer, frameWidget } from './schema';
 import { getPermissions } from './lib/acl';
+import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from './lib/storage';
 import { getCurrentUser, getMembership } from './users';
 
 /**
@@ -226,14 +227,7 @@ export const storeThumbnail = mutation({
         const perms = getPermissions(user, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
-        if (frame.thumbnailStorageId) {
-            await ctx.storage.delete(frame.thumbnailStorageId);
-        }
-
-        await ctx.db.patch(frame._id, {
-            thumbnailStorageId: args.storageId,
-            updatedAt: Date.now(),
-        });
+        await replaceThumbnail(ctx, args.id, args.storageId);
     },
 });
 
@@ -245,6 +239,28 @@ export const generateUploadUrl = mutation({
     handler: async (ctx) => {
         const user = await getCurrentUser(ctx);
         if (!user) throw new Error('Not authenticated');
-        return ctx.storage.generateUploadUrl();
+        return generateUploadUrlImpl(ctx);
+    },
+});
+
+/**
+ * Get everything needed to render a frame in one query.
+ * No auth — used only by the Playwright render page.
+ */
+export const getRenderBundle = query({
+    args: { frameId: v.id('frames') },
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.frameId);
+        if (!frame) return null;
+
+        const templateIds = new Set<string>();
+        for (const w of frame.widgets) {
+            if (w.templateId) templateIds.add(w.templateId);
+        }
+        if (frame.background) templateIds.add(frame.background.templateId);
+        if (frame.foreground) templateIds.add(frame.foreground.templateId);
+
+        const templates = await fetchTemplateMap(ctx, templateIds);
+        return { frame, templates };
     },
 });
