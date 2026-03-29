@@ -2,7 +2,7 @@ import type { Id } from '@convex/dataModel';
 
 export type Binding = {
     widgetId: string;
-    pluginId: Id<'plugins'>;
+    applicationId: Id<'applications'>;
     topic: string;
     entry: string;
 };

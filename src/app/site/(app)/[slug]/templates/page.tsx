@@ -8,7 +8,7 @@ import { TemplateGrid } from '@/components/template/template-grid';
 import { TemplateForm } from '@/components/template/template-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { buildEntitySlug } from '@/lib/slug';

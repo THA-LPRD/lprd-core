@@ -1,25 +1,22 @@
-'use client';
-
-import { useQuery } from 'convex/react';
-import { api } from '@convex/api';
+import { fetchQuery } from 'convex/nextjs';
 import { redirect } from 'next/navigation';
+import { api } from '@convex/api';
+import { withAuth } from '@workos-inc/authkit-nextjs';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const user = useQuery(api.users.me);
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+    const auth = await withAuth();
 
-    if (user === undefined) {
-        return (
-            <div className="flex items-center justify-center h-screen w-screen">
-                <div className="animate-pulse text-muted-foreground">Loading...</div>
-            </div>
-        );
+    if (!auth.user || !auth.accessToken) {
+        redirect('/login');
     }
 
-    if (!user || user.role !== 'appAdmin') {
-        redirect('/');
+    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
+
+    if (!actor || actor.role !== 'appAdmin') {
+        redirect('/site');
     }
 
     return (

@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from '../_generated/server';
-import { getCurrentUser } from '../users';
+import { getCurrentActor } from '../actors';
 import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
 
 /**
@@ -33,8 +33,8 @@ export const setNext = mutation({
 export const generateUploadUrl = mutation({
     args: {},
     handler: async (ctx) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
         return generateUploadUrlImpl(ctx);
     },
 });
@@ -69,9 +69,9 @@ export const getRenderBundle = query({
             for (const binding of device.dataBindings) {
                 const record = await ctx.db
                     .query('pluginData')
-                    .withIndex('by_plugin_site_topic_entry', (q) =>
+                    .withIndex('by_application_site_topic_entry', (q) =>
                         q
-                            .eq('pluginId', binding.pluginId)
+                            .eq('applicationId', binding.applicationId)
                             .eq('siteId', device.siteId)
                             .eq('topic', binding.topic)
                             .eq('entry', binding.entry),

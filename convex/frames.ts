@@ -3,7 +3,7 @@ import { mutation, query } from './_generated/server';
 import { frameLayer, frameWidget } from './schema';
 import { getPermissions } from './lib/acl';
 import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from './lib/storage';
-import { getCurrentUser, getMembership } from './users';
+import { getCurrentActor, getMembership } from './actors';
 
 /**
  * List all frames for a site.
@@ -12,11 +12,11 @@ import { getCurrentUser, getMembership } from './users';
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.view) return [];
 
         const frames = await ctx.db
@@ -43,14 +43,14 @@ export const listBySite = query({
 export const getById = query({
     args: { id: v.id('frames') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return null;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
 
         const frame = await ctx.db.get(args.id);
         if (!frame) return null;
 
-        const membership = await getMembership(ctx, user._id, frame.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, frame.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.view) return null;
 
         let thumbnailUrl: string | null = null;
@@ -77,17 +77,17 @@ export const create = mutation({
         foreground: v.optional(frameLayer),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         const now = Date.now();
         return ctx.db.insert('frames', {
             siteId: args.siteId,
-            createdBy: user._id,
+            createdBy: actor._id,
             name: args.name,
             description: args.description,
             widgets: args.widgets,
@@ -118,14 +118,14 @@ export const update = mutation({
         clearForeground: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, frame.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         const { id, clearBackground, clearBackgroundColor, clearForeground, ...updates } = args;
@@ -154,14 +154,14 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('frames') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, frame.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         if (frame.thumbnailStorageId) {
@@ -182,11 +182,11 @@ export const duplicate = mutation({
         siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         const source = await ctx.db.get(args.id);
@@ -195,7 +195,7 @@ export const duplicate = mutation({
         const now = Date.now();
         return ctx.db.insert('frames', {
             siteId: args.siteId,
-            createdBy: user._id,
+            createdBy: actor._id,
             name: `${source.name} (Copy)`,
             description: source.description,
             widgets: source.widgets,
@@ -217,14 +217,14 @@ export const storeThumbnail = mutation({
         storageId: v.id('_storage'),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, user._id, frame.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, frame.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.frame.manage) throw new Error('Forbidden');
 
         await replaceThumbnail(ctx, args.id, args.storageId);
@@ -237,8 +237,8 @@ export const storeThumbnail = mutation({
 export const generateUploadUrl = mutation({
     args: {},
     handler: async (ctx) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
         return generateUploadUrlImpl(ctx);
     },
 });

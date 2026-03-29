@@ -10,7 +10,7 @@ import type { Id } from '@convex/dataModel';
 const NONE = '__none__';
 
 export type DataSource = {
-    pluginId: Id<'plugins'>;
+    applicationId: Id<'applications'>;
     topic: string;
     entry: string;
 };
@@ -25,7 +25,7 @@ export function DataSourcePicker({
     onChange: (source: DataSource) => void;
 }) {
     const plugins = useQuery(api.plugins.data.listPluginsWithTopics, { siteId });
-    const [selectedPluginId, setSelectedPluginId] = React.useState<string>(value?.pluginId ?? NONE);
+    const [selectedPluginId, setSelectedPluginId] = React.useState<string>(value?.applicationId ?? NONE);
     const [selectedTopic, setSelectedTopic] = React.useState<string>(value?.topic ?? NONE);
     const [selectedEntry, setSelectedEntry] = React.useState<string>(value?.entry ?? NONE);
 
@@ -35,7 +35,7 @@ export function DataSourcePicker({
     const entries = useQuery(
         api.plugins.data.listEntries,
         selectedPluginId !== NONE && selectedTopic !== NONE
-            ? { pluginId: selectedPluginId as Id<'plugins'>, siteId, topic: selectedTopic }
+            ? { pluginId: selectedPluginId as Id<'applications'>, siteId, topic: selectedTopic }
             : 'skip',
     );
 
@@ -91,7 +91,7 @@ export function DataSourcePicker({
                             Select topic
                         </SelectItem>
                         {topics.map((t) => (
-                            <SelectItem key={t.id} value={t.key}>
+                            <SelectItem key={t.key} value={t.key}>
                                 {t.label}
                             </SelectItem>
                         ))}
@@ -108,7 +108,7 @@ export function DataSourcePicker({
                         setSelectedEntry(entry);
                         if (selectedPluginId !== NONE && selectedTopic !== NONE && entry !== NONE) {
                             onChange({
-                                pluginId: selectedPluginId as Id<'plugins'>,
+                                applicationId: selectedPluginId as Id<'applications'>,
                                 topic: selectedTopic,
                                 entry,
                             });

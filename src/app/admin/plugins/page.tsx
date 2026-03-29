@@ -5,16 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PluginStatusBadge, PluginHealthBadge } from '@/components/plugin/status-badge';
+import { PluginStatusBadge } from '@/components/plugin/status-badge';
 import { PluginListFilter, usePluginFilters } from '@/components/plugin/plugin-list-filter';
 import { CreatePluginDialog } from '@/components/plugin/create-dialog';
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 
 export default function AdminPluginsPage() {
     const router = useRouter();
-    const plugins = useQuery(api.plugins.admin.listAll);
+    const plugins = useQuery(api.plugins.applications.listAll);
     const [showCreate, setShowCreate] = React.useState(false);
     const { search, statusFilters, filteredPlugins, setSearch, toggleStatus, selectAll } = usePluginFilters(plugins);
 
@@ -26,23 +27,25 @@ export default function AdminPluginsPage() {
         <div className="p-6">
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Plugins</h1>
-                    <p className="text-muted-foreground">Manage platform plugins</p>
+                    <h1 className="text-2xl font-bold tracking-tight">Service Accounts</h1>
+                    <p className="text-muted-foreground">Manage plugin and internal service accounts</p>
                 </div>
                 <Button onClick={() => setShowCreate(true)}>
                     <Plus className="size-4 mr-2" />
-                    Create Plugin
+                    Create Service Account
                 </Button>
             </div>
 
             {plugins.length === 0 ? (
-                <Empty>
+                <Empty className="pt-24">
                     <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            <Plus />
-                        </EmptyMedia>
-                        <EmptyTitle>No plugins</EmptyTitle>
-                        <EmptyDescription>Create a plugin slot to get started.</EmptyDescription>
+                        <button type="button" onClick={() => setShowCreate(true)} className="cursor-pointer">
+                            <EmptyMedia variant="icon">
+                                <Plus />
+                            </EmptyMedia>
+                        </button>
+                        <EmptyTitle>No service accounts</EmptyTitle>
+                        <EmptyDescription>Create one to get started.</EmptyDescription>
                     </EmptyHeader>
                 </Empty>
             ) : (
@@ -58,7 +61,7 @@ export default function AdminPluginsPage() {
                     {filteredPlugins.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
-                                <EmptyTitle>No matching plugins</EmptyTitle>
+                                <EmptyTitle>No matching service accounts</EmptyTitle>
                                 <EmptyDescription>Try adjusting your search or filter.</EmptyDescription>
                             </EmptyHeader>
                         </Empty>
@@ -67,36 +70,40 @@ export default function AdminPluginsPage() {
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Name</TableHead>
+                                    <TableHead>Type</TableHead>
                                     <TableHead className="w-28">Status</TableHead>
-                                    <TableHead>Health</TableHead>
-                                    <TableHead>Version</TableHead>
-                                    <TableHead>Base URL</TableHead>
+                                    <TableHead>Scopes</TableHead>
+                                    <TableHead>Created</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredPlugins.map((plugin) => (
+                                {filteredPlugins.map((account) => (
                                     <TableRow
-                                        key={plugin._id}
+                                        key={account._id}
                                         className="cursor-pointer"
-                                        onClick={() => router.push(`/admin/plugins/${plugin._id}`)}
+                                        onClick={() => router.push(`/admin/plugins/${account._id}`)}
                                     >
                                         <TableCell>
-                                            <span className="font-medium">{plugin.name}</span>
-                                            {plugin.description && (
+                                            <span className="font-medium">{account.name}</span>
+                                            {account.description && (
                                                 <p className="text-sm text-muted-foreground truncate max-w-xs">
-                                                    {plugin.description}
+                                                    {account.description}
                                                 </p>
                                             )}
                                         </TableCell>
                                         <TableCell>
-                                            <PluginStatusBadge status={plugin.status} />
+                                            <Badge variant="outline" className="capitalize">
+                                                {account.type}
+                                            </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <PluginHealthBadge status={plugin.healthStatus} />
+                                            <PluginStatusBadge status={account.status} />
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground">{plugin.version}</TableCell>
-                                        <TableCell className="text-muted-foreground text-sm truncate max-w-xs">
-                                            {plugin.baseUrl || '-'}
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {account.scopes?.join(', ') || '-'}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm">
+                                            {new Date(account.createdAt).toLocaleDateString()}
                                         </TableCell>
                                     </TableRow>
                                 ))}

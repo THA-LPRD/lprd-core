@@ -1,38 +1,31 @@
-'use client';
+import { fetchQuery } from 'convex/nextjs';
+import { redirect } from 'next/navigation';
+import { api } from '@convex/api';
+import { withAuth } from '@workos-inc/authkit-nextjs';
 
-import { useRouter } from 'next/navigation';
-import { Authenticated, AuthLoading, Unauthenticated } from 'convex/react';
-import { Spinner } from '@/components/ui/spinner';
-import { useEffect } from 'react';
+export default async function RootPage() {
+    const auth = await withAuth();
 
-function AuthenticatedRedirect() {
-    const router = useRouter();
-    useEffect(() => {
-        router.push('/site/');
-    }, [router]);
-    return null;
-}
+    if (!auth.user || !auth.accessToken) {
+        redirect('/login');
+    }
 
-function UnauthenticatedRedirect() {
-    const router = useRouter();
-    useEffect(() => {
-        router.push('/login');
-    }, [router]);
-    return null;
-}
+    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
 
-export default function RootPage() {
-    return (
-        <main className="flex-1 min-h-screen flex items-center justify-center">
-            <AuthLoading>
-                <Spinner className="size-8" />
-            </AuthLoading>
-            <Authenticated>
-                <AuthenticatedRedirect />
-            </Authenticated>
-            <Unauthenticated>
-                <UnauthenticatedRedirect />
-            </Unauthenticated>
-        </main>
-    );
+    if (!actor) {
+        redirect('/login');
+    }
+
+    if (actor.role === 'appAdmin') {
+        redirect('/admin');
+    }
+
+    const sites = await fetchQuery(api.sites.list, {}, { token: auth.accessToken });
+    const lastSite = actor.lastSiteSlug ? sites.find((site) => site.slug === actor.lastSiteSlug) : null;
+
+    if (sites.length > 0) {
+        redirect(`/site/${(lastSite ?? sites[0]).slug}`);
+    }
+
+    redirect('/site');
 }

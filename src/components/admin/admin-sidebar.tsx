@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Plug, Shield } from 'lucide-react';
+import { LayoutDashboard, Bot, Shield } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import Link from 'next/link';
 
-import { NavUser } from '@/components/nav-user';
+import { NavActor } from '@/components/nav-actor';
 import {
     Sidebar,
     SidebarContent,
@@ -26,7 +26,7 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
     const pathname = usePathname();
     const router = useRouter();
     const { signOut } = useAuth();
-    const user = useQuery(api.users.me);
+    const actor = useQuery(api.actors.me);
 
     const handleSignOut = async () => {
         await signOut();
@@ -41,9 +41,9 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
             isActive: pathname === '/admin',
         },
         {
-            title: 'Plugins',
+            title: 'Service Accounts',
             url: '/admin/plugins',
-            icon: Plug,
+            icon: Bot,
             isActive: pathname.startsWith('/admin/plugins'),
         },
     ];
@@ -85,13 +85,13 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                 </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-                {user && (
-                    <NavUser
-                        user={{
-                            name: user.name,
-                            email: user.email,
-                            avatar: user.avatarUrl ?? undefined,
-                            role: user.role,
+                {actor && (
+                    <NavActor
+                        actor={{
+                            name: actor.name,
+                            email: actor.email ?? '',
+                            avatar: actor.avatarUrl ?? undefined,
+                            role: actor.role,
                         }}
                         onSignOut={handleSignOut}
                         context="admin"

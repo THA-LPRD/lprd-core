@@ -2,35 +2,44 @@ import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
 import { internalMutation, internalQuery, query } from '../_generated/server';
 import { healthCheckStatus } from '../schema';
-import { getCurrentUser } from '../users';
+import { getCurrentActor } from '../actors';
 import { getPermissions } from '../lib/acl';
 
 /** Number of consecutive failures before marking unhealthy */
 const UNHEALTHY_THRESHOLD = 3;
 
 /**
- * List active external plugins that are overdue for a health check.
- * System plugins are excluded — they don't have external endpoints.
- * Called by the worker scheduler on a Xs interval.
+ * List active plugins that are overdue for a health check.
+ * Called by the worker scheduler on a fixed interval.
  */
 export const listDueForHealthCheck = internalQuery({
     args: {},
     handler: async (ctx) => {
         const now = Date.now();
-        const activePlugins = await ctx.db
-            .query('plugins')
+        const activePluginApps = await ctx.db
+            .query('applications')
             .withIndex('by_status', (q) => q.eq('status', 'active'))
+            .filter((q) => q.eq(q.field('type'), 'plugin'))
             .collect();
 
-        return activePlugins
-            .filter((p) => p.type !== 'system')
-            .filter((p) => now - (p.lastHealthCheckAt ?? 0) >= p.healthCheckIntervalMs)
-            .map((p) => ({
-                _id: p._id,
-                baseUrl: p.baseUrl,
-                healthCheckIntervalMs: p.healthCheckIntervalMs,
-                lastHealthCheckAt: p.lastHealthCheckAt,
-            }));
+        const results = [];
+        for (const app of activePluginApps) {
+            const plugin = await ctx.db
+                .query('pluginProfiles')
+                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
+                .unique();
+
+            if (!plugin) continue;
+            if (now - (plugin.lastHealthCheckAt ?? 0) < plugin.healthCheckIntervalMs) continue;
+
+            results.push({
+                _id: app._id,
+                baseUrl: plugin.baseUrl,
+                healthCheckIntervalMs: plugin.healthCheckIntervalMs,
+                lastHealthCheckAt: plugin.lastHealthCheckAt,
+            });
+        }
+        return results;
     },
 });
 
@@ -39,18 +48,18 @@ export const listDueForHealthCheck = internalQuery({
  */
 export const listByPlugin = query({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return { page: [], isDone: true, continueCursor: '' };
-        const perms = getPermissions(user, null);
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return { page: [], isDone: true, continueCursor: '' };
+        const perms = getPermissions(actor, null);
         if (!perms.plugin.manage) return { page: [], isDone: true, continueCursor: '' };
 
         return await ctx.db
             .query('pluginHealthChecks')
-            .withIndex('by_plugin_and_time', (q) => q.eq('pluginId', args.pluginId))
+            .withIndex('by_application_and_time', (q) => q.eq('applicationId', args.pluginId))
             .order('desc')
             .paginate(args.paginationOpts);
     },
@@ -67,7 +76,7 @@ export const listByPlugin = query({
  */
 export const recordHealthCheck = internalMutation({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         status: healthCheckStatus,
         responseTimeMs: v.optional(v.number()),
         pluginVersion: v.optional(v.string()),
@@ -77,7 +86,7 @@ export const recordHealthCheck = internalMutation({
         const now = Date.now();
 
         await ctx.db.insert('pluginHealthChecks', {
-            pluginId: args.pluginId,
+            applicationId: args.pluginId,
             status: args.status,
             responseTimeMs: args.responseTimeMs,
             pluginVersion: args.pluginVersion,
@@ -91,10 +100,9 @@ export const recordHealthCheck = internalMutation({
         if (args.status === 'healthy') {
             healthStatus = 'healthy';
         } else {
-            // Count consecutive failures (including this one)
             const recentChecks = await ctx.db
                 .query('pluginHealthChecks')
-                .withIndex('by_plugin_and_time', (q) => q.eq('pluginId', args.pluginId))
+                .withIndex('by_application_and_time', (q) => q.eq('applicationId', args.pluginId))
                 .order('desc')
                 .take(UNHEALTHY_THRESHOLD);
 
@@ -102,7 +110,14 @@ export const recordHealthCheck = internalMutation({
             healthStatus = consecutiveFailures >= UNHEALTHY_THRESHOLD ? 'unhealthy' : 'degraded';
         }
 
-        await ctx.db.patch(args.pluginId, {
+        const plugin = await ctx.db
+            .query('pluginProfiles')
+            .withIndex('by_application', (q) => q.eq('applicationId', args.pluginId))
+            .unique();
+
+        if (!plugin) throw new Error('Plugin record not found');
+
+        await ctx.db.patch(plugin._id, {
             lastHealthCheckAt: now,
             healthStatus,
             updatedAt: now,

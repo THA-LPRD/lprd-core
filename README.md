@@ -23,54 +23,13 @@ bun install
 cp .env.local.example .env.local
 ```
 
-Required environment variables:
-
-| Variable                              | Description                                                      |
-| ------------------------------------- | ---------------------------------------------------------------- |
-| `CONVEX_DEPLOYMENT`                   | Your Convex deployment name                                      |
-| `NEXT_PUBLIC_CONVEX_URL`              | Your Convex deployment URL                                       |
-| `WORKOS_CLIENT_ID`                    | WorkOS client ID                                                 |
-| `WORKOS_API_KEY`                      | WorkOS API key                                                   |
-| `WORKOS_COOKIE_PASSWORD`              | Secure string, min 32 characters                                 |
-| `NEXT_PUBLIC_WORKOS_REDIRECT_URI`     | OAuth callback URL (e.g., `http://localhost:3000/callback`)      |
-| `WORKOS_WEBHOOK_USERS_PATH_SECRET`    | Random 32-char string                                            |
-| `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | Webhook secret for user.created events (from WorkOS dashboard)   |
-| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | Webhook secret for user.updated events (from WorkOS dashboard)   |
-| `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | Webhook secret for user.deleted events (from WorkOS dashboard)   |
-| `PLUGIN_JWT_PRIVATE_KEY`              | ES256 private key for plugin JWT signing (PEM, `\n`-escaped)     |
-| `PLUGIN_JWT_PUBLIC_KEY`               | ES256 public key for plugin JWT verification (PEM, `\n`-escaped) |
-
-3. Generate the plugin JWT key pair:
+3. Start the Convex development server (in a separate terminal):
 
 ```bash
-bash scripts/generate-plugin-keys.sh
+bunx convex dev
 ```
 
-The script outputs ready-to-paste `KEY=VALUE` lines — copy them into your `.env.local`.
-
-4. Set Convex environment variables:
-
-The following environment variables must be set in Convex using `convex env set`:
-
-```bash
-convex env set WORKOS_CLIENT_ID "your_client_id_here"
-convex env set WORKOS_API_KEY "your_api_key_here"
-convex env set WORKOS_WEBHOOK_USERS_PATH_SECRET "your_path_secret_here"
-convex env set WORKOS_WEBHOOK_USERS_CREATED_SECRET "secret_from_workos"
-convex env set WORKOS_WEBHOOK_USERS_UPDATED_SECRET "secret_from_workos"
-convex env set WORKOS_WEBHOOK_USERS_DELETED_SECRET "secret_from_workos"
-convex env set SITE_URL "http://localhost:3000"
-```
-
-Note: The webhook secrets will be provided by WorkOS after creating the webhook endpoints (see step 6).
-
-5. Start the Convex development server (in a separate terminal):
-
-```bash
-npx convex dev
-```
-
-6. Start the Next.js development server:
+4. Start the Next.js development server:
 
 ```bash
 bun dev
@@ -78,32 +37,64 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-7. Configure WorkOS Webhooks:
+## Environment Variables
 
-User data is synchronized from WorkOS to Convex via webhooks. Create three webhook endpoints in the [WorkOS Dashboard](https://dashboard.workos.com):
+### Next.js (`.env.local`)
 
-**Webhook 1: User Created**
+| Variable                          | Description                                                 |
+| --------------------------------- | ----------------------------------------------------------- |
+| `CONVEX_DEPLOYMENT`               | Your Convex deployment name                                 |
+| `NEXT_PUBLIC_CONVEX_URL`          | Your Convex deployment URL                                  |
+| `WORKOS_CLIENT_ID`                | WorkOS client ID                                            |
+| `WORKOS_API_KEY`                  | WorkOS API key                                              |
+| `WORKOS_AUTHKIT_DOMAIN`           | WorkOS AuthKit domain                                       |
+| `WORKOS_COOKIE_PASSWORD`          | Secure string, min 32 characters                            |
+| `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | OAuth callback URL (e.g., `http://localhost:3000/callback`) |
+| `SITE_URL`                        | Your site URL (e.g., `http://localhost:3000`)               |
+| `NEXT_PUBLIC_CONVEX_SITE_URL`     | Your Convex site URL                                        |
 
-- URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/create`
-- Event: `user.created`
-- Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_CREATED_SECRET "<secret>"`
+### Convex (`bunx convex env set`)
 
-**Webhook 2: User Updated**
+The following must also be set in Convex:
 
-- URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/update`
-- Event: `user.updated`
-- Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_UPDATED_SECRET "<secret>"`
+| Variable                              | Description                               |
+| ------------------------------------- | ----------------------------------------- |
+| `WORKOS_CLIENT_ID`                    | WorkOS client ID                          |
+| `WORKOS_API_KEY`                      | WorkOS API key                            |
+| `WORKOS_AUTHKIT_DOMAIN`               | WorkOS AuthKit domain                     |
+| `SITE_URL`                            | Your site URL                             |
+| `WORKOS_WEBHOOK_USERS_PATH_SECRET`    | Path secret for user webhook URLs         |
+| `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | Signing secret for `user.created`         |
+| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | Signing secret for `user.updated`         |
+| `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | Signing secret for `user.deleted`         |
+| `WORKOS_WEBHOOK_ORGS_PATH_SECRET`     | Path secret for org webhook URLs          |
+| `WORKOS_WEBHOOK_ORGS_CREATED_SECRET`  | Signing secret for `organization.created` |
+| `WORKOS_WEBHOOK_ORGS_UPDATED_SECRET`  | Signing secret for `organization.updated` |
+| `WORKOS_WEBHOOK_ORGS_DELETED_SECRET`  | Signing secret for `organization.deleted` |
 
-**Webhook 3: User Deleted**
+## WorkOS Webhooks
 
-- URL: `https://your-deployment.convex.site/webhooks/workos/users/<YOUR_PATH_SECRET>/delete`
-- Event: `user.deleted`
-- Copy the webhook secret and set it: `convex env set WORKOS_WEBHOOK_USERS_DELETED_SECRET "<secret>"`
+User and organization data is synced from WorkOS via webhooks. Create the following endpoints in the [WorkOS Dashboard](https://dashboard.workos.com):
 
-Replace `<YOUR_PATH_SECRET>` with the value from `WORKOS_WEBHOOK_USERS_PATH_SECRET` and `<secret>` with the webhook signing secret provided by WorkOS.
+### User Webhooks
+
+| Event          | URL                                                                          |
+| -------------- | ---------------------------------------------------------------------------- |
+| `user.created` | `https://<deployment>.convex.site/api/v2/user/webhook/create-<PATH_SECRET>`  |
+| `user.updated` | `https://<deployment>.convex.site/api/v2/user/webhook/update-<PATH_SECRET>`  |
+| `user.deleted` | `https://<deployment>.convex.site/api/v2/user/webhook/deleted-<PATH_SECRET>` |
+
+### Organization Webhooks
+
+| Event                  | URL                                                                         |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `organization.created` | `https://<deployment>.convex.site/api/v2/org/webhook/created-<PATH_SECRET>` |
+| `organization.updated` | `https://<deployment>.convex.site/api/v2/org/webhook/updated-<PATH_SECRET>` |
+| `organization.deleted` | `https://<deployment>.convex.site/api/v2/org/webhook/deleted-<PATH_SECRET>` |
+
+Replace `<deployment>` with your Convex deployment name and `<PATH_SECRET>` with the respective path secret. Copy the signing secrets from WorkOS and set them as Convex env vars.
 
 ## Notes
 
-- Make sure to add `/callback` to your allowed redirect URIs in WorkOS dashboard.
+- Add `/callback` to your allowed redirect URIs in the WorkOS dashboard.
 - Webhook endpoints use signature verification for security.
-- User deletion cascades to organization memberships automatically.

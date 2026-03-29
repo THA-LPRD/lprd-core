@@ -1,6 +1,23 @@
+import { ConvexHttpClient } from 'convex/browser';
+import type { FunctionReference, FunctionReturnType, FunctionVisibility } from 'convex/server';
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
+
+type LegacyDeviceConvexClient = Omit<ConvexHttpClient, 'query' | 'mutation'> & {
+    setAdminAuth(token: string): void;
+    query<Ref extends FunctionReference<'query', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+    mutation<Ref extends FunctionReference<'mutation', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+};
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!) as unknown as LegacyDeviceConvexClient;
+
+convex.setAdminAuth(process.env.CONVEX_DEPLOY_KEY!);
 
 /**
  * GET /api/v1/displays/config/:mac_adr
@@ -13,13 +30,12 @@ import { asPublic, getConvexClient } from '@/lib/convex-server';
  */
 export async function GET(request: Request, { params }: { params: Promise<{ mac_adr: string }> }) {
     const { mac_adr } = await params;
-    const convex = getConvexClient();
     const ipAddress =
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? undefined;
 
     try {
         // Look up device by MAC
-        const device = await convex.query(asPublic(internal.devices.v1.getByMac), {
+        const device = await convex.query(internal.devices.v1.getByMac, {
             macAddress: mac_adr,
         });
 
@@ -28,7 +44,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
         }
 
         if (device.status !== 'active' || device.apiVersion !== 'v1') {
-            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+            await convex.mutation(internal.devices.accessLogs.log, {
                 deviceId: device._id,
                 macAddress: mac_adr,
                 type: 'config_fetch',
@@ -40,7 +56,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
         }
 
         // Update lastSeen only (no promotion — that's the image endpoint's job)
-        const result = await convex.mutation(asPublic(internal.devices.v1.heartbeat), {
+        const result = await convex.mutation(internal.devices.v1.heartbeat, {
             id: device._id,
         });
 
@@ -54,17 +70,17 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
 
         // Get min TTL and binding data snapshot in parallel
         const [minTTL, bindingData] = await Promise.all([
-            convex.query(asPublic(internal.devices.v1.getMinTtl), {
+            convex.query(internal.devices.v1.getMinTtl, {
                 deviceId: device._id,
             }),
-            convex.query(asPublic(internal.devices.v1.getBindingData), {
+            convex.query(internal.devices.v1.getBindingData, {
                 deviceId: device._id,
             }),
         ]);
         const validFor = Math.max(minTTL, 3600); // Default to 1h if no bindings or data
 
         // Log the config fetch (with snapshot if image is changing)
-        await convex.mutation(asPublic(internal.devices.accessLogs.logWithSnapshot), {
+        await convex.mutation(internal.devices.accessLogs.logWithSnapshot, {
             deviceId: device._id,
             macAddress: mac_adr,
             ipAddress,

@@ -53,12 +53,12 @@ export function SitePluginSettings({ siteId }: { siteId: Id<'sites'> }) {
                         </TableCell>
                         <TableCell>
                             <Switch
-                                checked={plugin.enabledByOrg}
+                                checked={plugin.enabledBySite}
                                 onCheckedChange={(checked) =>
                                     toggleAccess({
                                         pluginId: plugin._id,
                                         siteId,
-                                        enabled: !!checked,
+                                        enabled: checked,
                                     })
                                 }
                             />

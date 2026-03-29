@@ -1,7 +1,24 @@
+import { ConvexHttpClient } from 'convex/browser';
+import type { FunctionReference, FunctionReturnType, FunctionVisibility } from 'convex/server';
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
+
+type LegacyDeviceConvexClient = Omit<ConvexHttpClient, 'query' | 'mutation'> & {
+    setAdminAuth(token: string): void;
+    query<Ref extends FunctionReference<'query', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+    mutation<Ref extends FunctionReference<'mutation', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+};
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!) as unknown as LegacyDeviceConvexClient;
+
+convex.setAdminAuth(process.env.CONVEX_DEPLOY_KEY!);
 
 /**
  * GET /api/v1/displays/image/:deviceId
@@ -16,19 +33,18 @@ import { asPublic, getConvexClient } from '@/lib/convex-server';
  */
 export async function GET(request: Request, { params }: { params: Promise<{ deviceId: string }> }) {
     const { deviceId } = await params;
-    const convex = getConvexClient();
     const ipAddress =
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? undefined;
 
     try {
-        const device = await convex.query(asPublic(internal.devices.v1.getById), { id: deviceId as Id<'devices'> });
+        const device = await convex.query(internal.devices.v1.getById, { id: deviceId as Id<'devices'> });
 
         if (!device) {
             return NextResponse.json({ error: 'Device not found' }, { status: 404 });
         }
 
         if (device.status !== 'active' || device.apiVersion !== 'v1') {
-            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+            await convex.mutation(internal.devices.accessLogs.log, {
                 deviceId: device._id,
                 macAddress: device.macAddress ?? '',
                 type: 'image_fetch',
@@ -40,19 +56,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
         }
 
         // Promote next→current before serving
-        const imageChanged = await convex.mutation(asPublic(internal.devices.v1.promoteNext), {
+        const imageChanged = await convex.mutation(internal.devices.v1.promoteNext, {
             id: device._id,
         });
 
         // Re-fetch device to get the current storageId after potential promotion
-        const updatedDevice = await convex.query(asPublic(internal.devices.v1.getById), {
+        const updatedDevice = await convex.query(internal.devices.v1.getById, {
             id: deviceId as Id<'devices'>,
         });
 
         const storageId = updatedDevice?.current?.storageId ?? null;
 
         if (!storageId) {
-            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+            await convex.mutation(internal.devices.accessLogs.log, {
                 deviceId: device._id,
                 macAddress: device.macAddress ?? '',
                 type: 'image_fetch',
@@ -64,10 +80,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
         }
 
         // Get a signed URL and stream the bytes through
-        const url = await convex.query(asPublic(internal.devices.v1.getStorageUrl), { storageId });
+        const url = await convex.query(internal.devices.v1.getStorageUrl, { storageId });
 
         if (!url) {
-            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+            await convex.mutation(internal.devices.accessLogs.log, {
                 deviceId: device._id,
                 macAddress: device.macAddress ?? '',
                 type: 'image_fetch',
@@ -80,7 +96,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
 
         const upstream = await fetch(url);
         if (!upstream.ok) {
-            await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+            await convex.mutation(internal.devices.accessLogs.log, {
                 deviceId: device._id,
                 macAddress: device.macAddress ?? '',
                 type: 'image_fetch',
@@ -91,7 +107,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ devi
             return NextResponse.json({ error: 'Failed to fetch image' }, { status: 502 });
         }
 
-        await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+        await convex.mutation(internal.devices.accessLogs.log, {
             deviceId: device._id,
             macAddress: device.macAddress ?? '',
             type: 'image_fetch',

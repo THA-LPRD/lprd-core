@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useMutation } from 'convex/react';
+import { useAction, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,87 +16,120 @@ import {
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Check } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 
-const KEY_TTL_OPTIONS = [
-    { label: '15 minutes', value: String(15 * 60 * 1000) },
-    { label: '1 hour', value: String(60 * 60 * 1000) },
-    { label: '2 hours', value: String(2 * 60 * 60 * 1000) },
-    { label: '3 hours', value: String(3 * 60 * 60 * 1000) },
-    { label: '6 hours', value: String(6 * 60 * 60 * 1000) },
-    { label: '12 hours', value: String(12 * 60 * 60 * 1000) },
-    { label: '24 hours', value: String(24 * 60 * 60 * 1000) },
-];
-
-const KEY_TTL_LABEL_MAP = new Map(KEY_TTL_OPTIONS.map((o) => [o.value, o.label]));
+type ProvisionedCredentials = {
+    applicationId: string;
+    clientId: string;
+    clientSecret: string;
+};
 
 export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+    const organizations = useQuery(api.organizations.listAll);
+    const provision = useAction(api.plugins.provision.provision);
+    const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
+    const [organizationId, setOrganizationId] = React.useState('');
     const [scopePushData, setScopePushData] = React.useState(true);
     const [scopeCreateTemplate, setScopeCreateTemplate] = React.useState(true);
-    const [keyTtlMs, setKeyTtlMs] = React.useState(String(2 * 60 * 60 * 1000)); // default 2h
+    const [scopeInternalRender, setScopeInternalRender] = React.useState(false);
     const [isCreating, setIsCreating] = React.useState(false);
-    const [registrationKey, setRegistrationKey] = React.useState<string | null>(null);
+    const [credentials, setCredentials] = React.useState<ProvisionedCredentials | null>(null);
     const [copied, setCopied] = React.useState(false);
+    const [error, setError] = React.useState<string | null>(null);
+    const selectedOrganizationName =
+        organizations?.find((organization) => organization.workosOrganizationId === organizationId)?.name ?? '';
 
-    const createSlot = useMutation(api.plugins.admin.createPluginSlot);
+    React.useEffect(() => {
+        if (!open || organizations === undefined) return;
+        setOrganizationId((current) => current || organizations[0]?.workosOrganizationId || '');
+    }, [open, organizations]);
 
     const handleCreate = async () => {
-        if (!name.trim()) return;
+        if (!name.trim() || !organizationId) return;
+        const actorName = name
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '');
         setIsCreating(true);
+        setError(null);
         try {
-            const scopes: Array<'push_data' | 'create_template'> = [];
+            const scopes: Array<'push_data' | 'create_template' | 'internal_render'> = [];
             if (scopePushData) scopes.push('push_data');
             if (scopeCreateTemplate) scopes.push('create_template');
+            if (scopeInternalRender) scopes.push('internal_render');
 
-            const result = await createSlot({
+            const data = await provision({
+                type,
                 name: name.trim(),
+                actorName,
                 description: description.trim() || undefined,
+                workosOrganizationId: organizationId,
                 scopes: scopes.length > 0 ? scopes : undefined,
-                keyTtlMs: Number(keyTtlMs),
             });
-            setRegistrationKey(result.registrationKey);
+
+            setCredentials({
+                applicationId: data.applicationId,
+                clientId: data.clientId,
+                clientSecret: data.clientSecret,
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to create service account');
         } finally {
             setIsCreating(false);
         }
     };
 
     const handleCopy = async () => {
-        if (!registrationKey) return;
-        await navigator.clipboard.writeText(registrationKey);
+        if (!credentials) return;
+        await navigator.clipboard.writeText(credentials.clientSecret);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
-    const handleClose = (open: boolean) => {
-        if (!open) {
+    const handleClose = (nextOpen: boolean) => {
+        if (!nextOpen) {
+            setType('plugin');
             setName('');
             setDescription('');
             setScopePushData(true);
             setScopeCreateTemplate(true);
-            setKeyTtlMs(String(2 * 60 * 60 * 1000));
-            setRegistrationKey(null);
+            setScopeInternalRender(false);
+            setCredentials(null);
             setCopied(false);
+            setError(null);
         }
-        onOpenChange(open);
+        onOpenChange(nextOpen);
     };
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{registrationKey ? 'Plugin Created' : 'Create Plugin'}</DialogTitle>
+                    <DialogTitle>{credentials ? 'Service Account Created' : 'Create Service Account'}</DialogTitle>
                     <DialogDescription>
-                        {registrationKey
-                            ? 'The registration key is shown below. You can also find it on the plugin detail page until it expires or is used.'
-                            : 'Create a plugin slot. The plugin will self-register using the key.'}
+                        {credentials
+                            ? 'Save the client secret below. It will not be shown again.'
+                            : 'Create a service account with M2M credentials.'}
                     </DialogDescription>
                 </DialogHeader>
 
-                {registrationKey ? (
+                {credentials ? (
                     <div className="space-y-3">
-                        <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all">{registrationKey}</div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Client ID</p>
+                            <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all">
+                                {credentials.clientId}
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Client Secret</p>
+                            <div className="p-3 bg-muted rounded-lg font-mono text-sm break-all">
+                                {credentials.clientSecret}
+                            </div>
+                        </div>
                         <Button variant="outline" size="sm" onClick={handleCopy} className="w-full">
                             {copied ? (
                                 <>
@@ -106,19 +139,49 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                             ) : (
                                 <>
                                     <Copy className="size-4 mr-2" />
-                                    Copy Registration Key
+                                    Copy Client Secret
                                 </>
                             )}
                         </Button>
-                        <p className="text-sm text-muted-foreground">
-                            The key will expire based on the duration you selected.
-                        </p>
                     </div>
                 ) : (
                     <FieldGroup>
                         <Field>
+                            <FieldLabel>Type</FieldLabel>
+                            <Select value={type} onValueChange={(value) => setType(value as 'plugin' | 'internal')}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                    <SelectItem value="plugin">Plugin</SelectItem>
+                                    <SelectItem value="internal">Internal</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </Field>
+                        <Field>
                             <FieldLabel>Name</FieldLabel>
-                            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="My Plugin" />
+                            <Input
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. Render Worker"
+                            />
+                        </Field>
+                        <Field>
+                            <FieldLabel>Organization</FieldLabel>
+                            <Select value={organizationId} onValueChange={(value) => setOrganizationId(value ?? '')}>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select organization">
+                                        {selectedOrganizationName || undefined}
+                                    </SelectValue>
+                                </SelectTrigger>
+                                <SelectContent alignItemWithTrigger={false}>
+                                    {organizations?.map((organization) => (
+                                        <SelectItem key={organization._id} value={organization.workosOrganizationId}>
+                                            {organization.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </Field>
                         <Field>
                             <FieldLabel>Description</FieldLabel>
@@ -132,45 +195,38 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                             <FieldLabel>Scopes</FieldLabel>
                             <div className="flex flex-col gap-2">
                                 <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox checked={scopePushData} onCheckedChange={(c) => setScopePushData(!!c)} />
+                                    <Checkbox checked={scopePushData} onCheckedChange={(c) => setScopePushData(c)} />
                                     Push Data
                                 </label>
                                 <label className="flex items-center gap-2 text-sm">
                                     <Checkbox
                                         checked={scopeCreateTemplate}
-                                        onCheckedChange={(c) => setScopeCreateTemplate(!!c)}
+                                        onCheckedChange={(c) => setScopeCreateTemplate(c)}
                                     />
                                     Create Template
                                 </label>
+                                <label className="flex items-center gap-2 text-sm">
+                                    <Checkbox
+                                        checked={scopeInternalRender}
+                                        onCheckedChange={(c) => setScopeInternalRender(c)}
+                                    />
+                                    Internal Render
+                                </label>
                             </div>
                         </Field>
-                        <Field>
-                            <FieldLabel>Key Expiry</FieldLabel>
-                            <Select value={keyTtlMs} onValueChange={(v) => v && setKeyTtlMs(v)}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue>{KEY_TTL_LABEL_MAP.get(keyTtlMs) ?? keyTtlMs}</SelectValue>
-                                </SelectTrigger>
-                                <SelectContent alignItemWithTrigger={false}>
-                                    {KEY_TTL_OPTIONS.map((opt) => (
-                                        <SelectItem key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </Field>
+                        {error && <p className="text-sm text-destructive">{error}</p>}
                     </FieldGroup>
                 )}
 
                 <DialogFooter>
-                    {registrationKey ? (
+                    {credentials ? (
                         <Button onClick={() => handleClose(false)}>Done</Button>
                     ) : (
                         <>
                             <Button variant="outline" onClick={() => handleClose(false)}>
                                 Cancel
                             </Button>
-                            <Button onClick={handleCreate} disabled={isCreating || !name.trim()}>
+                            <Button onClick={handleCreate} disabled={isCreating || !name.trim() || !organizationId}>
                                 {isCreating ? 'Creating...' : 'Create'}
                             </Button>
                         </>

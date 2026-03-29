@@ -24,7 +24,7 @@ export default function CreateSitePage() {
     const [error, setError] = useState<string | null>(null);
 
     const createSite = useMutation(api.sites.create);
-    const setLastSite = useMutation(api.users.setLastSite);
+    const setLastSite = useMutation(api.actors.setLastSite);
     const router = useRouter();
 
     const handleNameChange = (newName: string) => {

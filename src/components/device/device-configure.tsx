@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { extractId } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
 
@@ -90,7 +90,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
         return templates.find((t) => t._id === templateId)?.name ?? 'Untitled';
     };
 
-    const getPluginName = (pluginId: Id<'plugins'>) => {
+    const getPluginName = (pluginId: Id<'applications'>) => {
         return plugins?.find((p) => p._id === pluginId)?.name ?? pluginId;
     };
 

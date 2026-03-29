@@ -16,8 +16,8 @@ export const handleUserUpdated = httpAction(async (ctx, request) => {
             avatarStorageId = await storeAvatar(ctx, data.email, data.profile_picture_url);
         }
 
-        await ctx.runMutation(internal.users.updateFromWebhook, {
-            authId: data.id,
+        await ctx.runMutation(internal.actors.updateFromWebhook, {
+            workosUserId: data.id,
             email: data.email,
             name: [data.first_name, data.last_name].filter(Boolean).join(' ') || undefined,
             avatarStorageId,

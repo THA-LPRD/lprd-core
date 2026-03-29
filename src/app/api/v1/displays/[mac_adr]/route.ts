@@ -1,6 +1,23 @@
+import { ConvexHttpClient } from 'convex/browser';
+import type { FunctionReference, FunctionReturnType, FunctionVisibility } from 'convex/server';
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
+
+type LegacyDeviceConvexClient = Omit<ConvexHttpClient, 'query' | 'mutation'> & {
+    setAdminAuth(token: string): void;
+    query<Ref extends FunctionReference<'query', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+    mutation<Ref extends FunctionReference<'mutation', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+};
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!) as unknown as LegacyDeviceConvexClient;
+
+convex.setAdminAuth(process.env.CONVEX_DEPLOY_KEY!);
 
 /**
  * GET /api/v1/displays/:mac
@@ -8,18 +25,17 @@ import { asPublic, getConvexClient } from '@/lib/convex-server';
  */
 export async function GET(request: Request, { params }: { params: Promise<{ mac_adr: string }> }) {
     const { mac_adr } = await params;
-    const convex = getConvexClient();
     const ipAddress =
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? undefined;
 
-    const device = await convex.query(asPublic(internal.devices.v1.getByMac), {
+    const device = await convex.query(internal.devices.v1.getByMac, {
         macAddress: mac_adr,
     });
 
     const isActive = device?.status === 'active' && device.apiVersion === 'v1';
 
     if (device) {
-        await convex.mutation(asPublic(internal.devices.accessLogs.log), {
+        await convex.mutation(internal.devices.accessLogs.log, {
             deviceId: device._id,
             macAddress: mac_adr,
             type: 'existence_check',

@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { formatDate, formatRelativeTime } from '@/lib/date';
 
 export function DeviceDetail({ device }: { device: DeviceData }) {

@@ -24,13 +24,13 @@ function getInitials(name: string | undefined): string {
     return name.slice(0, 2).toUpperCase();
 }
 
-export function NavUser({
-    user,
+export function NavActor({
+    actor,
     onSettingsClick,
     onSignOut,
     context,
 }: {
-    user: {
+    actor: {
         name?: string;
         email: string;
         avatar?: string;
@@ -38,7 +38,7 @@ export function NavUser({
     };
     onSettingsClick?: () => void;
     onSignOut?: () => void;
-    context?: 'org' | 'admin';
+    context?: 'site' | 'admin';
 }) {
     const { isMobile } = useSidebar();
 
@@ -52,12 +52,12 @@ export function NavUser({
                             className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                         >
                             <Avatar className="h-8 w-8 rounded-full">
-                                <AvatarImage src={user.avatar} alt={user.name} />
-                                <AvatarFallback className="rounded-full">{getInitials(user.name)}</AvatarFallback>
+                                <AvatarImage src={actor.avatar} alt={actor.name} />
+                                <AvatarFallback className="rounded-full">{getInitials(actor.name)}</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-medium">{user.name || 'User'}</span>
-                                <span className="truncate text-xs">{user.email}</span>
+                                <span className="truncate font-medium">{actor.name || 'Actor'}</span>
+                                <span className="truncate text-xs">{actor.email}</span>
                             </div>
                             <ChevronsUpDown className="ml-auto size-4" />
                         </SidebarMenuButton>
@@ -72,12 +72,14 @@ export function NavUser({
                             <DropdownMenuLabel className="p-0 font-normal">
                                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                                     <Avatar className="h-8 w-8 rounded-lg">
-                                        <AvatarImage src={user.avatar} alt={user.name} />
-                                        <AvatarFallback className="rounded-lg">{getInitials(user.name)}</AvatarFallback>
+                                        <AvatarImage src={actor.avatar} alt={actor.name} />
+                                        <AvatarFallback className="rounded-lg">
+                                            {getInitials(actor.name)}
+                                        </AvatarFallback>
                                     </Avatar>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-medium">{user.name || 'User'}</span>
-                                        <span className="truncate text-xs">{user.email}</span>
+                                        <span className="truncate font-medium">{actor.name || 'Actor'}</span>
+                                        <span className="truncate text-xs">{actor.email}</span>
                                     </div>
                                 </div>
                             </DropdownMenuLabel>
@@ -93,14 +95,14 @@ export function NavUser({
                                 Account
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        {user.role === 'appAdmin' && (
+                        {actor.role === 'appAdmin' && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>
                                     {context === 'admin' ? (
                                         <DropdownMenuItem render={<Link href="/" />}>
                                             <LayoutDashboard />
-                                            My Organizations
+                                            My Sites
                                         </DropdownMenuItem>
                                     ) : (
                                         <DropdownMenuItem render={<Link href="/admin" />}>

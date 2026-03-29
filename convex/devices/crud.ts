@@ -5,31 +5,39 @@ import type { Id } from '../_generated/dataModel';
 import { deviceDataBinding, deviceStatus } from '../schema';
 import { getPermissions } from '../lib/acl';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
-import { getCurrentUser, getMembership } from '../users';
+import { getCurrentActor, getMembership } from '../actors';
 
-const MANUAL_PLUGIN_NAME = '__manual__';
+const MANUAL_APPLICATION_NAME = '__manual__';
 
-/** Find the system manual plugin. Returns its ID or null. */
+/** Find the internal manual application. Returns its ID or null. */
 async function findManualPlugin(ctx: MutationCtx) {
-    const allPlugins = await ctx.db.query('plugins').collect();
-    return allPlugins.find((p) => p.type === 'system' && p.name === MANUAL_PLUGIN_NAME)?._id ?? null;
+    const allPlugins = await ctx.db.query('applications').collect();
+    return allPlugins.find((p) => p.type === 'internal' && p.name === MANUAL_APPLICATION_NAME)?._id ?? null;
 }
 
-/** Find or create the system manual plugin. Returns its ID. */
+/** Find or create the internal manual application. Returns its ID. */
 async function getOrCreateManualPlugin(ctx: MutationCtx) {
     const existing = await findManualPlugin(ctx);
     if (existing) return existing;
 
     const now = Date.now();
-    return ctx.db.insert('plugins', {
-        name: MANUAL_PLUGIN_NAME,
-        type: 'system',
-        version: '1.0.0',
-        description: 'System plugin for manual data entries',
+    const actorId = await ctx.db.insert('actors', {
+        type: 'serviceAccount',
+        name: 'Manual Data Service Account',
         status: 'active',
-        baseUrl: '',
-        topics: [{ id: 'manual', key: 'manual', label: 'Manual Data' }],
-        healthCheckIntervalMs: 0,
+        role: 'user',
+        createdAt: now,
+        updatedAt: now,
+    });
+
+    return ctx.db.insert('applications', {
+        actorId,
+        name: MANUAL_APPLICATION_NAME,
+        type: 'internal',
+        status: 'active',
+        workosOrganizationId: 'internal',
+        workosApplicationId: `manual-${actorId}`,
+        workosClientId: `manual-${actorId}`,
         createdAt: now,
         updatedAt: now,
     });
@@ -38,15 +46,15 @@ async function getOrCreateManualPlugin(ctx: MutationCtx) {
 /** Delete all manual pluginData records for a device. */
 async function deleteManualDataForDevice(
     ctx: MutationCtx,
-    pluginId: Id<'plugins'>,
+    pluginId: Id<'applications'>,
     siteId: Id<'sites'>,
     deviceId: Id<'devices'>,
 ) {
     const prefix = `${deviceId}:`;
     const records = await ctx.db
         .query('pluginData')
-        .withIndex('by_plugin_site_topic_entry', (q) =>
-            q.eq('pluginId', pluginId).eq('siteId', siteId).eq('topic', 'manual'),
+        .withIndex('by_application_site_topic_entry', (q) =>
+            q.eq('applicationId', pluginId).eq('siteId', siteId).eq('topic', 'manual'),
         )
         .collect();
 
@@ -70,11 +78,11 @@ export const create = mutation({
         tags: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         const now = Date.now();
@@ -99,14 +107,14 @@ export const create = mutation({
 export const getById = query({
     args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return null;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
 
         const device = await ctx.db.get(args.id);
         if (!device) return null;
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return null;
 
         let lastUrl: string | null = null;
@@ -135,11 +143,11 @@ export const getById = query({
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return [];
 
         const devices = await ctx.db
@@ -175,14 +183,14 @@ export const update = mutation({
         clearFrame: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         const { id, clearFrame, ...rest } = args;
@@ -212,14 +220,14 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         // Clean up manual data
@@ -258,14 +266,14 @@ export const saveManualData = mutation({
         ),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const device = await ctx.db.get(args.deviceId);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.manage) throw new Error('Forbidden');
 
         const pluginId = await getOrCreateManualPlugin(ctx);
@@ -281,8 +289,12 @@ export const saveManualData = mutation({
 
             const existing = await ctx.db
                 .query('pluginData')
-                .withIndex('by_plugin_site_topic_entry', (q) =>
-                    q.eq('pluginId', pluginId).eq('siteId', device.siteId).eq('topic', 'manual').eq('entry', entry),
+                .withIndex('by_application_site_topic_entry', (q) =>
+                    q
+                        .eq('applicationId', pluginId)
+                        .eq('siteId', device.siteId)
+                        .eq('topic', 'manual')
+                        .eq('entry', entry),
                 )
                 .unique();
 
@@ -304,7 +316,7 @@ export const saveManualData = mutation({
                 recordId = existing._id;
             } else {
                 recordId = await ctx.db.insert('pluginData', {
-                    pluginId,
+                    applicationId: pluginId,
                     siteId: device.siteId,
                     topic: 'manual',
                     entry,
@@ -329,7 +341,7 @@ export const saveManualData = mutation({
 
         const updatedWidgetIds = new Set(args.entries.map((e) => e.widgetId));
         const nonManualBindings = currentBindings.filter((b) => {
-            if (b.pluginId !== pluginId || b.topic !== 'manual') return true;
+            if (b.applicationId !== pluginId || b.topic !== 'manual') return true;
             const widgetIdFromEntry = b.entry.slice(b.entry.indexOf(':') + 1);
             return !updatedWidgetIds.has(widgetIdFromEntry);
         });
@@ -337,7 +349,7 @@ export const saveManualData = mutation({
         // Add new manual bindings for widgets that have data
         const manualBindings = [...savedWidgetIds].map((widgetId) => ({
             widgetId,
-            pluginId,
+            applicationId: pluginId,
             topic: 'manual' as const,
             entry: `${args.deviceId}:${widgetId}`,
         }));
@@ -360,27 +372,27 @@ export const saveManualData = mutation({
 export const getManualData = query({
     args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return {};
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return {};
 
         const device = await ctx.db.get(args.deviceId);
         if (!device) return {};
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return {};
 
         // Find system manual plugin
-        const allPlugins = await ctx.db.query('plugins').collect();
-        const manualPlugin = allPlugins.find((p) => p.name === MANUAL_PLUGIN_NAME);
+        const allPlugins = await ctx.db.query('applications').collect();
+        const manualPlugin = allPlugins.find((p) => p.name === MANUAL_APPLICATION_NAME);
         if (!manualPlugin) return {};
 
         // Query manual data for this device
         const prefix = `${args.deviceId}:`;
         const records = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_site_topic_entry', (q) =>
-                q.eq('pluginId', manualPlugin._id).eq('siteId', device.siteId).eq('topic', 'manual'),
+            .withIndex('by_application_site_topic_entry', (q) =>
+                q.eq('applicationId', manualPlugin._id).eq('siteId', device.siteId).eq('topic', 'manual'),
             )
             .collect();
 

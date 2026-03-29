@@ -3,10 +3,10 @@
  *
  */
 
-export type UserRole = 'appAdmin' | 'user';
+export type ActorRole = 'appAdmin' | 'user';
 export type SiteMemberRole = 'siteAdmin' | 'user';
 
-export type User = { role: UserRole };
+export type Actor = { role: ActorRole };
 export type SiteMembership = { role: SiteMemberRole } | null;
 
 export interface Permissions {
@@ -37,14 +37,14 @@ export interface Permissions {
 }
 
 /**
- * Returns all permissions for a user in a given context.
+ * Returns all permissions for an actor in a given context.
  *
- * @param user - The user object with their platform role
- * @param membership - The user's membership in the site context (null if not a member)
+ * @param actor - The actor object with their platform role
+ * @param membership - The actor's membership in the site context (null if not a member)
  * @returns Permission object with grouped capabilities
  */
-export function getPermissions(user: User, membership: SiteMembership): Permissions {
-    const isAppAdmin = user.role === 'appAdmin';
+export function getPermissions(actor: Actor, membership: SiteMembership): Permissions {
+    const isAppAdmin = actor.role === 'appAdmin';
     const isSiteAdmin = membership?.role === 'siteAdmin';
 
     return {
@@ -52,25 +52,25 @@ export function getPermissions(user: User, membership: SiteMembership): Permissi
             setUserRoles: isAppAdmin,
         },
         site: {
-            create: true, // any authenticated user
+            create: true, // any authenticated actor
             view: isAppAdmin || !!membership,
-            manage: isAppAdmin || !!isSiteAdmin, // update, add/remove members
+            manage: isAppAdmin || isSiteAdmin, // update, add/remove members
         },
         device: {
             view: isAppAdmin || !!membership,
-            manage: isAppAdmin || !!isSiteAdmin, // create, update, remove
+            manage: isAppAdmin || isSiteAdmin, // create, update, remove
         },
         template: {
             view: isAppAdmin || !!membership,
-            manage: isAppAdmin || !!isSiteAdmin,
+            manage: isAppAdmin || isSiteAdmin,
         },
         frame: {
             view: isAppAdmin || !!membership,
-            manage: isAppAdmin || !!isSiteAdmin,
+            manage: isAppAdmin || isSiteAdmin,
         },
         plugin: {
             manage: isAppAdmin,
-            siteManage: isAppAdmin || !!isSiteAdmin,
+            siteManage: isAppAdmin || isSiteAdmin,
         },
     };
 }

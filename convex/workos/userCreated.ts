@@ -13,8 +13,8 @@ export const handleUserCreated = httpAction(async (ctx, request) => {
         // Generate or fetch avatar and store in Convex
         const avatarStorageId = await storeAvatar(ctx, data.email, data.profile_picture_url);
 
-        await ctx.runMutation(internal.users.createFromWebhook, {
-            authId: data.id,
+        await ctx.runMutation(internal.actors.createFromWebhook, {
+            workosUserId: data.id,
             email: data.email,
             name: [data.first_name, data.last_name].filter(Boolean).join(' ') || undefined,
             avatarStorageId,

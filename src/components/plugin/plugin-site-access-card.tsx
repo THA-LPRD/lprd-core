@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import type { Id } from '@convex/dataModel';
 
-export function PluginSiteAccessCard({ pluginId }: { pluginId: Id<'plugins'> }) {
+export function PluginSiteAccessCard({ pluginId }: { pluginId: Id<'applications'> }) {
     const sites = useQuery(api.plugins.siteAccess.listForPlugin, { pluginId });
     const setAdminAccess = useMutation(api.plugins.siteAccess.setAdminAccess);
 
@@ -52,21 +52,23 @@ export function PluginSiteAccessCard({ pluginId }: { pluginId: Id<'plugins'> }) 
                                                 setAdminAccess({
                                                     pluginId,
                                                     siteId: site._id,
-                                                    enabled: !!checked,
+                                                    enabled: checked,
                                                 })
                                             }
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        <Badge variant={site.enabledByOrg ? 'default' : 'secondary'}>
-                                            {site.enabledByOrg ? 'Yes' : 'No'}
+                                        <Badge variant={site.enabledBySite ? 'default' : 'secondary'}>
+                                            {site.enabledBySite ? 'Yes' : 'No'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
                                         <Badge
-                                            variant={site.enabledByAdmin && site.enabledByOrg ? 'default' : 'secondary'}
+                                            variant={
+                                                site.enabledByAdmin && site.enabledBySite ? 'default' : 'secondary'
+                                            }
                                         >
-                                            {site.enabledByAdmin && site.enabledByOrg ? 'Active' : 'Inactive'}
+                                            {site.enabledByAdmin && site.enabledBySite ? 'Active' : 'Inactive'}
                                         </Badge>
                                     </TableCell>
                                 </TableRow>

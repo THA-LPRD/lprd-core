@@ -25,10 +25,10 @@ import { MoreHorizontal, Shield, Trash2, User } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
 
 type Member = {
-    user: {
-        _id: Id<'users'>;
+    actor: {
+        _id: Id<'actors'>;
         name?: string;
-        email: string;
+        email?: string;
         avatarUrl?: string | null;
     } | null;
     role: 'siteAdmin' | 'user';
@@ -51,12 +51,12 @@ function getInitials(name?: string, email?: string): string {
 export function MemberTable({
     members,
     siteId,
-    currentUserId,
+    currentActorId,
     canManage,
 }: {
     members: Member[];
     siteId: Id<'sites'>;
-    currentUserId?: Id<'users'>;
+    currentActorId?: Id<'actors'>;
     canManage: boolean;
 }) {
     const [memberToRemove, setMemberToRemove] = React.useState<Member | null>(null);
@@ -65,22 +65,22 @@ export function MemberTable({
     const updateMemberRole = useMutation(api.sites.updateMemberRole);
     const removeMember = useMutation(api.sites.removeMember);
 
-    const handleRoleChange = async (userId: Id<'users'>, newRole: 'siteAdmin' | 'user') => {
+    const handleRoleChange = async (actorId: Id<'actors'>, newRole: 'siteAdmin' | 'user') => {
         await updateMemberRole({
             siteId,
-            userId,
+            actorId,
             role: newRole,
         });
     };
 
     const handleRemoveMember = async () => {
-        if (!memberToRemove?.user) return;
+        if (!memberToRemove?.actor) return;
 
         setIsRemoving(true);
         try {
             await removeMember({
                 siteId,
-                userId: memberToRemove.user._id,
+                actorId: memberToRemove.actor._id,
             });
             setMemberToRemove(null);
         } finally {
@@ -98,30 +98,32 @@ export function MemberTable({
                 </div>
 
                 {members.map((member) => {
-                    if (!member.user) return null;
+                    if (!member.actor) return null;
 
-                    const isCurrentUser = member.user._id === currentUserId;
+                    const isCurrentActor = member.actor._id === currentActorId;
                     const isOnlyAdmin =
                         member.role === 'siteAdmin' && members.filter((m) => m.role === 'siteAdmin').length === 1;
 
                     return (
                         <div
-                            key={member.user._id}
+                            key={member.actor._id}
                             className="grid grid-cols-[1fr,auto,auto] gap-4 p-4 border-b last:border-b-0 items-center"
                         >
                             <div className="flex items-center gap-3 min-w-0">
                                 <Avatar className="size-9">
-                                    <AvatarImage src={member.user.avatarUrl ?? undefined} alt={member.user.name} />
-                                    <AvatarFallback>{getInitials(member.user.name, member.user.email)}</AvatarFallback>
+                                    <AvatarImage src={member.actor.avatarUrl ?? undefined} alt={member.actor.name} />
+                                    <AvatarFallback>
+                                        {getInitials(member.actor.name, member.actor.email)}
+                                    </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
                                     <p className="font-medium truncate">
-                                        {member.user.name || 'Unnamed User'}
-                                        {isCurrentUser && (
+                                        {member.actor.name || 'Unnamed Actor'}
+                                        {isCurrentActor && (
                                             <span className="text-muted-foreground font-normal ml-2">(you)</span>
                                         )}
                                     </p>
-                                    <p className="text-sm text-muted-foreground truncate">{member.user.email}</p>
+                                    <p className="text-sm text-muted-foreground truncate">{member.actor.email}</p>
                                 </div>
                             </div>
 
@@ -155,14 +157,14 @@ export function MemberTable({
                                         <DropdownMenuContent align="end">
                                             {member.role === 'user' ? (
                                                 <DropdownMenuItem
-                                                    onClick={() => handleRoleChange(member.user!._id, 'siteAdmin')}
+                                                    onClick={() => handleRoleChange(member.actor!._id, 'siteAdmin')}
                                                 >
                                                     <Shield className="size-4 mr-2" />
                                                     Make Admin
                                                 </DropdownMenuItem>
                                             ) : (
                                                 <DropdownMenuItem
-                                                    onClick={() => handleRoleChange(member.user!._id, 'user')}
+                                                    onClick={() => handleRoleChange(member.actor!._id, 'user')}
                                                     disabled={isOnlyAdmin}
                                                 >
                                                     <User className="size-4 mr-2" />
@@ -173,7 +175,7 @@ export function MemberTable({
                                             <DropdownMenuItem
                                                 className="text-destructive focus:text-destructive"
                                                 onClick={() => setMemberToRemove(member)}
-                                                disabled={isCurrentUser || isOnlyAdmin}
+                                                disabled={isCurrentActor || isOnlyAdmin}
                                             >
                                                 <Trash2 className="size-4 mr-2" />
                                                 Remove Member
@@ -196,8 +198,8 @@ export function MemberTable({
                         <DialogTitle>Remove Member</DialogTitle>
                         <DialogDescription>
                             Are you sure you want to remove{' '}
-                            <strong>{memberToRemove?.user?.name || memberToRemove?.user?.email}</strong> from this site?
-                            They will lose access to all resources.
+                            <strong>{memberToRemove?.actor?.name || memberToRemove?.actor?.email}</strong> from this
+                            site? They will lose access to all resources.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

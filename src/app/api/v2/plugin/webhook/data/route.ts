@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
+import { convexAdmin } from '@/lib/convex-admin';
 import { generateScreenshot } from '@/lib/render/thumbnail';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { authenticatePlugin, AuthError, requireSiteAccess, requireScope } from '@/lib/plugin/auth';
@@ -30,13 +30,11 @@ export async function POST(request: Request) {
             );
         }
 
-        const convex = getConvexClient();
-
         // Check site access (plugin active + enabledByAdmin + enabledByOrg)
-        await requireSiteAccess(convex, plugin._id, org_slug);
+        await requireSiteAccess(plugin._id, org_slug);
 
         // Store the data in Convex
-        const result = await convex.mutation(asPublic(internal.plugins.data.storeWebhookData), {
+        const result = await convexAdmin.mutation(internal.plugins.data.storeWebhookData, {
             pluginId: plugin._id,
             siteSlug: org_slug,
             contentType: 'plugin_data',
@@ -47,7 +45,7 @@ export async function POST(request: Request) {
         });
 
         // Find affected devices
-        const affectedDeviceIds = await convex.query(asPublic(internal.plugins.data.listAffectedDevices), {
+        const affectedDeviceIds = await convexAdmin.query(internal.plugins.data.listAffectedDevices, {
             pluginId: result.pluginId,
             siteId: result.siteId,
             topic,
@@ -58,7 +56,7 @@ export async function POST(request: Request) {
         const { origin } = new URL(request.url);
 
         await Promise.all(
-            affectedDeviceIds.map(async (deviceId: string) => {
+            affectedDeviceIds.map(async (deviceId) => {
                 try {
                     const png = await generateScreenshot({
                         renderPath: `/site/${result.siteSlug}/devices/render/${deviceId}`,
@@ -68,10 +66,7 @@ export async function POST(request: Request) {
                     });
 
                     // Upload PNG to Convex storage
-                    const uploadUrl = await convex.mutation(
-                        asPublic(internal.plugins.data.generateRenderUploadUrl),
-                        {},
-                    );
+                    const uploadUrl = await convexAdmin.mutation(internal.plugins.data.generateRenderUploadUrl, {});
                     const uploadRes = await fetch(uploadUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'image/png' },
@@ -80,7 +75,7 @@ export async function POST(request: Request) {
                     const { storageId } = await uploadRes.json();
 
                     // Set as device.next
-                    await convex.mutation(asPublic(internal.plugins.data.setDeviceNext), {
+                    await convexAdmin.mutation(internal.plugins.data.setDeviceNext, {
                         deviceId,
                         storageId,
                         renderedAt: Date.now(),

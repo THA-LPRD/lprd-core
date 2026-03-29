@@ -1,8 +1,7 @@
-import type { ConvexHttpClient } from 'convex/browser';
 import { internal } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
-import { verifyPluginToken } from '@/lib/plugin/jwt';
+import { convexAdmin } from '@/lib/convex-admin';
+import { verifyToken } from '@/lib/workos/connect';
 
 export class AuthError extends Error {
     constructor(
@@ -14,89 +13,101 @@ export class AuthError extends Error {
     }
 }
 
-export type AuthenticatedPlugin = {
-    _id: Id<'plugins'>;
+export type AuthenticatedApplication = {
+    _id: Id<'applications'>;
+    actorId: Id<'actors'>;
+    type: 'plugin' | 'internal';
     name: string;
     status: string;
-    scopes?: Array<'push_data' | 'create_template'>;
+    workosOrganizationId: string;
+    scopes?: Array<'push_data' | 'create_template' | 'internal_render'>;
 };
 
 /**
- * Authenticate a plugin request via Bearer JWT token.
- * Verifies JWT, fetches plugin, checks active status and tokenIssuedAt.
+ * Authenticate a service account request.
+ * Verifies the M2M Bearer token directly from the Authorization header,
+ * then looks up the application in Convex and enforces status/type checks.
  */
-export async function authenticatePlugin(request: Request): Promise<AuthenticatedPlugin> {
-    const authHeader = request.headers.get('Authorization');
+export async function authenticateApplication(
+    request: Request,
+    expectedType?: AuthenticatedApplication['type'],
+): Promise<AuthenticatedApplication> {
+    const authHeader = request.headers.get('authorization');
     if (!authHeader?.startsWith('Bearer ')) {
         throw new AuthError('Missing or invalid Authorization header', 401);
     }
 
-    let token = authHeader.slice(7);
-    if (token.startsWith('plugin:')) {
-        token = token.slice(7);
-    }
-
-    let pluginId: string;
-    let issuedAt: number;
+    let clientId: string | undefined;
+    let orgId: string | undefined;
     try {
-        const claims = await verifyPluginToken(token);
-        pluginId = claims.pluginId;
-        issuedAt = claims.issuedAt;
+        const { payload } = await verifyToken(authHeader.slice(7));
+        clientId =
+            payload.sub ??
+            (typeof payload.aud === 'string' ? payload.aud : Array.isArray(payload.aud) ? payload.aud[0] : undefined);
+        orgId = payload.org_id;
     } catch {
         throw new AuthError('Invalid or expired token', 401);
     }
 
-    const convex = getConvexClient();
-    const plugin = await convex.query(asPublic(internal.plugins.registration.getById), {
-        id: pluginId as Id<'plugins'>,
+    if (!clientId) {
+        throw new AuthError('Token missing client identifier', 401);
+    }
+
+    const result = await convexAdmin.query(internal.plugins.applications.getByWorkosClientId, {
+        workosClientId: clientId,
     });
 
-    if (!plugin) {
-        throw new AuthError('Plugin not found', 401);
+    if (!result?.application || !result.actor) {
+        throw new AuthError('Application not found', 401);
     }
 
-    if (plugin.status !== 'active') {
-        throw new AuthError(`Plugin is not active (status: ${plugin.status})`, 403);
+    if (result.actor.status !== 'active') {
+        throw new AuthError('Actor is inactive', 403);
     }
 
-    // Check token revocation via tokenIssuedAt
-    if (plugin.tokenIssuedAt && issuedAt < plugin.tokenIssuedAt) {
-        throw new AuthError('Token has been revoked', 401);
+    if (result.application.status !== 'active') {
+        throw new AuthError(`Application is not active (status: ${result.application.status})`, 403);
+    }
+
+    if (expectedType && result.application.type !== expectedType) {
+        throw new AuthError(`Application type '${result.application.type}' is not allowed here`, 403);
+    }
+
+    if (orgId && result.application.workosOrganizationId !== orgId) {
+        throw new AuthError('Application organization does not match token organization', 403);
     }
 
     return {
-        _id: plugin._id,
-        name: plugin.name,
-        status: plugin.status,
-        scopes: plugin.scopes,
+        _id: result.application._id,
+        actorId: result.application.actorId,
+        type: result.application.type,
+        name: result.application.name,
+        status: result.application.status,
+        workosOrganizationId: result.application.workosOrganizationId,
+        scopes: result.application.scopes,
     };
 }
 
-/**
- * Check that the plugin has the required scope.
- * If no scopes are set on the plugin, all scopes are allowed.
- */
-export function requireScope(plugin: AuthenticatedPlugin, scope: 'push_data' | 'create_template'): void {
-    if (plugin.scopes && !plugin.scopes.includes(scope)) {
-        throw new AuthError(`Plugin does not have '${scope}' scope`, 403);
+export async function authenticatePlugin(request: Request) {
+    return authenticateApplication(request, 'plugin');
+}
+
+export function requireScope(
+    application: AuthenticatedApplication,
+    scope: 'push_data' | 'create_template' | 'internal_render',
+): void {
+    if (application.scopes && !application.scopes.includes(scope)) {
+        throw new AuthError(`Application does not have '${scope}' scope`, 403);
     }
 }
 
-/**
- * Check that a plugin has access to the specified site.
- * Requires: plugin active + enabledByAdmin + enabledByOrg.
- */
-export async function requireSiteAccess(
-    convex: ConvexHttpClient,
-    pluginId: Id<'plugins'>,
-    siteSlug: string,
-): Promise<void> {
-    const hasAccess = await convex.query(asPublic(internal.plugins.siteAccess.checkAccess), {
+export async function requireSiteAccess(pluginId: Id<'applications'>, siteSlug: string): Promise<void> {
+    const hasAccess = await convexAdmin.query(internal.plugins.siteAccess.checkAccess, {
         pluginId,
         siteSlug,
     });
 
     if (!hasAccess) {
-        throw new AuthError('Plugin does not have access to this site', 403);
+        throw new AuthError('Application does not have access to this site', 403);
     }
 }

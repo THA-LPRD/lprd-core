@@ -3,7 +3,7 @@ import { internalMutation, query } from '../_generated/server';
 import { paginationOptsValidator } from 'convex/server';
 import { deviceLogStatus, deviceLogType } from '../schema';
 import { getPermissions } from '../lib/acl';
-import { getCurrentUser, getMembership } from '../users';
+import { getCurrentActor, getMembership } from '../actors';
 
 // ---------------------------------------------------------------------------
 // Internal mutations — called from Next.js API routes
@@ -83,14 +83,14 @@ export const list = query({
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return { page: [], isDone: true, continueCursor: '' };
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return { page: [], isDone: true, continueCursor: '' };
 
         const device = await ctx.db.get(args.deviceId);
         if (!device) return { page: [], isDone: true, continueCursor: '' };
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return { page: [], isDone: true, continueCursor: '' };
 
         return ctx.db
@@ -111,14 +111,14 @@ export const getDailyStats = query({
         days: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return [];
 
         const days = args.days ?? 7;
@@ -160,14 +160,14 @@ export const listByDay = query({
         date: v.string(), // 'YYYY-MM-DD'
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, user._id, device.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, device.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return [];
 
         const start = new Date(args.date + 'T00:00:00.000Z').getTime();

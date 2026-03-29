@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { internalQuery, mutation, query } from '../_generated/server';
-import { getCurrentUser, getMembership } from '../users';
+import { getCurrentActor, getMembership } from '../actors';
 import { getPermissions } from '../lib/acl';
 
 /**
@@ -9,28 +9,29 @@ import { getPermissions } from '../lib/acl';
  */
 export const toggleSiteAccess = mutation({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteId: v.id('sites'),
         enabled: v.boolean(),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.plugin.siteManage) throw new Error('Not authorized');
 
         const plugin = await ctx.db.get(args.pluginId);
-        if (!plugin || plugin.status !== 'active') throw new Error('Plugin not available');
+        if (!plugin || plugin.type !== 'plugin' || plugin.status !== 'active') throw new Error('Plugin not available');
 
         // Check existing access record
         const existing = await ctx.db
             .query('pluginSiteAccess')
-            .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', args.pluginId).eq('siteId', args.siteId))
+            .withIndex('by_application_and_site', (q) => q.eq('applicationId', args.pluginId).eq('siteId', args.siteId))
             .unique();
 
         const now = Date.now();
+        const auditActorId = actor._id;
 
         if (existing) {
             // Cannot enable if admin has blocked
@@ -39,17 +40,17 @@ export const toggleSiteAccess = mutation({
             }
             await ctx.db.patch(existing._id, {
                 enabledBySite: args.enabled,
-                updatedBySite: user._id,
+                updatedBySite: auditActorId,
                 updatedAt: now,
             });
         } else {
             // Create new access record
             await ctx.db.insert('pluginSiteAccess', {
-                pluginId: args.pluginId,
+                applicationId: args.pluginId,
                 siteId: args.siteId,
                 enabledByAdmin: true,
                 enabledBySite: args.enabled,
-                updatedBySite: user._id,
+                updatedBySite: auditActorId,
                 createdAt: now,
                 updatedAt: now,
             });
@@ -62,36 +63,37 @@ export const toggleSiteAccess = mutation({
  */
 export const setAdminAccess = mutation({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteId: v.id('sites'),
         enabled: v.boolean(),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
-        const perms = getPermissions(user, null);
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
+        const perms = getPermissions(actor, null);
         if (!perms.plugin.manage) throw new Error('Not authorized');
 
         const existing = await ctx.db
             .query('pluginSiteAccess')
-            .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', args.pluginId).eq('siteId', args.siteId))
+            .withIndex('by_application_and_site', (q) => q.eq('applicationId', args.pluginId).eq('siteId', args.siteId))
             .unique();
 
         const now = Date.now();
+        const auditActorId = actor._id;
 
         if (existing) {
             await ctx.db.patch(existing._id, {
                 enabledByAdmin: args.enabled,
-                updatedByAdmin: user._id,
+                updatedByAdmin: auditActorId,
                 updatedAt: now,
             });
         } else {
             await ctx.db.insert('pluginSiteAccess', {
-                pluginId: args.pluginId,
+                applicationId: args.pluginId,
                 siteId: args.siteId,
                 enabledByAdmin: args.enabled,
                 enabledBySite: false,
-                updatedByAdmin: user._id,
+                updatedByAdmin: auditActorId,
                 createdAt: now,
                 updatedAt: now,
             });
@@ -107,29 +109,27 @@ export const setAdminAccess = mutation({
 export const listForSite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.plugin.siteManage) return [];
 
         const isAppAdmin = perms.plugin.manage;
 
         // Get all active plugins
-        const plugins = await ctx.db
-            .query('plugins')
+        const activePluginApps = await ctx.db
+            .query('applications')
             .withIndex('by_status', (q) => q.eq('status', 'active'))
+            .filter((q) => q.eq(q.field('type'), 'plugin'))
             .collect();
 
         const results = [];
-        for (const plugin of plugins) {
-            // System plugins are internal — not shown in site settings
-            if (plugin.type === 'system') continue;
-
+        for (const app of activePluginApps) {
             const access = await ctx.db
                 .query('pluginSiteAccess')
-                .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', plugin._id).eq('siteId', args.siteId))
+                .withIndex('by_application_and_site', (q) => q.eq('applicationId', app._id).eq('siteId', args.siteId))
                 .unique();
 
             const enabledByAdmin = access?.enabledByAdmin ?? true;
@@ -139,9 +139,9 @@ export const listForSite = query({
             if (!isAppAdmin && !enabledByAdmin) continue;
 
             results.push({
-                _id: plugin._id,
-                name: plugin.name,
-                description: plugin.description,
+                _id: app._id,
+                name: app.name,
+                description: app.description,
                 enabledByAdmin,
                 enabledBySite,
                 isAppAdmin,
@@ -156,11 +156,11 @@ export const listForSite = query({
  * List all sites and their access status for a specific plugin. AppAdmin only.
  */
 export const listForPlugin = query({
-    args: { pluginId: v.id('plugins') },
+    args: { pluginId: v.id('applications') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
-        const perms = getPermissions(user, null);
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
+        const perms = getPermissions(actor, null);
         if (!perms.plugin.manage) return [];
 
         const sites = await ctx.db.query('sites').collect();
@@ -169,7 +169,9 @@ export const listForPlugin = query({
         for (const site of sites) {
             const access = await ctx.db
                 .query('pluginSiteAccess')
-                .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', args.pluginId).eq('siteId', site._id))
+                .withIndex('by_application_and_site', (q) =>
+                    q.eq('applicationId', args.pluginId).eq('siteId', site._id),
+                )
                 .unique();
 
             results.push({
@@ -191,7 +193,7 @@ export const listForPlugin = query({
  */
 export const checkAccess = internalQuery({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteSlug: v.string(),
     },
     handler: async (ctx, args) => {
@@ -206,7 +208,7 @@ export const checkAccess = internalQuery({
 
         const access = await ctx.db
             .query('pluginSiteAccess')
-            .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', args.pluginId).eq('siteId', site._id))
+            .withIndex('by_application_and_site', (q) => q.eq('applicationId', args.pluginId).eq('siteId', site._id))
             .unique();
 
         if (!access) return false;

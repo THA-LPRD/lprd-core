@@ -4,7 +4,7 @@ import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 
 export default function SiteDashboardPage() {
     const { site, members } = useSite();

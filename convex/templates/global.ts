@@ -10,7 +10,7 @@ import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
  */
 export const upsertGlobal = internalMutation({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         name: v.string(),
         description: v.optional(v.string()),
         templateHtml: v.string(),
@@ -22,7 +22,7 @@ export const upsertGlobal = internalMutation({
     handler: async (ctx, args) => {
         const existing = await ctx.db
             .query('templates')
-            .withIndex('by_plugin_and_name', (q) => q.eq('pluginId', args.pluginId).eq('name', args.name))
+            .withIndex('by_application_and_name', (q) => q.eq('applicationId', args.pluginId).eq('name', args.name))
             .unique();
 
         const now = Date.now();
@@ -55,7 +55,7 @@ export const upsertGlobal = internalMutation({
 
         const id = await ctx.db.insert('templates', {
             scope: 'global',
-            pluginId: args.pluginId,
+            applicationId: args.pluginId,
             name: args.name,
             description: args.description,
             templateHtml: args.templateHtml,

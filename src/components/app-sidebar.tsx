@@ -6,7 +6,7 @@ import { LayoutDashboard, LayoutGrid, LayoutTemplate, Monitor, Settings2 } from 
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 
-import { NavUser } from '@/components/nav-user';
+import { NavActor } from '@/components/nav-actor';
 import { SiteSwitcher } from '@/components/layout/org-switcher';
 import {
     Sidebar,
@@ -28,10 +28,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const router = useRouter();
     const { signOut } = useAuth();
 
-    // Get current user
-    const user = useQuery(api.users.me);
+    // Get current actor
+    const actor = useQuery(api.actors.me);
 
-    // Get all sites user has access to
+    // Get all sites actor has access to
     const sites = useQuery(api.sites.list);
 
     // Get current site from URL
@@ -45,15 +45,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }, [currentSlug, sites]);
 
     // Update lastSiteSlug when visiting a site
-    const setLastSite = useMutation(api.users.setLastSite);
+    const setLastSite = useMutation(api.actors.setLastSite);
     const lastSetSlugRef = React.useRef<string | null>(null);
 
     React.useEffect(() => {
-        if (currentSlug && user && lastSetSlugRef.current !== currentSlug) {
+        if (currentSlug && actor && lastSetSlugRef.current !== currentSlug) {
             lastSetSlugRef.current = currentSlug;
             setLastSite({ slug: currentSlug });
         }
-    }, [currentSlug, user, setLastSite]);
+    }, [actor, currentSlug, setLastSite]);
 
     // Handle sign out
     const handleSignOut = async () => {
@@ -124,13 +124,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 )}
             </SidebarContent>
             <SidebarFooter>
-                {user && (
-                    <NavUser
-                        user={{
-                            name: user.name,
-                            email: user.email,
-                            avatar: user.avatarUrl ?? undefined,
-                            role: user.role,
+                {actor && (
+                    <NavActor
+                        actor={{
+                            name: actor.name,
+                            email: actor.email ?? '',
+                            avatar: actor.avatarUrl ?? undefined,
+                            role: actor.role,
                         }}
                         onSignOut={handleSignOut}
                         context="site"

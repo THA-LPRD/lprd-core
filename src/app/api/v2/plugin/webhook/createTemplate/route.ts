@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
+import { convexAdmin } from '@/lib/convex-admin';
 import { authenticatePlugin, AuthError, requireScope } from '@/lib/plugin/auth';
 import { generateScreenshot, getVariantPixelSize } from '@/lib/render/thumbnail';
 
@@ -24,9 +24,7 @@ export async function POST(request: Request) {
             );
         }
 
-        const convex = getConvexClient();
-
-        const result = await convex.mutation(asPublic(internal.templates.global.upsertGlobal), {
+        const result = await convexAdmin.mutation(internal.templates.global.upsertGlobal, {
             pluginId: plugin._id,
             name,
             description: description ?? undefined,
@@ -51,8 +49,8 @@ export async function POST(request: Request) {
                     origin,
                 });
 
-                const uploadUrl: string = await convex.mutation(
-                    asPublic(internal.templates.crud.generateUploadUrlInternal),
+                const uploadUrl: string = await convexAdmin.mutation(
+                    internal.templates.crud.generateUploadUrlInternal,
                     {},
                 );
                 const uploadRes = await fetch(uploadUrl, {
@@ -62,7 +60,7 @@ export async function POST(request: Request) {
                 });
                 const { storageId } = await uploadRes.json();
 
-                await convex.mutation(asPublic(internal.templates.crud.storeThumbnailInternal), {
+                await convexAdmin.mutation(internal.templates.crud.storeThumbnailInternal, {
                     id: result.id,
                     storageId,
                 });

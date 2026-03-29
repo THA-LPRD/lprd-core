@@ -5,7 +5,7 @@ import { config } from '@worker/config';
 import { convexClient } from '@worker/convex-client';
 
 interface HealthCheckJob {
-    pluginId: Id<'plugins'>;
+    pluginId: Id<'applications'>;
     baseUrl: string;
 }
 

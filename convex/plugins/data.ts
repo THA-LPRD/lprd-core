@@ -3,17 +3,17 @@ import { internalMutation, internalQuery, query } from '../_generated/server';
 import { internal } from '../_generated/api';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 import { generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
-import { getCurrentUser, getMembership } from '../users';
+import { getCurrentActor, getMembership } from '../actors';
 import { getPermissions } from '../lib/acl';
 
 /**
  * Store data pushed by a plugin via webhook.
- * Upserts by (pluginId, siteId, topic, entry).
+ * Upserts by (applicationId, siteId, topic, entry).
  * Schedules image processing if data contains img fields.
  */
 export const storeWebhookData = internalMutation({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteSlug: v.string(),
         contentType: v.string(),
         data: v.any(),
@@ -39,8 +39,12 @@ export const storeWebhookData = internalMutation({
         // Check for existing record (upsert)
         const existing = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_site_topic_entry', (q) =>
-                q.eq('pluginId', plugin._id).eq('siteId', site._id).eq('topic', args.topic).eq('entry', args.entry),
+            .withIndex('by_application_site_topic_entry', (q) =>
+                q
+                    .eq('applicationId', plugin._id)
+                    .eq('siteId', site._id)
+                    .eq('topic', args.topic)
+                    .eq('entry', args.entry),
             )
             .unique();
 
@@ -58,7 +62,7 @@ export const storeWebhookData = internalMutation({
             id = existing._id;
         } else {
             id = await ctx.db.insert('pluginData', {
-                pluginId: plugin._id,
+                applicationId: plugin._id,
                 siteId: site._id,
                 topic: args.topic,
                 entry: args.entry,
@@ -131,12 +135,12 @@ export const deletePluginData = internalMutation({
 
 /**
  * Find devices affected by a data change.
- * Returns device Convex IDs whose bindings match the given plugin + topic + entry.
+ * Returns device Convex IDs whose bindings match the given application + topic + entry.
  * Called from the Next.js webhook route to know which devices need re-rendering.
  */
 export const listAffectedDevices = internalQuery({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteId: v.id('sites'),
         topic: v.string(),
         entry: v.string(),
@@ -151,7 +155,7 @@ export const listAffectedDevices = internalQuery({
             .filter((d) => {
                 if (!d.dataBindings || !d.frameId) return false;
                 return d.dataBindings.some(
-                    (b) => b.pluginId === args.pluginId && b.topic === args.topic && b.entry === args.entry,
+                    (b) => b.applicationId === args.pluginId && b.topic === args.topic && b.entry === args.entry,
                 );
             })
             .map((d) => d._id);
@@ -165,37 +169,39 @@ export const listAffectedDevices = internalQuery({
 export const listPluginsWithTopics = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return [];
 
-        const plugins = await ctx.db
-            .query('plugins')
+        const activePluginApps = await ctx.db
+            .query('applications')
             .withIndex('by_status', (q) => q.eq('status', 'active'))
+            .filter((q) => q.eq(q.field('type'), 'plugin'))
             .collect();
 
         const results = [];
-        for (const p of plugins) {
-            if (p.topics.length === 0) continue;
+        for (const app of activePluginApps) {
+            const plugin = await ctx.db
+                .query('pluginProfiles')
+                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
+                .unique();
 
-            // System plugins are internal — not shown in the data binding picker
-            if (p.type === 'system') continue;
+            if (!plugin || plugin.topics.length === 0) continue;
 
-            // External plugins need site access
             const access = await ctx.db
                 .query('pluginSiteAccess')
-                .withIndex('by_plugin_and_site', (q) => q.eq('pluginId', p._id).eq('siteId', args.siteId))
+                .withIndex('by_application_and_site', (q) => q.eq('applicationId', app._id).eq('siteId', args.siteId))
                 .unique();
 
             if (!access || !access.enabledByAdmin || !access.enabledBySite) continue;
 
             results.push({
-                _id: p._id,
-                name: p.name,
-                topics: p.topics,
+                _id: app._id,
+                name: app.name,
+                topics: plugin.topics,
             });
         }
 
@@ -209,22 +215,22 @@ export const listPluginsWithTopics = query({
  */
 export const listEntries = query({
     args: {
-        pluginId: v.id('plugins'),
+        pluginId: v.id('applications'),
         siteId: v.id('sites'),
         topic: v.string(),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.device.view) return [];
 
         const records = await ctx.db
             .query('pluginData')
-            .withIndex('by_plugin_site_topic_entry', (q) =>
-                q.eq('pluginId', args.pluginId).eq('siteId', args.siteId).eq('topic', args.topic),
+            .withIndex('by_application_site_topic_entry', (q) =>
+                q.eq('applicationId', args.pluginId).eq('siteId', args.siteId).eq('topic', args.topic),
             )
             .collect();
 

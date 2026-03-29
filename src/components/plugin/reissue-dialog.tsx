@@ -1,6 +1,8 @@
 'use client';
 
 import * as React from 'react';
+import { useAction } from 'convex/react';
+import { api } from '@convex/api';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -21,11 +23,12 @@ export function ReissueTokenDialog({
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    pluginId: Id<'plugins'>;
+    pluginId: Id<'applications'>;
     pluginName: string;
 }) {
+    const rotateSecret = useAction(api.plugins.provision.rotateSecret);
     const [isReissuing, setIsReissuing] = React.useState(false);
-    const [token, setToken] = React.useState<string | null>(null);
+    const [secret, setSecret] = React.useState<{ clientId: string; clientSecret: string } | null>(null);
     const [copied, setCopied] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
 
@@ -33,34 +36,25 @@ export function ReissueTokenDialog({
         setIsReissuing(true);
         setError(null);
         try {
-            const res = await fetch('/api/v2/plugin/reissue-token', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pluginId }),
-            });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || 'Failed to reissue token');
-            }
-            const data = await res.json();
-            setToken(data.token);
+            const data = await rotateSecret({ id: pluginId });
+            setSecret({ clientId: data.clientId, clientSecret: data.clientSecret });
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to reissue token');
+            setError(err instanceof Error ? err.message : 'Failed to create client secret');
         } finally {
             setIsReissuing(false);
         }
     };
 
     const handleCopy = async () => {
-        if (!token) return;
-        await navigator.clipboard.writeText(token);
+        if (!secret) return;
+        await navigator.clipboard.writeText(secret.clientSecret);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     const handleClose = (open: boolean) => {
         if (!open) {
-            setToken(null);
+            setSecret(null);
             setCopied(false);
             setError(null);
         }
@@ -71,18 +65,25 @@ export function ReissueTokenDialog({
         <Dialog open={open} onOpenChange={handleClose}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>{token ? 'New Token Issued' : 'Reissue Token'}</DialogTitle>
+                    <DialogTitle>{secret ? 'New Client Secret' : 'Rotate Client Secret'}</DialogTitle>
                     <DialogDescription>
-                        {token
-                            ? 'Save the new token below. The old token has been invalidated.'
-                            : `This will invalidate the current token for "${pluginName}". The plugin will need to be updated with the new token.`}
+                        {secret
+                            ? 'Save the client secret below. It will not be shown again.'
+                            : `This will create a new client secret for "${pluginName}".`}
                     </DialogDescription>
                 </DialogHeader>
 
-                {token ? (
+                {secret ? (
                     <div className="space-y-3">
-                        <div className="p-3 bg-muted rounded-lg font-mono text-xs break-all max-h-32 overflow-y-auto">
-                            {token}
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Client ID</p>
+                            <div className="p-3 bg-muted rounded-lg font-mono text-xs break-all">{secret.clientId}</div>
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground">Client Secret</p>
+                            <div className="p-3 bg-muted rounded-lg font-mono text-xs break-all max-h-32 overflow-y-auto">
+                                {secret.clientSecret}
+                            </div>
                         </div>
                         <Button variant="outline" size="sm" onClick={handleCopy} className="w-full">
                             {copied ? (
@@ -93,12 +94,12 @@ export function ReissueTokenDialog({
                             ) : (
                                 <>
                                     <Copy className="size-4 mr-2" />
-                                    Copy Token
+                                    Copy Client Secret
                                 </>
                             )}
                         </Button>
                         <p className="text-sm text-destructive">
-                            This token cannot be retrieved later. Make sure to copy it now.
+                            This secret cannot be retrieved later. Make sure to copy it now.
                         </p>
                     </div>
                 ) : (
@@ -106,7 +107,7 @@ export function ReissueTokenDialog({
                 )}
 
                 <DialogFooter>
-                    {token ? (
+                    {secret ? (
                         <Button onClick={() => handleClose(false)}>Done</Button>
                     ) : (
                         <>
@@ -114,7 +115,7 @@ export function ReissueTokenDialog({
                                 Cancel
                             </Button>
                             <Button variant="destructive" onClick={handleReissue} disabled={isReissuing}>
-                                {isReissuing ? 'Reissuing...' : 'Reissue Token'}
+                                {isReissuing ? 'Creating...' : 'Create New Secret'}
                             </Button>
                         </>
                     )}

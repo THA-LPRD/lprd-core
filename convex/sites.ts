@@ -1,12 +1,13 @@
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 import { mutation, query } from './_generated/server';
 import { siteMemberRole } from './schema';
 import { getPermissions } from './lib/acl';
-import { getCurrentUser, getMembership, withAvatarUrl } from './users';
+import { getCurrentActor, getMembership, withAvatarUrl } from './actors';
 
 /**
  * Create a new site.
- * Any authenticated user can create. Creator becomes siteAdmin.
+ * Any authenticated actor can create. Creator becomes siteAdmin.
  */
 export const create = mutation({
     args: {
@@ -15,10 +16,10 @@ export const create = mutation({
         logoUrl: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const perms = getPermissions(user, null);
+        const perms = getPermissions(actor, null);
         if (!perms.site.create) throw new Error('Forbidden');
 
         const existing = await ctx.db
@@ -38,7 +39,7 @@ export const create = mutation({
 
         // Creator becomes siteAdmin
         await ctx.db.insert('siteMembers', {
-            userId: user._id,
+            actorId: actor._id as Id<'actors'>,
             siteId,
             role: 'siteAdmin',
             createdAt: now,
@@ -49,16 +50,16 @@ export const create = mutation({
 });
 
 /**
- * List sites the current user can see.
+ * List sites the current actor can see.
  */
 export const list = query({
     args: {},
     handler: async (ctx) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
         // appAdmins can view all sites (check with null membership)
-        const globalPerms = getPermissions(user, null);
+        const globalPerms = getPermissions(actor, null);
         if (globalPerms.site.view) {
             return ctx.db.query('sites').collect();
         }
@@ -66,7 +67,7 @@ export const list = query({
         // Others see only their memberships
         const memberships = await ctx.db
             .query('siteMembers')
-            .withIndex('by_user', (q) => q.eq('userId', user._id))
+            .withIndex('by_actor', (q) => q.eq('actorId', actor._id as Id<'actors'>))
             .collect();
 
         const sites = await Promise.all(memberships.map((m) => ctx.db.get(m.siteId)));
@@ -80,14 +81,14 @@ export const list = query({
 export const getById = query({
     args: { id: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return null;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
 
         const site = await ctx.db.get(args.id);
         if (!site) return null;
 
-        const membership = await getMembership(ctx, user._id, args.id);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.id);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.view) return null;
 
         return site;
@@ -100,8 +101,8 @@ export const getById = query({
 export const getBySlug = query({
     args: { slug: v.string() },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return null;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
 
         const site = await ctx.db
             .query('sites')
@@ -109,8 +110,8 @@ export const getBySlug = query({
             .unique();
         if (!site) return null;
 
-        const membership = await getMembership(ctx, user._id, site._id);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, site._id);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.view) return null;
 
         return site;
@@ -128,11 +129,11 @@ export const update = mutation({
         logoUrl: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.id);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.id);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.manage) throw new Error('Forbidden');
 
         const { id, ...updates } = args;
@@ -147,11 +148,11 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.id);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.id);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.manage) throw new Error('Forbidden');
 
         const memberships = await ctx.db
@@ -179,22 +180,22 @@ export const remove = mutation({
 export const addMember = mutation({
     args: {
         siteId: v.id('sites'),
-        userId: v.id('users'),
+        actorId: v.id('actors'),
         role: siteMemberRole,
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.manage) throw new Error('Forbidden');
 
-        const existing = await getMembership(ctx, args.userId, args.siteId);
+        const existing = await getMembership(ctx, args.actorId, args.siteId);
         if (existing) throw new Error('Already a member');
 
         return ctx.db.insert('siteMembers', {
-            userId: args.userId,
+            actorId: args.actorId,
             siteId: args.siteId,
             role: args.role,
             createdAt: Date.now(),
@@ -209,18 +210,18 @@ export const addMember = mutation({
 export const updateMemberRole = mutation({
     args: {
         siteId: v.id('sites'),
-        userId: v.id('users'),
+        actorId: v.id('actors'),
         role: siteMemberRole,
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.manage) throw new Error('Forbidden');
 
-        const targetMembership = await getMembership(ctx, args.userId, args.siteId);
+        const targetMembership = await getMembership(ctx, args.actorId, args.siteId);
         if (!targetMembership) throw new Error('Member not found');
 
         await ctx.db.patch(targetMembership._id, { role: args.role });
@@ -234,17 +235,17 @@ export const updateMemberRole = mutation({
 export const removeMember = mutation({
     args: {
         siteId: v.id('sites'),
-        userId: v.id('users'),
+        actorId: v.id('actors'),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.manage) throw new Error('Forbidden');
 
-        const targetMembership = await getMembership(ctx, args.userId, args.siteId);
+        const targetMembership = await getMembership(ctx, args.actorId, args.siteId);
         if (targetMembership) await ctx.db.delete(targetMembership._id);
     },
 });
@@ -256,11 +257,11 @@ export const removeMember = mutation({
 export const listMembers = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.site.view) return [];
 
         const memberships = await ctx.db
@@ -270,9 +271,18 @@ export const listMembers = query({
 
         return Promise.all(
             memberships.map(async (m) => {
-                const memberUser = await ctx.db.get(m.userId);
+                const actorId = m.actorId as Id<'actors'>;
+                const memberActor = await ctx.db.get(actorId);
+                const memberWithAvatar = memberActor ? await withAvatarUrl(ctx, memberActor) : null;
                 return {
-                    user: memberUser ? await withAvatarUrl(ctx, memberUser) : null,
+                    actor: memberWithAvatar
+                        ? {
+                              _id: actorId,
+                              name: memberWithAvatar.name,
+                              email: memberWithAvatar.email,
+                              avatarUrl: memberWithAvatar.avatarUrl,
+                          }
+                        : null,
                     role: m.role,
                 };
             }),
@@ -281,21 +291,21 @@ export const listMembers = query({
 });
 
 /**
- * List sites a user belongs to with their role.
+ * List sites an actor belongs to with their role.
  */
-export const listByUser = query({
-    args: { userId: v.id('users') },
+export const listByActor = query({
+    args: { actorId: v.id('actors') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
         // Can only query own memberships unless appAdmin
-        const perms = getPermissions(user, null);
-        if (user._id !== args.userId && !perms.platform.setUserRoles) return [];
+        const perms = getPermissions(actor, null);
+        if ((actor._id as string) !== (args.actorId as string) && !perms.platform.setUserRoles) return [];
 
         const memberships = await ctx.db
             .query('siteMembers')
-            .withIndex('by_user', (q) => q.eq('userId', args.userId))
+            .withIndex('by_actor', (q) => q.eq('actorId', args.actorId))
             .collect();
 
         return Promise.all(

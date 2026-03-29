@@ -8,9 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-const ALL_STATUSES = ['pending', 'active', 'suspended', 'removed'] as const;
+const ALL_STATUSES = ['active', 'suspended', 'removed'] as const;
 type PluginStatus = (typeof ALL_STATUSES)[number];
-const DEFAULT_STATUSES: PluginStatus[] = ['pending', 'active', 'suspended'];
+const DEFAULT_STATUSES: PluginStatus[] = ['active', 'suspended'];
 
 function parseStatusParams(params: URLSearchParams): Set<PluginStatus> {
     const raw = params.get('status');
@@ -104,7 +104,7 @@ export function PluginListFilter({
             <div className="relative max-w-xs flex-1">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input
-                    placeholder="Search plugins..."
+                    placeholder="Search service accounts..."
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}
                     className="pl-9"

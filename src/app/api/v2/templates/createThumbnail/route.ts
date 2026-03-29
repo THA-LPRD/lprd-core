@@ -1,8 +1,21 @@
+import { ConvexHttpClient } from 'convex/browser';
+import type { FunctionReference, FunctionReturnType, FunctionVisibility } from 'convex/server';
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
-import { asPublic, getConvexClient } from '@/lib/convex-server';
 import { generateScreenshot, getVariantPixelSize } from '@/lib/render/thumbnail';
 import type { TemplateVariant } from '@/lib/template';
+
+type InternalThumbnailConvexClient = Omit<ConvexHttpClient, 'query'> & {
+    setAdminAuth(token: string): void;
+    query<Ref extends FunctionReference<'query', FunctionVisibility>>(
+        ref: Ref,
+        args: Ref['_args'],
+    ): Promise<FunctionReturnType<Ref>>;
+};
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!) as unknown as InternalThumbnailConvexClient;
+
+convex.setAdminAuth(process.env.CONVEX_DEPLOY_KEY!);
 
 export async function POST(request: Request) {
     try {
@@ -13,8 +26,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'templateId and siteSlug are required' }, { status: 400 });
         }
 
-        const convex = getConvexClient();
-        const template = await convex.query(asPublic(internal.templates.crud.getByIdInternal), { id: templateId });
+        const template = await convex.query(internal.templates.crud.getByIdInternal, { id: templateId });
 
         if (!template) {
             return NextResponse.json({ error: 'Template not found' }, { status: 404 });

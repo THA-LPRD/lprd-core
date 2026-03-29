@@ -34,7 +34,7 @@ export function DataBindingsCard({
     onManualDataChange: (widgetId: string, data: unknown) => void;
     siteId: Id<'sites'>;
     getTemplateName: (templateId?: string) => string;
-    getPluginName: (pluginId: Id<'plugins'>) => string;
+    getPluginName: (pluginId: Id<'applications'>) => string;
 }) {
     const addBinding = (widgetId: string, source: DataSource) => {
         onBindingsChange([...bindings, { widgetId, ...source }]);
@@ -67,7 +67,8 @@ export function DataBindingsCard({
                                 return (
                                     <Badge variant="secondary" key={idx} className="gap-2 text-sm p-3">
                                         <span className="truncate flex-1">
-                                            {getPluginName(binding.pluginId)} &middot; {binding.topic}/{binding.entry}
+                                            {getPluginName(binding.applicationId)} &middot; {binding.topic}/
+                                            {binding.entry}
                                         </span>
                                         <Button
                                             variant="ghost"

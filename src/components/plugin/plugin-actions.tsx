@@ -10,10 +10,10 @@ import { ReissueTokenDialog } from '@/components/plugin/reissue-dialog';
 import { ConfirmActionDialog } from '@/components/plugin/confirm-action-dialog';
 import type { Doc } from '@convex/dataModel';
 
-export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
+export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
     const router = useRouter();
-    const updateStatus = useMutation(api.plugins.admin.updateStatus);
-    const permanentDelete = useMutation(api.plugins.admin.permanentDelete);
+    const updateStatus = useMutation(api.plugins.applications.updateStatus);
+    const permanentDelete = useMutation(api.plugins.applications.permanentDelete);
     const [showReissue, setShowReissue] = React.useState(false);
     const [showSuspendConfirm, setShowSuspendConfirm] = React.useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = React.useState(false);
@@ -26,7 +26,7 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
                     <>
                         <Button variant="outline" onClick={() => setShowReissue(true)}>
                             <KeyRound className="size-4 mr-2" />
-                            Reissue Token
+                            Rotate Secret
                         </Button>
                         <Button variant="outline" onClick={() => setShowSuspendConfirm(true)}>
                             <Pause className="size-4 mr-2" />
@@ -66,7 +66,7 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
             <ConfirmActionDialog
                 open={showSuspendConfirm}
                 onOpenChange={setShowSuspendConfirm}
-                title="Suspend Plugin"
+                title="Suspend Service Account"
                 description={`This will immediately block all API calls from "${plugin.name}" across all sites. You can reactivate it later.`}
                 confirmLabel="Suspend"
                 onConfirm={async () => {
@@ -77,8 +77,8 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
             <ConfirmActionDialog
                 open={showRemoveConfirm}
                 onOpenChange={setShowRemoveConfirm}
-                title="Remove Plugin"
-                description={`This will mark "${plugin.name}" as removed and block all API access. The plugin record will remain for auditing.`}
+                title="Remove Service Account"
+                description={`This will mark "${plugin.name}" as removed and block all API access. The record will remain for auditing.`}
                 confirmLabel="Remove"
                 onConfirm={async () => {
                     await updateStatus({ id: plugin._id, status: 'removed' });
@@ -89,8 +89,8 @@ export function PluginActions({ plugin }: { plugin: Doc<'plugins'> }) {
             <ConfirmActionDialog
                 open={showPermanentDelete}
                 onOpenChange={setShowPermanentDelete}
-                title="Permanently Delete Plugin"
-                description={`This will permanently delete "${plugin.name}" and ALL associated data including stored data, org access records, health check history, and templates. This cannot be undone.`}
+                title="Permanently Delete Service Account"
+                description={`This will permanently delete "${plugin.name}" and ALL associated data including site access records, health check history, and templates. This cannot be undone.`}
                 confirmLabel="Delete Permanently"
                 onConfirm={async () => {
                     await permanentDelete({ id: plugin._id });

@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import type { Id } from '@convex/dataModel';
 
-export function PluginHealthCard({ pluginId }: { pluginId: Id<'plugins'> }) {
+export function PluginHealthCard({ pluginId }: { pluginId: Id<'applications'> }) {
     const {
         results: healthChecks,
         status: healthPagination,

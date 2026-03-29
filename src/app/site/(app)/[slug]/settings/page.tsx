@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { Id } from '@convex/dataModel';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/api';
@@ -19,13 +20,13 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { SitePluginSettings } from '@/components/plugin/site-settings';
 
 export default function SiteSettingsPage() {
     const router = useRouter();
 
-    const { site, user, members, permissions } = useSite();
+    const { site, actor, members, permissions } = useSite();
 
     // Form state
     const [siteName, setSiteName] = React.useState(site.name);
@@ -124,7 +125,7 @@ export default function SiteSettingsPage() {
                         <MemberTable
                             members={members}
                             siteId={site._id}
-                            currentUserId={user._id}
+                            currentActorId={actor._id as Id<'actors'>}
                             canManage={permissions.site.manage}
                         />
                     </CardContent>

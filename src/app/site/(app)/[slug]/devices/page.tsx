@@ -8,7 +8,7 @@ import { DeviceGrid } from '@/components/device/device-grid';
 import { DeviceForm } from '@/components/device/device-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { buildEntitySlug } from '@/lib/slug';
 import { Plus } from 'lucide-react';
 

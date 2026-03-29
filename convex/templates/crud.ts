@@ -5,7 +5,7 @@ import { templateVariant } from '../schema';
 import { getPermissions } from '../lib/acl';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 import { generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from '../lib/storage';
-import { getCurrentUser, getMembership } from '../users';
+import { getCurrentActor, getMembership } from '../actors';
 
 /**
  * List all templates available to a site (global + site-scoped).
@@ -14,11 +14,11 @@ import { getCurrentUser, getMembership } from '../users';
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return [];
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return [];
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.view) return [];
 
         const globalTemplates = await ctx.db
@@ -53,16 +53,16 @@ export const listBySite = query({
 export const getById = query({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) return null;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
 
         const template = await ctx.db.get(args.id);
         if (!template) return null;
 
         // Global templates are visible to any authenticated user
         if (template.scope === 'site' && template.siteId) {
-            const membership = await getMembership(ctx, user._id, template.siteId);
-            const perms = getPermissions(user, membership);
+            const membership = await getMembership(ctx, actor._id, template.siteId);
+            const perms = getPermissions(actor, membership);
             if (!perms.template.view) return null;
         }
 
@@ -90,18 +90,18 @@ export const create = mutation({
         preferredVariantIndex: v.number(),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         const now = Date.now();
         const id = await ctx.db.insert('templates', {
             scope: 'site',
             siteId: args.siteId,
-            createdBy: user._id,
+            createdBy: actor._id,
             name: args.name,
             description: args.description,
             templateHtml: args.templateHtml,
@@ -139,15 +139,15 @@ export const update = mutation({
         thumbnailStorageId: v.optional(v.id('_storage')),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const template = await ctx.db.get(args.id);
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot edit global templates');
 
-        const membership = await getMembership(ctx, user._id, template.siteId!);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, template.siteId!);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         const { id, ...updates } = args;
@@ -171,15 +171,15 @@ export const update = mutation({
 export const remove = mutation({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const template = await ctx.db.get(args.id);
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot delete global templates');
 
-        const membership = await getMembership(ctx, user._id, template.siteId!);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, template.siteId!);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         if (template.thumbnailStorageId) {
@@ -203,11 +203,11 @@ export const duplicate = mutation({
         siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
-        const membership = await getMembership(ctx, user._id, args.siteId);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, args.siteId);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         const source = await ctx.db.get(args.id);
@@ -217,7 +217,7 @@ export const duplicate = mutation({
         return ctx.db.insert('templates', {
             scope: 'site',
             siteId: args.siteId,
-            createdBy: user._id,
+            createdBy: actor._id,
             name: `${source.name} (Copy)`,
             description: source.description,
             templateHtml: source.templateHtml,
@@ -240,15 +240,15 @@ export const storeThumbnail = mutation({
         storageId: v.id('_storage'),
     },
     handler: async (ctx, args) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
 
         const template = await ctx.db.get(args.id);
         if (!template) throw new Error('Template not found');
         if (template.scope === 'global') throw new Error('Cannot modify global templates');
 
-        const membership = await getMembership(ctx, user._id, template.siteId!);
-        const perms = getPermissions(user, membership);
+        const membership = await getMembership(ctx, actor._id, template.siteId!);
+        const perms = getPermissions(actor, membership);
         if (!perms.template.manage) throw new Error('Forbidden');
 
         await replaceThumbnail(ctx, args.id, args.storageId);
@@ -261,8 +261,8 @@ export const storeThumbnail = mutation({
 export const generateUploadUrl = mutation({
     args: {},
     handler: async (ctx) => {
-        const user = await getCurrentUser(ctx);
-        if (!user) throw new Error('Not authenticated');
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
         return generateUploadUrlImpl(ctx);
     },
 });

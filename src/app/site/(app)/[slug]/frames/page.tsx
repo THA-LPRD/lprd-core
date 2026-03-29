@@ -8,7 +8,7 @@ import { FrameGridView } from '@/components/frame/frame-grid';
 import { FrameForm } from '@/components/frame/frame-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useSite } from '@/components/site/site-context';
+import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
 import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { buildEntitySlug } from '@/lib/slug';

@@ -10,8 +10,8 @@ export const handleUserDeleted = httpAction(async (ctx, request) => {
         const event = await verifyAndParse(request, ctx, process.env.WORKOS_WEBHOOK_USERS_DELETED_SECRET!);
         const { data } = event;
 
-        await ctx.runMutation(internal.users.deleteFromWebhook, {
-            authId: data.id,
+        await ctx.runMutation(internal.actors.deleteFromWebhook, {
+            workosUserId: data.id,
         });
 
         return new Response(null, { status: 200 });
