@@ -19,7 +19,7 @@ export type AuthenticatedApplication = {
     type: 'plugin' | 'internal';
     name: string;
     status: string;
-    workosOrganizationId: string;
+    organizationId?: Id<'organizations'>;
     scopes?: Array<'push_data' | 'create_template' | 'internal_render'>;
 };
 
@@ -38,13 +38,11 @@ export async function authenticateApplication(
     }
 
     let clientId: string | undefined;
-    let orgId: string | undefined;
     try {
         const { payload } = await verifyToken(authHeader.slice(7));
         clientId =
             payload.sub ??
             (typeof payload.aud === 'string' ? payload.aud : Array.isArray(payload.aud) ? payload.aud[0] : undefined);
-        orgId = payload.org_id;
     } catch {
         throw new AuthError('Invalid or expired token', 401);
     }
@@ -73,17 +71,13 @@ export async function authenticateApplication(
         throw new AuthError(`Application type '${result.application.type}' is not allowed here`, 403);
     }
 
-    if (orgId && result.application.workosOrganizationId !== orgId) {
-        throw new AuthError('Application organization does not match token organization', 403);
-    }
-
     return {
         _id: result.application._id,
         actorId: result.application.actorId,
         type: result.application.type,
         name: result.application.name,
         status: result.application.status,
-        workosOrganizationId: result.application.workosOrganizationId,
+        organizationId: result.application.organizationId,
         scopes: result.application.scopes,
     };
 }

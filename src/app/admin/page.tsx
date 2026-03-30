@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { fetchQuery } from 'convex/nextjs';
 import { Plug, Users, Building2 } from 'lucide-react';
+import { redirect } from 'next/navigation';
 import { api } from '@convex/api';
 import { withAuth } from '@workos-inc/authkit-nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +9,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 export default async function AdminDashboardPage() {
     const auth = await withAuth();
 
-    if (!auth.accessToken) {
-        return null;
+    if (!auth.user || !auth.accessToken) {
+        redirect('/login');
+    }
+
+    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
+
+    if (!actor) {
+        redirect('/login');
+    }
+
+    if (actor.role !== 'appAdmin') {
+        redirect('/site');
     }
 
     const [plugins, actors, sites] = await Promise.all([

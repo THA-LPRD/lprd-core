@@ -1,18 +1,16 @@
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 import { internalMutation, query } from './_generated/server';
 import { getCurrentActor } from './actors';
 import { getPermissions } from './lib/acl';
 
 export const upsertFromWebhook = internalMutation({
     args: {
-        workosOrganizationId: v.string(),
+        externalId: v.string(),
         name: v.string(),
     },
     handler: async (ctx, args) => {
-        const existing = await ctx.db
-            .query('organizations')
-            .withIndex('by_workosOrganizationId', (q) => q.eq('workosOrganizationId', args.workosOrganizationId))
-            .unique();
+        const existing = await ctx.db.get(args.externalId as Id<'organizations'>);
 
         const now = Date.now();
 
@@ -21,9 +19,9 @@ export const upsertFromWebhook = internalMutation({
                 name: args.name,
                 updatedAt: now,
             });
+            return existing._id;
         } else {
-            await ctx.db.insert('organizations', {
-                workosOrganizationId: args.workosOrganizationId,
+            return await ctx.db.insert('organizations', {
                 name: args.name,
                 createdAt: now,
                 updatedAt: now,
@@ -33,14 +31,9 @@ export const upsertFromWebhook = internalMutation({
 });
 
 export const deleteFromWebhook = internalMutation({
-    args: {
-        workosOrganizationId: v.string(),
-    },
+    args: { externalId: v.string() },
     handler: async (ctx, args) => {
-        const existing = await ctx.db
-            .query('organizations')
-            .withIndex('by_workosOrganizationId', (q) => q.eq('workosOrganizationId', args.workosOrganizationId))
-            .unique();
+        const existing = await ctx.db.get(args.externalId as Id<'organizations'>);
 
         if (existing) {
             await ctx.db.delete(existing._id);
@@ -48,14 +41,9 @@ export const deleteFromWebhook = internalMutation({
     },
 });
 
-export const getByWorkosId = query({
-    args: { workosOrganizationId: v.string() },
-    handler: async (ctx, args) => {
-        return ctx.db
-            .query('organizations')
-            .withIndex('by_workosOrganizationId', (q) => q.eq('workosOrganizationId', args.workosOrganizationId))
-            .unique();
-    },
+export const getById = query({
+    args: { id: v.id('organizations') },
+    handler: async (ctx, args) => ctx.db.get(args.id),
 });
 
 export const listAll = query({

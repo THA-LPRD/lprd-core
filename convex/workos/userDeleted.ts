@@ -10,8 +10,13 @@ export const handleUserDeleted = httpAction(async (ctx, request) => {
         const event = await verifyAndParse(request, ctx, process.env.WORKOS_WEBHOOK_USERS_DELETED_SECRET!);
         const { data } = event;
 
+        if (typeof data.external_id !== 'string') {
+            console.error('Webhook processing error: WorkOS user is missing external_id');
+            return new Response('WorkOS user is missing external_id', { status: 400 });
+        }
+
         await ctx.runMutation(internal.actors.deleteFromWebhook, {
-            workosUserId: data.id,
+            externalId: data.external_id,
         });
 
         return new Response(null, { status: 200 });

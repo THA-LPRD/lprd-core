@@ -62,10 +62,7 @@ export const getDetails = query({
         const application = await ctx.db.get(args.id);
         if (!application) return null;
 
-        const org = await ctx.db
-            .query('organizations')
-            .withIndex('by_workosOrganizationId', (q) => q.eq('workosOrganizationId', application.workosOrganizationId))
-            .unique();
+        const org = application.organizationId ? await ctx.db.get(application.organizationId) : null;
 
         return { ...application, organizationName: org?.name };
     },
@@ -114,7 +111,7 @@ export const createApplicationRecord = mutation({
         name: v.string(),
         description: v.optional(v.string()),
         type: applicationType,
-        workosOrganizationId: v.string(),
+        organizationId: v.id('organizations'),
         workosApplicationId: v.string(),
         workosClientId: v.string(),
         lastSecretHint: v.optional(v.string()),
@@ -132,20 +129,12 @@ export const createApplicationRecord = mutation({
     },
     handler: async (ctx, args) => {
         const actor = await requireManagingActor(ctx);
-        const createdByActor = await ctx.db
-            .query('actors')
-            .withIndex('by_workosUserId', (q) => q.eq('workosUserId', actor.workosUserId ?? ''))
-            .unique();
-
-        if (!createdByActor) {
-            throw new Error('Admin actor record not found');
-        }
 
         const now = Date.now();
 
         const actorId = await ctx.db.insert('actors', {
             type: 'serviceAccount',
-            workosOrganizationId: args.workosOrganizationId,
+            organizationId: args.organizationId,
             email: args.actorEmail,
             name: args.actorName,
             status: 'active',
@@ -160,12 +149,12 @@ export const createApplicationRecord = mutation({
             description: args.description,
             type: args.type,
             status: 'active',
-            workosOrganizationId: args.workosOrganizationId,
+            organizationId: args.organizationId,
             workosApplicationId: args.workosApplicationId,
             workosClientId: args.workosClientId,
             lastSecretHint: args.lastSecretHint,
             scopes: args.scopes,
-            createdBy: createdByActor._id,
+            createdBy: actor._id,
             createdAt: now,
             updatedAt: now,
         });

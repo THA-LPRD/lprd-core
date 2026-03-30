@@ -16,8 +16,13 @@ export const handleUserUpdated = httpAction(async (ctx, request) => {
             avatarStorageId = await storeAvatar(ctx, data.email, data.profile_picture_url);
         }
 
+        if (typeof data.external_id !== 'string') {
+            console.error('Webhook processing error: WorkOS user is missing external_id');
+            return new Response('WorkOS user is missing external_id', { status: 400 });
+        }
+
         await ctx.runMutation(internal.actors.updateFromWebhook, {
-            workosUserId: data.id,
+            externalId: data.external_id,
             email: data.email,
             name: [data.first_name, data.last_name].filter(Boolean).join(' ') || undefined,
             avatarStorageId,

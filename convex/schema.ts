@@ -112,8 +112,7 @@ export const frameLayer = v.object({
 export default defineSchema({
     actors: defineTable({
         type: actorType,
-        workosUserId: v.optional(v.string()),
-        workosOrganizationId: v.optional(v.string()),
+        organizationId: v.optional(v.id('organizations')),
         email: v.optional(v.string()),
         name: v.optional(v.string()),
         avatarStorageId: v.optional(v.id('_storage')),
@@ -123,15 +122,14 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
     })
-        .index('by_workosUserId', ['workosUserId'])
-        .index('by_email', ['email']),
+        .index('by_email', ['email'])
+        .index('by_organization', ['organizationId']),
 
     organizations: defineTable({
-        workosOrganizationId: v.string(),
         name: v.string(),
         createdAt: v.number(),
         updatedAt: v.number(),
-    }).index('by_workosOrganizationId', ['workosOrganizationId']),
+    }),
 
     sites: defineTable({
         name: v.string(),
@@ -201,7 +199,7 @@ export default defineSchema({
         description: v.optional(v.string()),
         type: applicationType,
         status: applicationStatus,
-        workosOrganizationId: v.string(),
+        organizationId: v.optional(v.id('organizations')),
         workosApplicationId: v.string(),
         workosClientId: v.string(),
         lastSecretHint: v.optional(v.string()),
@@ -214,7 +212,7 @@ export default defineSchema({
         .index('by_actor', ['actorId'])
         .index('by_workosApplicationId', ['workosApplicationId'])
         .index('by_workosClientId', ['workosClientId'])
-        .index('by_workosOrganizationId', ['workosOrganizationId'])
+        .index('by_organization', ['organizationId'])
         .index('by_type', ['type']),
 
     pluginProfiles: defineTable({

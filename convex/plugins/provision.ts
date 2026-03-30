@@ -3,6 +3,7 @@ import { api, internal } from '../_generated/api';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 import { applicationScope, applicationType, pluginTopic } from '../schema';
+import { WorkOS } from '@workos-inc/node';
 
 async function workosPost<T>(path: string, body?: unknown): Promise<T> {
     const apiKey = process.env.WORKOS_API_KEY;
@@ -31,7 +32,7 @@ export const provision = action({
         name: v.string(),
         description: v.optional(v.string()),
         type: applicationType,
-        workosOrganizationId: v.string(),
+        organizationId: v.id('organizations'),
         scopes: v.optional(v.array(applicationScope)),
         plugin: v.optional(
             v.object({
@@ -53,11 +54,14 @@ export const provision = action({
     }> => {
         await ctx.runQuery(internal.plugins.applications.requireManager, {});
 
+        const workos = new WorkOS(process.env.WORKOS_API_KEY);
+        const organization = await workos.organizations.getOrganizationByExternalId(args.organizationId);
+
         const appData = await workosPost<{ connect_application?: WorkOSApp } & WorkOSApp>('/connect/applications', {
             name: args.name,
             description: args.description,
             application_type: 'm2m',
-            organization_id: args.workosOrganizationId,
+            organization_id: organization.id,
         });
         const workosApp = 'connect_application' in appData ? appData.connect_application! : appData;
 
@@ -73,7 +77,7 @@ export const provision = action({
             name: args.name,
             description: args.description,
             type: args.type,
-            workosOrganizationId: args.workosOrganizationId,
+            organizationId: args.organizationId,
             workosApplicationId: workosApp.id,
             workosClientId: workosApp.client_id,
             lastSecretHint: secret.hint,

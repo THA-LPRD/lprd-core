@@ -136,7 +136,7 @@ export function PluginDetailsCard({
                             <dt className="text-muted-foreground">Organization</dt>
                             <dd className="mt-1">
                                 {plugin.organizationName ?? (
-                                    <span className="font-mono text-xs break-all">{plugin.workosOrganizationId}</span>
+                                    <span className="font-mono text-xs break-all">{plugin.organizationId ?? 'Unassigned'}</span>
                                 )}
                             </dd>
                         </div>

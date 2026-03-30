@@ -40,13 +40,39 @@ export const verifyWebhook = internalAction({
     handler: async (ctx, args) => {
         const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-        const webhook = workos.webhooks.constructEvent({
+        return workos.webhooks.constructEvent({
             payload: JSON.parse(args.payload),
             sigHeader: args.signature,
             secret: args.secret,
         });
+    },
+});
 
-        return webhook;
+export const syncUserExternalId = internalAction({
+    args: {
+        userId: v.string(),
+        externalId: v.string(),
+    },
+    handler: async (_ctx, args) => {
+        const workos = new WorkOS(process.env.WORKOS_API_KEY);
+        await workos.userManagement.updateUser({
+            userId: args.userId,
+            externalId: args.externalId,
+        });
+    },
+});
+
+export const syncOrganizationExternalId = internalAction({
+    args: {
+        organization: v.string(),
+        externalId: v.string(),
+    },
+    handler: async (_ctx, args) => {
+        const workos = new WorkOS(process.env.WORKOS_API_KEY);
+        await workos.organizations.updateOrganization({
+            organization: args.organization,
+            externalId: args.externalId,
+        });
     },
 });
 

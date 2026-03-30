@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '@convex/api';
+import type { Id } from '@convex/dataModel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -30,7 +31,7 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
     const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
-    const [organizationId, setOrganizationId] = React.useState('');
+    const [organizationId, setOrganizationId] = React.useState<Id<'organizations'> | ''>('');
     const [scopePushData, setScopePushData] = React.useState(true);
     const [scopeCreateTemplate, setScopeCreateTemplate] = React.useState(true);
     const [scopeInternalRender, setScopeInternalRender] = React.useState(false);
@@ -38,12 +39,11 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
     const [credentials, setCredentials] = React.useState<ProvisionedCredentials | null>(null);
     const [copied, setCopied] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const selectedOrganizationName =
-        organizations?.find((organization) => organization.workosOrganizationId === organizationId)?.name ?? '';
+    const selectedOrganizationName = organizations?.find((organization) => organization._id === organizationId)?.name ?? '';
 
     React.useEffect(() => {
         if (!open || organizations === undefined) return;
-        setOrganizationId((current) => current || organizations[0]?.workosOrganizationId || '');
+        setOrganizationId((current) => current || organizations[0]?._id || '');
     }, [open, organizations]);
 
     const handleCreate = async () => {
@@ -66,7 +66,7 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                 name: name.trim(),
                 actorName,
                 description: description.trim() || undefined,
-                workosOrganizationId: organizationId,
+                organizationId,
                 scopes: scopes.length > 0 ? scopes : undefined,
             });
 
@@ -168,7 +168,10 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                         </Field>
                         <Field>
                             <FieldLabel>Organization</FieldLabel>
-                            <Select value={organizationId} onValueChange={(value) => setOrganizationId(value ?? '')}>
+                            <Select
+                                value={organizationId || undefined}
+                                onValueChange={(value) => setOrganizationId((value as Id<'organizations'> | null) ?? '')}
+                            >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Select organization">
                                         {selectedOrganizationName || undefined}
@@ -176,7 +179,7 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                                 </SelectTrigger>
                                 <SelectContent alignItemWithTrigger={false}>
                                     {organizations?.map((organization) => (
-                                        <SelectItem key={organization._id} value={organization.workosOrganizationId}>
+                                        <SelectItem key={organization._id} value={organization._id}>
                                             {organization.name}
                                         </SelectItem>
                                     ))}

@@ -10,10 +10,22 @@ export const handleOrgUpdated = httpAction(async (ctx, request) => {
         const event = await verifyAndParse(request, ctx, process.env.WORKOS_WEBHOOK_ORGS_UPDATED_SECRET!);
         const { data } = event;
 
-        await ctx.runMutation(internal.organizations.upsertFromWebhook, {
-            workosOrganizationId: data.id,
+        if (typeof data.external_id !== 'string') {
+            console.error('Org webhook processing error: WorkOS organization is missing external_id');
+            return new Response('WorkOS organization is missing external_id', { status: 400 });
+        }
+
+        const organizationId: string = await ctx.runMutation(internal.organizations.upsertFromWebhook, {
+            externalId: data.external_id,
             name: data.name,
         });
+
+        if (data.external_id !== organizationId) {
+            await ctx.runAction(internal.workos.helpers.syncOrganizationExternalId, {
+                organization: data.id,
+                externalId: organizationId,
+            });
+        }
 
         return new Response(null, { status: 200 });
     } catch (error) {

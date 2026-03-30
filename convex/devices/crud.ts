@@ -35,7 +35,6 @@ async function getOrCreateManualPlugin(ctx: MutationCtx) {
         name: MANUAL_APPLICATION_NAME,
         type: 'internal',
         status: 'active',
-        workosOrganizationId: 'internal',
         workosApplicationId: `manual-${actorId}`,
         workosClientId: `manual-${actorId}`,
         createdAt: now,

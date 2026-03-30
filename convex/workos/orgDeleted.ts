@@ -10,8 +10,13 @@ export const handleOrgDeleted = httpAction(async (ctx, request) => {
         const event = await verifyAndParse(request, ctx, process.env.WORKOS_WEBHOOK_ORGS_DELETED_SECRET!);
         const { data } = event;
 
+        if (typeof data.external_id !== 'string') {
+            console.error('Org webhook processing error: WorkOS organization is missing external_id');
+            return new Response('WorkOS organization is missing external_id', { status: 400 });
+        }
+
         await ctx.runMutation(internal.organizations.deleteFromWebhook, {
-            workosOrganizationId: data.id,
+            externalId: data.external_id,
         });
 
         return new Response(null, { status: 200 });

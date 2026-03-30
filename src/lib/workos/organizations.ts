@@ -1,6 +1,8 @@
-import { workosRequest } from '@/lib/workos/shared';
+import { WorkOS } from '@workos-inc/node';
+import { getWorkOSApiKey } from '@/lib/workos/shared';
 
 export async function list() {
-    const result = await workosRequest<{ data: Array<{ id: string; name: string }> }>('/organizations');
+    const workos = new WorkOS(getWorkOSApiKey());
+    const result = await workos.organizations.listOrganizations();
     return result.data;
 }

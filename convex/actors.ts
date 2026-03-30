@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalMutation, internalQuery, mutation, type MutationCtx, query, type QueryCtx } from './_generated/server';
+import { internalMutation, mutation, type MutationCtx, query, type QueryCtx } from './_generated/server';
 import type { Id } from './_generated/dataModel';
 import { actorRole } from './schema';
 import { getPermissions } from './lib/acl';
@@ -14,10 +14,10 @@ export async function getCurrentActor(ctx: Ctx) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    return ctx.db
-        .query('actors')
-        .withIndex('by_workosUserId', (q) => q.eq('workosUserId', identity.subject))
-        .unique();
+    const actorId = identity.external_id;
+    if (typeof actorId !== 'string') return null;
+
+    return ctx.db.get(actorId as Id<'actors'>);
 }
 
 /**
@@ -44,40 +44,26 @@ export async function getMembership(ctx: Ctx, actorId: Id<'actors'>, siteId: Id<
         .unique();
 }
 
-export const getActorByWorkosUserId = internalQuery({
-    args: { workosUserId: v.string() },
-    handler: async (ctx, args) => {
-        return ctx.db
-            .query('actors')
-            .withIndex('by_workosUserId', (q) => q.eq('workosUserId', args.workosUserId))
-            .unique();
-    },
-});
-
 /**
  * Create actor from WorkOS webhook (idempotent).
  * Called when user.created event is received.
  */
 export const createFromWebhook = internalMutation({
     args: {
-        workosUserId: v.string(),
-        workosOrganizationId: v.optional(v.string()),
+        externalId: v.string(),
+        organizationId: v.optional(v.id('organizations')),
         email: v.string(),
         name: v.optional(v.string()),
         avatarStorageId: v.optional(v.id('_storage')),
     },
     handler: async (ctx, args) => {
-        const existingActor = await ctx.db
-            .query('actors')
-            .withIndex('by_workosUserId', (q) => q.eq('workosUserId', args.workosUserId))
-            .unique();
+        const existingActor = await ctx.db.get(args.externalId as Id<'actors'>);
         if (existingActor) return existingActor._id;
 
         const now = Date.now();
         return ctx.db.insert('actors', {
             type: 'user',
-            workosUserId: args.workosUserId,
-            workosOrganizationId: args.workosOrganizationId,
+            organizationId: args.organizationId,
             email: args.email,
             name: args.name,
             avatarStorageId: args.avatarStorageId,
@@ -95,23 +81,20 @@ export const createFromWebhook = internalMutation({
  */
 export const updateFromWebhook = internalMutation({
     args: {
-        workosUserId: v.string(),
-        workosOrganizationId: v.optional(v.string()),
+        externalId: v.string(),
+        organizationId: v.optional(v.id('organizations')),
         email: v.optional(v.string()),
         name: v.optional(v.string()),
         avatarStorageId: v.optional(v.id('_storage')),
     },
     handler: async (ctx, args) => {
-        const actor = await ctx.db
-            .query('actors')
-            .withIndex('by_workosUserId', (q) => q.eq('workosUserId', args.workosUserId))
-            .unique();
+        const actor = await ctx.db.get(args.externalId as Id<'actors'>);
         if (!actor) {
             throw new Error('Actor not found');
         }
 
         const updates: Record<string, unknown> = { updatedAt: Date.now() };
-        if (args.workosOrganizationId !== undefined) updates.workosOrganizationId = args.workosOrganizationId;
+        if (args.organizationId !== undefined) updates.organizationId = args.organizationId;
         if (args.email !== undefined) updates.email = args.email;
         if (args.name !== undefined) updates.name = args.name;
         if (args.avatarStorageId !== undefined) updates.avatarStorageId = args.avatarStorageId;
@@ -125,12 +108,9 @@ export const updateFromWebhook = internalMutation({
  * Called when user.deleted event is received.
  */
 export const deleteFromWebhook = internalMutation({
-    args: { workosUserId: v.string() },
+    args: { externalId: v.string() },
     handler: async (ctx, args) => {
-        const actor = await ctx.db
-            .query('actors')
-            .withIndex('by_workosUserId', (q) => q.eq('workosUserId', args.workosUserId))
-            .unique();
+        const actor = await ctx.db.get(args.externalId as Id<'actors'>);
 
         if (!actor) return;
 

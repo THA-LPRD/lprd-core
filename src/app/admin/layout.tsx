@@ -15,7 +15,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
 
-    if (!actor || actor.role !== 'appAdmin') {
+    if (!actor) {
+        redirect('/login');
+    }
+
+    if (actor.role !== 'appAdmin') {
         redirect('/site');
     }
 

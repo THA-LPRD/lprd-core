@@ -13,12 +13,24 @@ export const handleUserCreated = httpAction(async (ctx, request) => {
         // Generate or fetch avatar and store in Convex
         const avatarStorageId = await storeAvatar(ctx, data.email, data.profile_picture_url);
 
-        await ctx.runMutation(internal.actors.createFromWebhook, {
-            workosUserId: data.id,
+        if (typeof data.external_id !== 'string') {
+            console.error('Webhook processing error: WorkOS user is missing external_id');
+            return new Response('WorkOS user is missing external_id', { status: 400 });
+        }
+
+        const actorId: string = await ctx.runMutation(internal.actors.createFromWebhook, {
+            externalId: data.external_id,
             email: data.email,
             name: [data.first_name, data.last_name].filter(Boolean).join(' ') || undefined,
             avatarStorageId,
         });
+
+        if (data.external_id !== actorId) {
+            await ctx.runAction(internal.workos.helpers.syncUserExternalId, {
+                userId: data.id,
+                externalId: actorId,
+            });
+        }
 
         return new Response(null, { status: 200 });
     } catch (error) {
