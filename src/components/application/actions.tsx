@@ -6,14 +6,14 @@ import { useMutation } from 'convex/react';
 import { api } from '@convex/api';
 import { KeyRound, Pause, Play, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ReissueTokenDialog } from '@/components/plugin/reissue-dialog';
-import { ConfirmActionDialog } from '@/components/plugin/confirm-action-dialog';
+import { ReissueTokenDialog } from '@/components/application/reissue-dialog';
+import { ConfirmActionDialog } from '@/components/application/confirm-action-dialog';
 import type { Doc } from '@convex/dataModel';
 
-export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
+export function ApplicationActions({ application }: { application: Doc<'applications'> }) {
     const router = useRouter();
-    const updateStatus = useMutation(api.plugins.applications.updateStatus);
-    const permanentDelete = useMutation(api.plugins.applications.permanentDelete);
+    const updateStatus = useMutation(api.applications.crud.updateStatus);
+    const permanentDelete = useMutation(api.applications.crud.permanentDelete);
     const [showReissue, setShowReissue] = React.useState(false);
     const [showSuspendConfirm, setShowSuspendConfirm] = React.useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = React.useState(false);
@@ -22,7 +22,7 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
     return (
         <>
             <div className="flex gap-2">
-                {plugin.status === 'active' && (
+                {application.status === 'active' && (
                     <>
                         <Button variant="outline" onClick={() => setShowReissue(true)}>
                             <KeyRound className="size-4 mr-2" />
@@ -34,19 +34,19 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
                         </Button>
                     </>
                 )}
-                {plugin.status === 'suspended' && (
-                    <Button variant="outline" onClick={() => updateStatus({ id: plugin._id, status: 'active' })}>
+                {application.status === 'suspended' && (
+                    <Button variant="outline" onClick={() => updateStatus({ id: application._id, status: 'active' })}>
                         <Play className="size-4 mr-2" />
                         Activate
                     </Button>
                 )}
-                {plugin.status !== 'removed' && (
+                {application.status !== 'removed' && (
                     <Button variant="destructive" onClick={() => setShowRemoveConfirm(true)}>
                         <Trash2 className="size-4 mr-2" />
                         Remove
                     </Button>
                 )}
-                {plugin.status === 'removed' && (
+                {application.status === 'removed' && (
                     <Button variant="destructive" onClick={() => setShowPermanentDelete(true)}>
                         <Trash2 className="size-4 mr-2" />
                         Delete Permanently
@@ -58,8 +58,8 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
                 <ReissueTokenDialog
                     open={showReissue}
                     onOpenChange={setShowReissue}
-                    pluginId={plugin._id}
-                    pluginName={plugin.name}
+                    applicationId={application._id}
+                    applicationName={application.name}
                 />
             )}
 
@@ -67,10 +67,10 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
                 open={showSuspendConfirm}
                 onOpenChange={setShowSuspendConfirm}
                 title="Suspend Service Account"
-                description={`This will immediately block all API calls from "${plugin.name}" across all sites. You can reactivate it later.`}
+                description={`This will immediately block all API calls from "${application.name}" across all sites. You can reactivate it later.`}
                 confirmLabel="Suspend"
                 onConfirm={async () => {
-                    await updateStatus({ id: plugin._id, status: 'suspended' });
+                    await updateStatus({ id: application._id, status: 'suspended' });
                 }}
             />
 
@@ -78,11 +78,11 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
                 open={showRemoveConfirm}
                 onOpenChange={setShowRemoveConfirm}
                 title="Remove Service Account"
-                description={`This will mark "${plugin.name}" as removed and block all API access. The record will remain for auditing.`}
+                description={`This will mark "${application.name}" as removed and block all API access. The record will remain for auditing.`}
                 confirmLabel="Remove"
                 onConfirm={async () => {
-                    await updateStatus({ id: plugin._id, status: 'removed' });
-                    router.push('/admin/plugins');
+                    await updateStatus({ id: application._id, status: 'removed' });
+                    router.push('/admin/applications');
                 }}
             />
 
@@ -90,11 +90,11 @@ export function PluginActions({ plugin }: { plugin: Doc<'applications'> }) {
                 open={showPermanentDelete}
                 onOpenChange={setShowPermanentDelete}
                 title="Permanently Delete Service Account"
-                description={`This will permanently delete "${plugin.name}" and ALL associated data including site access records, health check history, and templates. This cannot be undone.`}
+                description={`This will permanently delete "${application.name}" and ALL associated data including site access records, health check history, and templates. This cannot be undone.`}
                 confirmLabel="Delete Permanently"
                 onConfirm={async () => {
-                    await permanentDelete({ id: plugin._id });
-                    router.push('/admin/plugins');
+                    await permanentDelete({ id: application._id });
+                    router.push('/admin/applications');
                 }}
             />
         </>

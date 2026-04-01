@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
 import { useSite } from '@/providers/site-provider';
-import { SitePluginSettings } from '@/components/plugin/site-settings';
+import { SitePluginSettings } from '@/components/application/plugin/site-settings';
 
 export default function SiteSettingsPage() {
     const router = useRouter();

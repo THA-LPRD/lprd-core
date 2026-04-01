@@ -1,11 +1,12 @@
 import { internalQuery, mutation, type MutationCtx, query, type QueryCtx } from '../_generated/server';
 import { getPermissions } from '../lib/acl';
+import { isPluginApplication } from '../lib/applications';
 import { applicationScope, applicationType, pluginTopic } from '../schema';
 import { getCurrentActor } from '../actors';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
 
-async function getPluginRecord(ctx: QueryCtx | MutationCtx, applicationId: Id<'applications'>) {
+async function getApplicationPluginProfile(ctx: QueryCtx | MutationCtx, applicationId: Id<'applications'>) {
     return ctx.db
         .query('pluginProfiles')
         .withIndex('by_application', (q) => q.eq('applicationId', applicationId))
@@ -68,7 +69,7 @@ export const getDetails = query({
     },
 });
 
-export const getPluginMetadata = query({
+export const getPluginProfile = query({
     args: { id: v.id('applications') },
     handler: async (ctx, args) => {
         const actor = await getCurrentActor(ctx);
@@ -77,7 +78,7 @@ export const getPluginMetadata = query({
         const perms = getPermissions(actor, null);
         if (!perms.plugin.manage) return null;
 
-        return getPluginRecord(ctx, args.id);
+        return getApplicationPluginProfile(ctx, args.id);
     },
 });
 
@@ -159,7 +160,7 @@ export const createApplicationRecord = mutation({
             updatedAt: now,
         });
 
-        if (args.type === 'plugin') {
+        if (isPluginApplication(args)) {
             await ctx.db.insert('pluginProfiles', {
                 applicationId,
                 baseUrl: args.plugin?.baseUrl ?? '',

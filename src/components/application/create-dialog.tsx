@@ -25,9 +25,15 @@ type ProvisionedCredentials = {
     clientSecret: string;
 };
 
-export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function CreateApplicationDialog({
+    open,
+    onOpenChange,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}) {
     const organizations = useQuery(api.organizations.listAll);
-    const provision = useAction(api.plugins.provision.provision);
+    const provision = useAction(api.applications.provision.provision);
     const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
@@ -39,7 +45,8 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
     const [credentials, setCredentials] = React.useState<ProvisionedCredentials | null>(null);
     const [copied, setCopied] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const selectedOrganizationName = organizations?.find((organization) => organization._id === organizationId)?.name ?? '';
+    const selectedOrganizationName =
+        organizations?.find((organization) => organization._id === organizationId)?.name ?? '';
 
     React.useEffect(() => {
         if (!open || organizations === undefined) return;
@@ -170,7 +177,9 @@ export function CreatePluginDialog({ open, onOpenChange }: { open: boolean; onOp
                             <FieldLabel>Organization</FieldLabel>
                             <Select
                                 value={organizationId || undefined}
-                                onValueChange={(value) => setOrganizationId((value as Id<'organizations'> | null) ?? '')}
+                                onValueChange={(value) =>
+                                    setOrganizationId((value as Id<'organizations'> | null) ?? '')
+                                }
                             >
                                 <SelectTrigger className="w-full">
                                     <SelectValue placeholder="Select organization">

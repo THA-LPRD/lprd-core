@@ -329,7 +329,7 @@ export const saveManualData = mutation({
 
             // Schedule image processing if data has img() markers
             if (containsImgFuncs(data)) {
-                await ctx.scheduler.runAfter(0, internal.plugins.images.processPluginDataImages, {
+                await ctx.scheduler.runAfter(0, internal.applications.plugin.images.processPluginDataImages, {
                     pluginDataId: recordId,
                 });
             }

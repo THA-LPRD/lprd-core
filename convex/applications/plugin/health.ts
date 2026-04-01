@@ -1,9 +1,9 @@
 import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
-import { internalMutation, internalQuery, query } from '../_generated/server';
-import { healthCheckStatus } from '../schema';
-import { getCurrentActor } from '../actors';
-import { getPermissions } from '../lib/acl';
+import { internalMutation, internalQuery, query } from '../../_generated/server';
+import { healthCheckStatus } from '../../schema';
+import { getCurrentActor } from '../../actors';
+import { getPermissions } from '../../lib/acl';
 
 /** Number of consecutive failures before marking unhealthy */
 const UNHEALTHY_THRESHOLD = 3;

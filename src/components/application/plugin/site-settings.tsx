@@ -1,16 +1,16 @@
 'use client';
 
-import { useQuery, useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Plug } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
 
 export function SitePluginSettings({ siteId }: { siteId: Id<'sites'> }) {
-    const plugins = useQuery(api.plugins.siteAccess.listForSite, { siteId });
-    const toggleAccess = useMutation(api.plugins.siteAccess.toggleSiteAccess);
+    const plugins = useQuery(api.applications.plugin.siteAccess.listForSite, { siteId });
+    const toggleAccess = useMutation(api.applications.plugin.siteAccess.toggleSiteAccess);
 
     if (plugins === undefined) {
         return <div className="animate-pulse text-muted-foreground">Loading plugins...</div>;

@@ -4,31 +4,34 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/api';
+import type { Doc } from '@convex/dataModel';
 import { KeyRound, Pause, Play, Trash2 } from 'lucide-react';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isPluginApplication } from '@/lib/applications';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { PluginHealthBadge, PluginStatusBadge } from '@/components/plugin/status-badge';
-import { ReissueTokenDialog } from '@/components/plugin/reissue-dialog';
-import { ConfirmActionDialog } from '@/components/plugin/confirm-action-dialog';
-import type { Doc } from '@convex/dataModel';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ConfirmActionDialog } from '@/components/application/confirm-action-dialog';
+import { ReissueTokenDialog } from '@/components/application/reissue-dialog';
+import { ApplicationStatusBadge, PluginHealthBadge } from '@/components/application/status-badge';
 
-export function PluginDetailsCard({
-    plugin,
-    pluginMetadata,
+type ApplicationWithOrganization = Doc<'applications'> & { organizationName?: string };
+
+export function ApplicationDetailsCard({
+    application,
+    applicationPluginProfile,
 }: {
-    plugin: Doc<'applications'> & { organizationName?: string };
-    pluginMetadata?: Doc<'pluginProfiles'>;
+    application: ApplicationWithOrganization;
+    applicationPluginProfile?: Doc<'pluginProfiles'>;
 }) {
     const router = useRouter();
-    const updateStatus = useMutation(api.plugins.applications.updateStatus);
-    const permanentDelete = useMutation(api.plugins.applications.permanentDelete);
+    const updateStatus = useMutation(api.applications.crud.updateStatus);
+    const permanentDelete = useMutation(api.applications.crud.permanentDelete);
     const [showReissue, setShowReissue] = React.useState(false);
     const [showSuspendConfirm, setShowSuspendConfirm] = React.useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = React.useState(false);
     const [showPermanentDelete, setShowPermanentDelete] = React.useState(false);
 
-    const isPlugin = plugin.type === 'plugin';
+    const isPlugin = isPluginApplication(application);
 
     return (
         <>
@@ -37,7 +40,7 @@ export function PluginDetailsCard({
                     <CardTitle>Details</CardTitle>
                     <CardAction>
                         <div className="flex gap-2">
-                            {plugin.status === 'active' && (
+                            {application.status === 'active' && (
                                 <>
                                     <Button variant="outline" size="sm" onClick={() => setShowReissue(true)}>
                                         <KeyRound className="size-4 mr-2" />
@@ -49,23 +52,23 @@ export function PluginDetailsCard({
                                     </Button>
                                 </>
                             )}
-                            {plugin.status === 'suspended' && (
+                            {application.status === 'suspended' && (
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => updateStatus({ id: plugin._id, status: 'active' })}
+                                    onClick={() => updateStatus({ id: application._id, status: 'active' })}
                                 >
                                     <Play className="size-4 mr-2" />
                                     Activate
                                 </Button>
                             )}
-                            {plugin.status !== 'removed' && (
+                            {application.status !== 'removed' && (
                                 <Button variant="destructive" size="sm" onClick={() => setShowRemoveConfirm(true)}>
                                     <Trash2 className="size-4 mr-2" />
                                     Remove
                                 </Button>
                             )}
-                            {plugin.status === 'removed' && (
+                            {application.status === 'removed' && (
                                 <Button variant="destructive" size="sm" onClick={() => setShowPermanentDelete(true)}>
                                     <Trash2 className="size-4 mr-2" />
                                     Delete Permanently
@@ -79,14 +82,14 @@ export function PluginDetailsCard({
                         <div>
                             <dt className="text-muted-foreground">Status</dt>
                             <dd className="mt-1">
-                                <PluginStatusBadge status={plugin.status} />
+                                <ApplicationStatusBadge status={application.status} />
                             </dd>
                         </div>
                         <div>
                             <dt className="text-muted-foreground">Type</dt>
                             <dd className="mt-1">
                                 <Badge variant="outline" className="capitalize">
-                                    {plugin.type}
+                                    {application.type}
                                 </Badge>
                             </dd>
                         </div>
@@ -94,29 +97,29 @@ export function PluginDetailsCard({
                             <div>
                                 <dt className="text-muted-foreground">Health</dt>
                                 <dd className="mt-1">
-                                    <PluginHealthBadge status={pluginMetadata?.healthStatus} />
+                                    <PluginHealthBadge status={applicationPluginProfile?.healthStatus} />
                                 </dd>
                             </div>
                         )}
                         {isPlugin && (
                             <div>
                                 <dt className="text-muted-foreground">Version</dt>
-                                <dd className="mt-1 font-mono">{pluginMetadata?.version}</dd>
+                                <dd className="mt-1 font-mono">{applicationPluginProfile?.version}</dd>
                             </div>
                         )}
-                        {isPlugin && pluginMetadata?.baseUrl && (
+                        {isPlugin && applicationPluginProfile?.baseUrl && (
                             <div>
                                 <dt className="text-muted-foreground">Base URL</dt>
-                                <dd className="mt-1 font-mono">{pluginMetadata.baseUrl}</dd>
+                                <dd className="mt-1 font-mono">{applicationPluginProfile.baseUrl}</dd>
                             </div>
                         )}
-                        {isPlugin && (pluginMetadata?.topics?.length ?? 0) > 0 && (
+                        {isPlugin && (applicationPluginProfile?.topics?.length ?? 0) > 0 && (
                             <div>
                                 <dt className="text-muted-foreground">Topics</dt>
                                 <dd className="mt-1 flex gap-1 flex-wrap">
-                                    {pluginMetadata!.topics.map((t) => (
-                                        <Badge key={t.key} variant="outline">
-                                            {t.label}
+                                    {applicationPluginProfile?.topics.map((topic) => (
+                                        <Badge key={topic.key} variant="outline">
+                                            {topic.label}
                                         </Badge>
                                     ))}
                                 </dd>
@@ -125,9 +128,9 @@ export function PluginDetailsCard({
                         <div>
                             <dt className="text-muted-foreground">Scopes</dt>
                             <dd className="mt-1 flex gap-1 flex-wrap">
-                                {plugin.scopes?.map((s) => (
-                                    <Badge key={s} variant="secondary">
-                                        {s}
+                                {application.scopes?.map((scope) => (
+                                    <Badge key={scope} variant="secondary">
+                                        {scope}
                                     </Badge>
                                 )) ?? <span className="text-muted-foreground">All</span>}
                             </dd>
@@ -135,18 +138,20 @@ export function PluginDetailsCard({
                         <div>
                             <dt className="text-muted-foreground">Organization</dt>
                             <dd className="mt-1">
-                                {plugin.organizationName ?? (
-                                    <span className="font-mono text-xs break-all">{plugin.organizationId ?? 'Unassigned'}</span>
+                                {application.organizationName ?? (
+                                    <span className="font-mono text-xs break-all">
+                                        {application.organizationId ?? 'Unassigned'}
+                                    </span>
                                 )}
                             </dd>
                         </div>
                         <div>
                             <dt className="text-muted-foreground">Client ID</dt>
-                            <dd className="mt-1 font-mono text-xs break-all">{plugin.workosClientId}</dd>
+                            <dd className="mt-1 font-mono text-xs break-all">{application.workosClientId}</dd>
                         </div>
                         <div>
                             <dt className="text-muted-foreground">Created</dt>
-                            <dd className="mt-1">{new Date(plugin.createdAt).toLocaleDateString()}</dd>
+                            <dd className="mt-1">{new Date(application.createdAt).toLocaleDateString()}</dd>
                         </div>
                     </dl>
                 </CardContent>
@@ -156,8 +161,8 @@ export function PluginDetailsCard({
                 <ReissueTokenDialog
                     open={showReissue}
                     onOpenChange={setShowReissue}
-                    pluginId={plugin._id}
-                    pluginName={plugin.name}
+                    applicationId={application._id}
+                    applicationName={application.name}
                 />
             )}
 
@@ -165,10 +170,10 @@ export function PluginDetailsCard({
                 open={showSuspendConfirm}
                 onOpenChange={setShowSuspendConfirm}
                 title="Suspend Service Account"
-                description={`This will immediately block all API calls from "${plugin.name}" across all sites. You can reactivate it later.`}
+                description={`This will immediately block all API calls from "${application.name}" across all sites. You can reactivate it later.`}
                 confirmLabel="Suspend"
                 onConfirm={async () => {
-                    await updateStatus({ id: plugin._id, status: 'suspended' });
+                    await updateStatus({ id: application._id, status: 'suspended' });
                 }}
             />
 
@@ -176,11 +181,11 @@ export function PluginDetailsCard({
                 open={showRemoveConfirm}
                 onOpenChange={setShowRemoveConfirm}
                 title="Remove Service Account"
-                description={`This will mark "${plugin.name}" as removed and block all API access. The record will remain for auditing.`}
+                description={`This will mark "${application.name}" as removed and block all API access. The record will remain for auditing.`}
                 confirmLabel="Remove"
                 onConfirm={async () => {
-                    await updateStatus({ id: plugin._id, status: 'removed' });
-                    router.push('/admin/plugins');
+                    await updateStatus({ id: application._id, status: 'removed' });
+                    router.push('/admin/applications');
                 }}
             />
 
@@ -188,11 +193,11 @@ export function PluginDetailsCard({
                 open={showPermanentDelete}
                 onOpenChange={setShowPermanentDelete}
                 title="Permanently Delete Service Account"
-                description={`This will permanently delete "${plugin.name}" and all associated data including site access records, health check history, and templates. This cannot be undone.`}
+                description={`This will permanently delete "${application.name}" and all associated data including site access records, health check history, and templates. This cannot be undone.`}
                 confirmLabel="Delete Permanently"
                 onConfirm={async () => {
-                    await permanentDelete({ id: plugin._id });
-                    router.push('/admin/plugins');
+                    await permanentDelete({ id: application._id });
+                    router.push('/admin/applications');
                 }}
             />
         </>

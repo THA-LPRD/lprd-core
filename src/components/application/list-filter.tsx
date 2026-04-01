@@ -9,18 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 const ALL_STATUSES = ['active', 'suspended', 'removed'] as const;
-type PluginStatus = (typeof ALL_STATUSES)[number];
-const DEFAULT_STATUSES: PluginStatus[] = ['active', 'suspended'];
+type ApplicationStatus = (typeof ALL_STATUSES)[number];
+const DEFAULT_STATUSES: ApplicationStatus[] = ['active', 'suspended'];
 
-function parseStatusParams(params: URLSearchParams): Set<PluginStatus> {
+function parseStatusParams(params: URLSearchParams): Set<ApplicationStatus> {
     const raw = params.get('status');
     if (!raw) return new Set(DEFAULT_STATUSES);
-    const values = raw.split(',').filter((v): v is PluginStatus => ALL_STATUSES.includes(v as PluginStatus));
+    const values = raw.split(',').filter((v): v is ApplicationStatus => ALL_STATUSES.includes(v as ApplicationStatus));
     return values.length > 0 ? new Set(values) : new Set(DEFAULT_STATUSES);
 }
 
-export function usePluginFilters<T extends { name: string; description?: string; status: string }>(
-    plugins: T[] | undefined,
+export function useApplicationFilters<T extends { name: string; description?: string; status: string }>(
+    applications: T[] | undefined,
 ) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -42,7 +42,7 @@ export function usePluginFilters<T extends { name: string; description?: string;
                 else params.set(key, value);
             }
             const qs = params.toString();
-            router.replace(qs ? `?${qs}` : '/admin/plugins', { scroll: false });
+            router.replace(qs ? `?${qs}` : '/admin/applications', { scroll: false });
         },
         [router, searchParams],
     );
@@ -50,7 +50,7 @@ export function usePluginFilters<T extends { name: string; description?: string;
     const setSearch = React.useCallback((value: string) => updateParams({ q: value || null }), [updateParams]);
 
     const setStatusFilters = React.useCallback(
-        (next: Set<PluginStatus>) => {
+        (next: Set<ApplicationStatus>) => {
             const isDefault = next.size === DEFAULT_STATUSES.length && DEFAULT_STATUSES.every((s) => next.has(s));
             updateParams({ status: isDefault ? null : [...next].join(',') });
         },
@@ -58,7 +58,7 @@ export function usePluginFilters<T extends { name: string; description?: string;
     );
 
     const toggleStatus = React.useCallback(
-        (status: PluginStatus) => {
+        (status: ApplicationStatus) => {
             const next = new Set(statusFilters);
             if (next.has(status)) next.delete(status);
             else next.add(status);
@@ -69,22 +69,23 @@ export function usePluginFilters<T extends { name: string; description?: string;
 
     const selectAll = React.useCallback(() => setStatusFilters(new Set(ALL_STATUSES)), [setStatusFilters]);
 
-    const filteredPlugins = React.useMemo(() => {
-        if (!plugins) return [];
-        return plugins.filter((p) => {
+    const filteredApplications = React.useMemo(() => {
+        if (!applications) return [];
+        return applications.filter((application) => {
             const matchesSearch =
                 debouncedSearch === '' ||
-                p.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                (p.description?.toLowerCase().includes(debouncedSearch.toLowerCase()) ?? false);
-            const matchesStatus = statusFilters.size === 0 || statusFilters.has(p.status as PluginStatus);
+                application.name.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                (application.description?.toLowerCase().includes(debouncedSearch.toLowerCase()) ?? false);
+            const matchesStatus =
+                statusFilters.size === 0 || statusFilters.has(application.status as ApplicationStatus);
             return matchesSearch && matchesStatus;
         });
-    }, [plugins, debouncedSearch, statusFilters]);
+    }, [applications, debouncedSearch, statusFilters]);
 
-    return { search, statusFilters, filteredPlugins, setSearch, toggleStatus, selectAll };
+    return { search, statusFilters, filteredApplications, setSearch, toggleStatus, selectAll };
 }
 
-export function PluginListFilter({
+export function ApplicationListFilter({
     search,
     statusFilters,
     onSearchChange,
@@ -92,9 +93,9 @@ export function PluginListFilter({
     onSelectAll,
 }: {
     search: string;
-    statusFilters: Set<PluginStatus>;
+    statusFilters: Set<ApplicationStatus>;
     onSearchChange: (value: string) => void;
-    onToggleStatus: (status: PluginStatus) => void;
+    onToggleStatus: (status: ApplicationStatus) => void;
     onSelectAll: () => void;
 }) {
     const allSelected = statusFilters.size === ALL_STATUSES.length;

@@ -35,7 +35,7 @@ export function startWorker() {
                     const body = (await res.json()) as HealthResponse;
                     const isHealthy = body.status === 'healthy';
 
-                    await convexClient.mutation(internal.plugins.health.recordHealthCheck, {
+                    await convexClient.mutation(internal.applications.plugin.health.recordHealthCheck, {
                         pluginId,
                         status: isHealthy ? 'healthy' : 'unhealthy',
                         responseTimeMs,
@@ -45,7 +45,7 @@ export function startWorker() {
 
                     console.log(`[worker] ${pluginId}: ${isHealthy ? 'healthy' : 'unhealthy'} (${responseTimeMs}ms)`);
                 } else {
-                    await convexClient.mutation(internal.plugins.health.recordHealthCheck, {
+                    await convexClient.mutation(internal.applications.plugin.health.recordHealthCheck, {
                         pluginId,
                         status: 'unhealthy',
                         responseTimeMs,
@@ -59,7 +59,7 @@ export function startWorker() {
                 const message = err instanceof Error ? err.message : String(err);
 
                 try {
-                    await convexClient.mutation(internal.plugins.health.recordHealthCheck, {
+                    await convexClient.mutation(internal.applications.plugin.health.recordHealthCheck, {
                         pluginId,
                         status: 'error',
                         responseTimeMs,

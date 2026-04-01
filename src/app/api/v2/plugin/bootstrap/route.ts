@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
-import { authenticatePlugin, AuthError } from '@/lib/plugin/auth';
+import { authenticatePlugin, AuthError } from '@/lib/application/auth';
 import { convex } from '@/lib/convex';
 
 export async function POST(request: Request) {
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'baseUrl is required' }, { status: 400 });
         }
 
-        await convex.mutation(api.plugins.registration.registerMetadata, {
+        await convex.mutation(api.applications.plugin.registration.registerMetadata, {
             id: plugin._id,
             baseUrl: body.baseUrl,
             version: typeof body.version === 'string' ? body.version : undefined,

@@ -1,7 +1,8 @@
 import { v } from 'convex/values';
-import { internalQuery, mutation, query } from '../_generated/server';
-import { getCurrentActor, getMembership } from '../actors';
-import { getPermissions } from '../lib/acl';
+import { internalQuery, mutation, query } from '../../_generated/server';
+import { getCurrentActor, getMembership } from '../../actors';
+import { isPluginApplication } from '../../lib/applications';
+import { getPermissions } from '../../lib/acl';
 
 /**
  * Toggle enabledBySite for a plugin in the current site.
@@ -22,7 +23,9 @@ export const toggleSiteAccess = mutation({
         if (!perms.plugin.siteManage) throw new Error('Not authorized');
 
         const plugin = await ctx.db.get(args.pluginId);
-        if (!plugin || plugin.type !== 'plugin' || plugin.status !== 'active') throw new Error('Plugin not available');
+        if (!plugin || !isPluginApplication(plugin) || plugin.status !== 'active') {
+            throw new Error('Plugin not available');
+        }
 
         // Check existing access record
         const existing = await ctx.db

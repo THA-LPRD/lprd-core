@@ -24,7 +24,7 @@ export function DataSourcePicker({
     value?: DataSource;
     onChange: (source: DataSource) => void;
 }) {
-    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, { siteId });
+    const plugins = useQuery(api.applications.plugin.data.listPluginsWithTopics, { siteId });
     const [selectedPluginId, setSelectedPluginId] = React.useState<string>(value?.applicationId ?? NONE);
     const [selectedTopic, setSelectedTopic] = React.useState<string>(value?.topic ?? NONE);
     const [selectedEntry, setSelectedEntry] = React.useState<string>(value?.entry ?? NONE);
@@ -33,7 +33,7 @@ export function DataSourcePicker({
     const topics = selectedPlugin?.topics ?? [];
 
     const entries = useQuery(
-        api.plugins.data.listEntries,
+        api.applications.plugin.data.listEntries,
         selectedPluginId !== NONE && selectedTopic !== NONE
             ? { pluginId: selectedPluginId as Id<'applications'>, siteId, topic: selectedTopic }
             : 'skip',

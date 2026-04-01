@@ -13,7 +13,7 @@ export function PluginHealthCard({ pluginId }: { pluginId: Id<'applications'> })
         results: healthChecks,
         status: healthPagination,
         loadMore,
-    } = usePaginatedQuery(api.plugins.health.listByPlugin, { pluginId }, { initialNumItems: 20 });
+    } = usePaginatedQuery(api.applications.plugin.health.listByPlugin, { pluginId }, { initialNumItems: 20 });
 
     return (
         <Card>

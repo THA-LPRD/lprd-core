@@ -52,7 +52,7 @@ export const provision = action({
         clientSecret: string;
         secretHint: string | undefined;
     }> => {
-        await ctx.runQuery(internal.plugins.applications.requireManager, {});
+        await ctx.runQuery(internal.applications.crud.requireManager, {});
 
         const workos = new WorkOS(process.env.WORKOS_API_KEY);
         const organization = await workos.organizations.getOrganizationByExternalId(args.organizationId);
@@ -71,7 +71,7 @@ export const provision = action({
         const secret = 'connect_application_secret' in secretData ? secretData.connect_application_secret! : secretData;
         if (!secret.secret) throw new Error('WorkOS did not return a client secret');
 
-        const result = await ctx.runMutation(api.plugins.applications.createApplicationRecord, {
+        const result = await ctx.runMutation(api.applications.crud.createApplicationRecord, {
             actorName: args.actorName,
             actorEmail: args.actorEmail,
             name: args.name,
@@ -105,7 +105,7 @@ export const rotateSecret = action({
         clientSecret: string;
         secretHint: string | undefined;
     }> => {
-        const application = await ctx.runQuery(api.plugins.applications.getCredentialsTarget, {
+        const application = await ctx.runQuery(api.applications.crud.getCredentialsTarget, {
             applicationId: args.id,
         });
         if (!application) throw new Error('Application not found');
@@ -116,7 +116,7 @@ export const rotateSecret = action({
         const secret = 'connect_application_secret' in secretData ? secretData.connect_application_secret! : secretData;
         if (!secret.secret) throw new Error('WorkOS did not return a client secret');
 
-        await ctx.runMutation(api.plugins.applications.updateProvisionedCredentials, {
+        await ctx.runMutation(api.applications.crud.updateProvisionedCredentials, {
             id: args.id,
             lastSecretHint: secret.hint,
         });

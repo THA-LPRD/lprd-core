@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { authenticatePlugin, AuthError } from '@/lib/plugin/auth';
+import { authenticatePlugin, AuthError } from '@/lib/application/auth';
 
 /**
  * GET /api/v2/plugin/verify

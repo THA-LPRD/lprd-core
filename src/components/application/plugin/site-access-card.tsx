@@ -9,8 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import type { Id } from '@convex/dataModel';
 
 export function PluginSiteAccessCard({ pluginId }: { pluginId: Id<'applications'> }) {
-    const sites = useQuery(api.plugins.siteAccess.listForPlugin, { pluginId });
-    const setAdminAccess = useMutation(api.plugins.siteAccess.setAdminAccess);
+    const sites = useQuery(api.applications.plugin.siteAccess.listForPlugin, { pluginId });
+    const setAdminAccess = useMutation(api.applications.plugin.siteAccess.setAdminAccess);
 
     return (
         <Card>

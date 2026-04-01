@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
-import { mutation } from '../_generated/server';
-import { pluginTopic } from '../schema';
+import { mutation } from '../../_generated/server';
+import { isPluginApplication } from '../../lib/applications';
+import { pluginTopic } from '../../schema';
 
 export const registerMetadata = mutation({
     args: {
@@ -15,7 +16,7 @@ export const registerMetadata = mutation({
     handler: async (ctx, args) => {
         const application = await ctx.db.get(args.id);
         if (!application) throw new Error('Application not found');
-        if (application.type !== 'plugin') throw new Error('Only plugin applications can register metadata');
+        if (!isPluginApplication(application)) throw new Error('Only plugin applications can register metadata');
         if (application.status !== 'active')
             throw new Error(`Application is not active (status: ${application.status})`);
 

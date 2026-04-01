@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Bot, Shield } from 'lucide-react';
+import { Bot, LayoutDashboard, Shield } from 'lucide-react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import Link from 'next/link';
@@ -42,9 +42,9 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
         },
         {
             title: 'Service Accounts',
-            url: '/admin/plugins',
+            url: '/admin/applications',
             icon: Bot,
-            isActive: pathname.startsWith('/admin/plugins'),
+            isActive: pathname.startsWith('/admin/applications'),
         },
     ];
 

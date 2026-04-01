@@ -16,7 +16,7 @@ export async function startScheduler() {
     const worker = new Worker(
         config.healthCheck.schedulerQueueName,
         async () => {
-            const duePlugins = await convexClient.query(internal.plugins.health.listDueForHealthCheck);
+            const duePlugins = await convexClient.query(internal.applications.plugin.health.listDueForHealthCheck);
 
             if (duePlugins.length === 0) {
                 console.log('[scheduler] No plugins due for health check');

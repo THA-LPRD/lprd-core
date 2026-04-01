@@ -75,7 +75,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
 
     const frames = useQuery(api.frames.listBySite, site ? { siteId: site._id } : 'skip');
     const templates = useQuery(api.templates.crud.listBySite, site ? { siteId: site._id } : 'skip');
-    const plugins = useQuery(api.plugins.data.listPluginsWithTopics, site ? { siteId: site._id } : 'skip');
+    const plugins = useQuery(api.applications.plugin.data.listPluginsWithTopics, site ? { siteId: site._id } : 'skip');
 
     const selectedFrame = frames?.find((f) => f._id === selectedFrameId);
 

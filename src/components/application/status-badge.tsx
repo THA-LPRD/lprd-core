@@ -7,7 +7,7 @@ const statusConfig: Record<string, { label: string; variant: 'default' | 'second
     removed: { label: 'Removed', variant: 'destructive' },
 };
 
-export function PluginStatusBadge({ status }: { status: string }) {
+export function ApplicationStatusBadge({ status }: { status: string }) {
     const config = statusConfig[status] ?? { label: status, variant: 'outline' as const };
     return <Badge variant={config.variant}>{config.label}</Badge>;
 }

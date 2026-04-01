@@ -1,5 +1,7 @@
 import { internal } from '@convex/api';
 import type { Id } from '@convex/dataModel';
+import type { ApplicationType } from '@/lib/applications';
+import { isPluginApplication } from '@/lib/applications';
 import { convexAdmin } from '@/lib/convex-admin';
 import { verifyToken } from '@/lib/workos/connect';
 
@@ -16,7 +18,7 @@ export class AuthError extends Error {
 export type AuthenticatedApplication = {
     _id: Id<'applications'>;
     actorId: Id<'actors'>;
-    type: 'plugin' | 'internal';
+    type: ApplicationType;
     name: string;
     status: string;
     organizationId?: Id<'organizations'>;
@@ -51,7 +53,7 @@ export async function authenticateApplication(
         throw new AuthError('Token missing client identifier', 401);
     }
 
-    const result = await convexAdmin.query(internal.plugins.applications.getByWorkosClientId, {
+    const result = await convexAdmin.query(internal.applications.crud.getByWorkosClientId, {
         workosClientId: clientId,
     });
 
@@ -83,7 +85,13 @@ export async function authenticateApplication(
 }
 
 export async function authenticatePlugin(request: Request) {
-    return authenticateApplication(request, 'plugin');
+    const application = await authenticateApplication(request, 'plugin');
+
+    if (!isPluginApplication(application)) {
+        throw new AuthError(`Application type '${application.type}' is not allowed here`, 403);
+    }
+
+    return application;
 }
 
 export function requireScope(
@@ -95,9 +103,9 @@ export function requireScope(
     }
 }
 
-export async function requireSiteAccess(pluginId: Id<'applications'>, siteSlug: string): Promise<void> {
-    const hasAccess = await convexAdmin.query(internal.plugins.siteAccess.checkAccess, {
-        pluginId,
+export async function requireSiteAccess(applicationId: Id<'applications'>, siteSlug: string): Promise<void> {
+    const hasAccess = await convexAdmin.query(internal.applications.plugin.siteAccess.checkAccess, {
+        pluginId: applicationId,
         siteSlug,
     });
 

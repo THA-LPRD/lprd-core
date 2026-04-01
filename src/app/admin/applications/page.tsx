@@ -7,36 +7,39 @@ import { api } from '@convex/api';
 import { Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
+import { CreateApplicationDialog } from '@/components/application/create-dialog';
+import { ApplicationListFilter, useApplicationFilters } from '@/components/application/list-filter';
+import { ApplicationStatusBadge } from '@/components/application/status-badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PluginStatusBadge } from '@/components/plugin/status-badge';
-import { PluginListFilter, usePluginFilters } from '@/components/plugin/plugin-list-filter';
-import { CreatePluginDialog } from '@/components/plugin/create-dialog';
-import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyMedia } from '@/components/ui/empty';
 
-export default function AdminPluginsPage() {
+export default function AdminApplicationsPage() {
     const router = useRouter();
-    const plugins = useQuery(api.plugins.applications.listAll);
+    const applications = useQuery(api.applications.crud.listAll);
     const [showCreate, setShowCreate] = React.useState(false);
-    const { search, statusFilters, filteredPlugins, setSearch, toggleStatus, selectAll } = usePluginFilters(plugins);
+    const { search, statusFilters, filteredApplications, setSearch, toggleStatus, selectAll } =
+        useApplicationFilters(applications);
 
-    if (plugins === undefined) {
-        return <div className="animate-pulse text-muted-foreground p-6">Loading plugins...</div>;
+    if (applications === undefined) {
+        return <div className="animate-pulse text-muted-foreground p-6">Loading service accounts...</div>;
     }
 
     return (
         <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="mb-6 flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Service Accounts</h1>
-                    <p className="text-muted-foreground">Manage plugin and internal service accounts</p>
+                    <p className="text-muted-foreground">
+                        Manage application records, including plugin and internal accounts
+                    </p>
                 </div>
                 <Button onClick={() => setShowCreate(true)}>
-                    <Plus className="size-4 mr-2" />
+                    <Plus className="mr-2 size-4" />
                     Create Service Account
                 </Button>
             </div>
 
-            {plugins.length === 0 ? (
+            {applications.length === 0 ? (
                 <Empty className="pt-24">
                     <EmptyHeader>
                         <button type="button" onClick={() => setShowCreate(true)} className="cursor-pointer">
@@ -50,7 +53,7 @@ export default function AdminPluginsPage() {
                 </Empty>
             ) : (
                 <>
-                    <PluginListFilter
+                    <ApplicationListFilter
                         search={search}
                         statusFilters={statusFilters}
                         onSearchChange={setSearch}
@@ -58,7 +61,7 @@ export default function AdminPluginsPage() {
                         onSelectAll={selectAll}
                     />
 
-                    {filteredPlugins.length === 0 ? (
+                    {filteredApplications.length === 0 ? (
                         <Empty>
                             <EmptyHeader>
                                 <EmptyTitle>No matching service accounts</EmptyTitle>
@@ -77,33 +80,33 @@ export default function AdminPluginsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredPlugins.map((account) => (
+                                {filteredApplications.map((application) => (
                                     <TableRow
-                                        key={account._id}
+                                        key={application._id}
                                         className="cursor-pointer"
-                                        onClick={() => router.push(`/admin/plugins/${account._id}`)}
+                                        onClick={() => router.push(`/admin/applications/${application._id}`)}
                                     >
                                         <TableCell>
-                                            <span className="font-medium">{account.name}</span>
-                                            {account.description && (
-                                                <p className="text-sm text-muted-foreground truncate max-w-xs">
-                                                    {account.description}
+                                            <span className="font-medium">{application.name}</span>
+                                            {application.description && (
+                                                <p className="max-w-xs truncate text-sm text-muted-foreground">
+                                                    {application.description}
                                                 </p>
                                             )}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant="outline" className="capitalize">
-                                                {account.type}
+                                                {application.type}
                                             </Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <PluginStatusBadge status={account.status} />
+                                            <ApplicationStatusBadge status={application.status} />
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {account.scopes?.join(', ') || '-'}
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {application.scopes?.join(', ') || '-'}
                                         </TableCell>
-                                        <TableCell className="text-muted-foreground text-sm">
-                                            {new Date(account.createdAt).toLocaleDateString()}
+                                        <TableCell className="text-sm text-muted-foreground">
+                                            {new Date(application.createdAt).toLocaleDateString()}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -113,7 +116,7 @@ export default function AdminPluginsPage() {
                 </>
             )}
 
-            <CreatePluginDialog open={showCreate} onOpenChange={setShowCreate} />
+            <CreateApplicationDialog open={showCreate} onOpenChange={setShowCreate} />
         </div>
     );
 }

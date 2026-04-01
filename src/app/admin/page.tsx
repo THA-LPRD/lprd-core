@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { fetchQuery } from 'convex/nextjs';
-import { Plug, Users, Building2 } from 'lucide-react';
+import { Building2, Plug, Users } from 'lucide-react';
 import { redirect } from 'next/navigation';
 import { api } from '@convex/api';
 import { withAuth } from '@workos-inc/authkit-nextjs';
@@ -23,14 +23,14 @@ export default async function AdminDashboardPage() {
         redirect('/site');
     }
 
-    const [plugins, actors, sites] = await Promise.all([
-        fetchQuery(api.plugins.applications.listAll, {}, { token: auth.accessToken }),
+    const [applications, actors, sites] = await Promise.all([
+        fetchQuery(api.applications.crud.listAll, {}, { token: auth.accessToken }),
         fetchQuery(api.actors.listAll, {}, { token: auth.accessToken }),
         fetchQuery(api.sites.list, {}, { token: auth.accessToken }),
     ]);
 
-    const activePlugins = plugins.filter((plugin) => plugin.status === 'active').length;
-    const pendingPlugins = plugins.filter((plugin) => plugin.status === 'pending').length;
+    const activeApplications = applications.filter((application) => application.status === 'active').length;
+    const pendingApplications = applications.filter((application) => application.status === 'pending').length;
     const users = actors.filter((actor) => actor.type === 'user').length;
 
     return (
@@ -41,16 +41,17 @@ export default async function AdminDashboardPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Link href="/admin/plugins">
+                <Link href="/admin/applications">
                     <Card className="transition-colors hover:bg-muted/50">
                         <CardHeader className="flex flex-row items-center justify-between pb-2">
-                            <CardTitle className="text-sm font-medium">Plugins</CardTitle>
+                            <CardTitle className="text-sm font-medium">Service Accounts</CardTitle>
                             <Plug className="size-4 text-muted-foreground" />
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold">{plugins.length}</div>
+                            <div className="text-2xl font-bold">{applications.length}</div>
                             <CardDescription>
-                                {activePlugins} active{pendingPlugins > 0 ? `, ${pendingPlugins} pending` : ''}
+                                {activeApplications} active
+                                {pendingApplications > 0 ? `, ${pendingApplications} pending` : ''}
                             </CardDescription>
                         </CardContent>
                     </Card>

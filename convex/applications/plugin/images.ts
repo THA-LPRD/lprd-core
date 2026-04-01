@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
-import { internalAction, internalMutation, internalQuery } from '../_generated/server';
-import { internal } from '../_generated/api';
-import { extractImageUrls, replaceImgUrls } from '../lib/template_data';
+import { internalAction, internalMutation, internalQuery } from '../../_generated/server';
+import { internal } from '../../_generated/api';
+import { extractImageUrls, replaceImgUrls } from '../../lib/template_data';
 
 /**
  * Download external images from img() markers in pluginData,
@@ -10,7 +10,7 @@ import { extractImageUrls, replaceImgUrls } from '../lib/template_data';
 export const processPluginDataImages = internalAction({
     args: { pluginDataId: v.id('pluginData') },
     handler: async (ctx, args) => {
-        const record = await ctx.runQuery(internal.plugins.images.getPluginDataById, {
+        const record = await ctx.runQuery(internal.applications.plugin.images.getPluginDataById, {
             id: args.pluginDataId,
         });
         if (!record) return;
@@ -47,7 +47,7 @@ export const processPluginDataImages = internalAction({
                 ? { ...(updated as Record<string, unknown>), _imageBlobs: imageBlobs }
                 : updated;
 
-        await ctx.runMutation(internal.plugins.images.patchPluginData, {
+        await ctx.runMutation(internal.applications.plugin.images.patchPluginData, {
             pluginDataId: args.pluginDataId,
             data: withBlobs,
         });

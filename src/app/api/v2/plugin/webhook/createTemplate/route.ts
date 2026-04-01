@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { internal } from '@convex/api';
 import { convexAdmin } from '@/lib/convex-admin';
-import { authenticatePlugin, AuthError, requireScope } from '@/lib/plugin/auth';
+import { authenticatePlugin, AuthError, requireScope } from '@/lib/application/auth';
 import { generateScreenshot, getVariantPixelSize } from '@/lib/render/thumbnail';
 
 /**

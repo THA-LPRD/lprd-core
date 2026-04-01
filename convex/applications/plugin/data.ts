@@ -1,10 +1,10 @@
 import { v } from 'convex/values';
-import { internalMutation, internalQuery, query } from '../_generated/server';
-import { internal } from '../_generated/api';
-import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
-import { generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
-import { getCurrentActor, getMembership } from '../actors';
-import { getPermissions } from '../lib/acl';
+import { internalMutation, internalQuery, query } from '../../_generated/server';
+import { internal } from '../../_generated/api';
+import { containsImgFuncs, deleteImageBlobs } from '../../lib/template_data';
+import { generateUploadUrl as generateUploadUrlImpl } from '../../lib/storage';
+import { getCurrentActor, getMembership } from '../../actors';
+import { getPermissions } from '../../lib/acl';
 
 /**
  * Store data pushed by a plugin via webhook.
@@ -76,7 +76,7 @@ export const storeWebhookData = internalMutation({
 
         // Schedule image processing if data has img() markers
         if (containsImgFuncs(args.data)) {
-            await ctx.scheduler.runAfter(0, internal.plugins.images.processPluginDataImages, {
+            await ctx.scheduler.runAfter(0, internal.applications.plugin.images.processPluginDataImages, {
                 pluginDataId: id,
             });
         }

@@ -12,21 +12,21 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Copy, Check } from 'lucide-react';
+import { Check, Copy } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
 
 export function ReissueTokenDialog({
     open,
     onOpenChange,
-    pluginId,
-    pluginName,
+    applicationId,
+    applicationName,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    pluginId: Id<'applications'>;
-    pluginName: string;
+    applicationId: Id<'applications'>;
+    applicationName: string;
 }) {
-    const rotateSecret = useAction(api.plugins.provision.rotateSecret);
+    const rotateSecret = useAction(api.applications.provision.rotateSecret);
     const [isReissuing, setIsReissuing] = React.useState(false);
     const [secret, setSecret] = React.useState<{ clientId: string; clientSecret: string } | null>(null);
     const [copied, setCopied] = React.useState(false);
@@ -36,7 +36,7 @@ export function ReissueTokenDialog({
         setIsReissuing(true);
         setError(null);
         try {
-            const data = await rotateSecret({ id: pluginId });
+            const data = await rotateSecret({ id: applicationId });
             setSecret({ clientId: data.clientId, clientSecret: data.clientSecret });
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to create client secret');
@@ -69,7 +69,7 @@ export function ReissueTokenDialog({
                     <DialogDescription>
                         {secret
                             ? 'Save the client secret below. It will not be shown again.'
-                            : `This will create a new client secret for "${pluginName}".`}
+                            : `This will create a new client secret for "${applicationName}".`}
                     </DialogDescription>
                 </DialogHeader>
 
