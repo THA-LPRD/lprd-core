@@ -2,7 +2,8 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { frameLayer, frameWidget } from './schema';
 import { getPermissions } from './lib/acl';
-import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from './lib/storage';
+import { canAccessWithInternalRenderScope } from './lib/internal_render';
+import { fetchTemplateMap } from './lib/storage';
 import { getCurrentActor, getMembership } from './actors';
 
 /**
@@ -208,50 +209,23 @@ export const duplicate = mutation({
 });
 
 /**
- * Save a thumbnail storage reference on a frame.
- * Requires frame.manage permission.
- */
-export const storeThumbnail = mutation({
-    args: {
-        id: v.id('frames'),
-        storageId: v.id('_storage'),
-    },
-    handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const frame = await ctx.db.get(args.id);
-        if (!frame) throw new Error('Frame not found');
-
-        const membership = await getMembership(ctx, actor._id, frame.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.manage) throw new Error('Forbidden');
-
-        await replaceThumbnail(ctx, args.id, args.storageId);
-    },
-});
-
-/**
- * Generate an upload URL for frame thumbnails.
- */
-export const generateUploadUrl = mutation({
-    args: {},
-    handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-        return generateUploadUrlImpl(ctx);
-    },
-});
-
-/**
  * Get everything needed to render a frame in one query.
  * No auth — used only by the Playwright render page.
  */
 export const getRenderBundle = query({
     args: { frameId: v.id('frames') },
     handler: async (ctx, args) => {
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Render bundle: not authenticated');
+
         const frame = await ctx.db.get(args.frameId);
         if (!frame) return null;
+
+        if (!(await canAccessWithInternalRenderScope(ctx))) {
+            const membership = await getMembership(ctx, actor._id, frame.siteId);
+            const perms = getPermissions(actor, membership);
+            if (!perms.frame.view) throw new Error('Render bundle: frame.view permission denied');
+        }
 
         const templateIds = new Set<string>();
         for (const w of frame.widgets) {

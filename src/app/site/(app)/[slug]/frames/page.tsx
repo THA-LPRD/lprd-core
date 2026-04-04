@@ -72,7 +72,7 @@ export default function FramesPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="aspect-[5/3] rounded-lg" />
+                        <Skeleton key={i} className="aspect-video rounded-lg" />
                     ))}
                 </div>
             </div>

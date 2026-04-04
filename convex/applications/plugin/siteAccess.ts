@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalQuery, mutation, query } from '../../_generated/server';
+import { mutation, query } from '../../_generated/server';
 import { getCurrentActor, getMembership } from '../../actors';
 import { isPluginApplication } from '../../lib/applications';
 import { getPermissions } from '../../lib/acl';
@@ -190,18 +190,18 @@ export const listForPlugin = query({
     },
 });
 
-/**
- * Boolean check: plugin active + enabledByAdmin + enabledBySite.
- * Used by the API route auth helper.
- */
-export const checkAccess = internalQuery({
-    args: {
-        pluginId: v.id('applications'),
-        siteSlug: v.string(),
-    },
+export const checkMyAccess = query({
+    args: { siteSlug: v.string() },
     handler: async (ctx, args) => {
-        const plugin = await ctx.db.get(args.pluginId);
-        if (!plugin || plugin.status !== 'active') return false;
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return false;
+
+        const application = await ctx.db
+            .query('applications')
+            .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
+            .unique();
+
+        if (!application || application.status !== 'active') return false;
 
         const site = await ctx.db
             .query('sites')
@@ -211,7 +211,7 @@ export const checkAccess = internalQuery({
 
         const access = await ctx.db
             .query('pluginSiteAccess')
-            .withIndex('by_application_and_site', (q) => q.eq('applicationId', args.pluginId).eq('siteId', site._id))
+            .withIndex('by_application_and_site', (q) => q.eq('applicationId', application._id).eq('siteId', site._id))
             .unique();
 
         if (!access) return false;

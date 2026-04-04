@@ -1,43 +1,9 @@
 import { v } from 'convex/values';
-import { mutation, query } from '../_generated/server';
-import { getCurrentActor } from '../actors';
-import { fetchTemplateMap, generateUploadUrl as generateUploadUrlImpl } from '../lib/storage';
-
-/**
- * Set the next render for a device. Cleans up old next blob if present.
- * Called from Next.js after Playwright renders the device.
- */
-export const setNext = mutation({
-    args: {
-        deviceId: v.id('devices'),
-        storageId: v.id('_storage'),
-        renderedAt: v.number(),
-    },
-    handler: async (ctx, args) => {
-        const device = await ctx.db.get(args.deviceId);
-        if (!device) return;
-
-        if (device.next?.storageId) {
-            await ctx.storage.delete(device.next.storageId);
-        }
-
-        await ctx.db.patch(device._id, {
-            next: { storageId: args.storageId, renderedAt: args.renderedAt },
-        });
-    },
-});
-
-/**
- * Generate an upload URL for device render images.
- */
-export const generateUploadUrl = mutation({
-    args: {},
-    handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-        return generateUploadUrlImpl(ctx);
-    },
-});
+import { query } from '../_generated/server';
+import { fetchTemplateMap } from '../lib/storage';
+import { getPermissions } from '../lib/acl';
+import { canAccessWithInternalRenderScope } from '../lib/internal_render';
+import { getCurrentActor, getMembership } from '../actors';
 
 /**
  * Get everything needed to render a device in one query.
@@ -47,8 +13,17 @@ export const generateUploadUrl = mutation({
 export const getRenderBundle = query({
     args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Render bundle: not authenticated');
+
         const device = await ctx.db.get(args.deviceId);
         if (!device?.frameId) return null;
+
+        if (!(await canAccessWithInternalRenderScope(ctx))) {
+            const membership = await getMembership(ctx, actor._id, device.siteId);
+            const perms = getPermissions(actor, membership);
+            if (!perms.device.view) throw new Error('Render bundle: device.view permission denied');
+        }
 
         const frame = await ctx.db.get(device.frameId);
         if (!frame) return null;

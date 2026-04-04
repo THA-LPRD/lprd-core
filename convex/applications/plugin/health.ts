@@ -1,47 +1,13 @@
 import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
-import { internalMutation, internalQuery, query } from '../../_generated/server';
+import { mutation, query } from '../../_generated/server';
 import { healthCheckStatus } from '../../schema';
 import { getCurrentActor } from '../../actors';
 import { getPermissions } from '../../lib/acl';
+import { requireInternalRenderScope } from '../../lib/internal_render';
 
 /** Number of consecutive failures before marking unhealthy */
 const UNHEALTHY_THRESHOLD = 3;
-
-/**
- * List active plugins that are overdue for a health check.
- * Called by the worker scheduler on a fixed interval.
- */
-export const listDueForHealthCheck = internalQuery({
-    args: {},
-    handler: async (ctx) => {
-        const now = Date.now();
-        const activePluginApps = await ctx.db
-            .query('applications')
-            .withIndex('by_status', (q) => q.eq('status', 'active'))
-            .filter((q) => q.eq(q.field('type'), 'plugin'))
-            .collect();
-
-        const results = [];
-        for (const app of activePluginApps) {
-            const plugin = await ctx.db
-                .query('pluginProfiles')
-                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
-                .unique();
-
-            if (!plugin) continue;
-            if (now - (plugin.lastHealthCheckAt ?? 0) < plugin.healthCheckIntervalMs) continue;
-
-            results.push({
-                _id: app._id,
-                baseUrl: plugin.baseUrl,
-                healthCheckIntervalMs: plugin.healthCheckIntervalMs,
-                lastHealthCheckAt: plugin.lastHealthCheckAt,
-            });
-        }
-        return results;
-    },
-});
 
 /**
  * List recent health checks for a plugin (paginated). AppAdmin only.
@@ -65,16 +31,46 @@ export const listByPlugin = query({
     },
 });
 
-/**
- * Record a health check result, update lastHealthCheckAt, and derive healthStatus.
- * Called by the worker after checking a plugin's /health endpoint.
- *
- * healthStatus logic:
- * - healthy: last check was healthy
- * - degraded: 1-2 consecutive unhealthy/error checks
- * - unhealthy: 3+ consecutive unhealthy/error checks
- */
-export const recordHealthCheck = internalMutation({
+export const listDueForHealthCheck = query({
+    args: {},
+    handler: async (ctx) => {
+        await requireInternalRenderScope(ctx);
+
+        const now = Date.now();
+        const activePluginApps = await ctx.db
+            .query('applications')
+            .withIndex('by_status', (q) => q.eq('status', 'active'))
+            .filter((q) => q.eq(q.field('type'), 'plugin'))
+            .collect();
+
+        const results = [];
+        for (const app of activePluginApps) {
+            const plugin = await ctx.db
+                .query('pluginProfiles')
+                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
+                .unique();
+
+            if (!plugin) continue;
+            if (now - (plugin.lastHealthCheckAt ?? 0) < plugin.healthCheckIntervalMs) continue;
+
+            const siteAccess = await ctx.db
+                .query('pluginSiteAccess')
+                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
+                .first();
+
+            results.push({
+                applicationId: app._id,
+                actorId: app.actorId,
+                siteId: siteAccess?.siteId ?? null,
+                baseUrl: plugin.baseUrl,
+            });
+        }
+
+        return results;
+    },
+});
+
+export const recordHealthCheck = mutation({
     args: {
         pluginId: v.id('applications'),
         status: healthCheckStatus,
@@ -83,6 +79,8 @@ export const recordHealthCheck = internalMutation({
         errorMessage: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        await requireInternalRenderScope(ctx);
+
         const now = Date.now();
 
         await ctx.db.insert('pluginHealthChecks', {
@@ -94,7 +92,6 @@ export const recordHealthCheck = internalMutation({
             checkedAt: now,
         });
 
-        // Derive healthStatus from recent checks
         let healthStatus: 'healthy' | 'degraded' | 'unhealthy';
 
         if (args.status === 'healthy') {

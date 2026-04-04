@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, decodeJwt, jwtVerify, type JWTPayload, type JWTVerifyResult } from 'jose';
+import { createRemoteJWKSet, type JWTPayload, jwtVerify, type JWTVerifyResult } from 'jose';
 import { getAuthkitOrigin } from '@/lib/workos/shared';
 
 type WorkOSM2MClaims = JWTPayload & {
@@ -6,9 +6,17 @@ type WorkOSM2MClaims = JWTPayload & {
     sub?: string;
 };
 
+const DISCOVERY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+let discoveryCache: { issuer: string; jwks: ReturnType<typeof createRemoteJWKSet>; expiresAt: number } | null = null;
 
 async function getRemoteJwks() {
+    const now = Date.now();
+    if (discoveryCache && discoveryCache.expiresAt > now) {
+        return { issuer: discoveryCache.issuer, jwks: discoveryCache.jwks };
+    }
+
     const discoveryUrl = `${getAuthkitOrigin()}/.well-known/openid-configuration`;
     const discovery = await fetch(discoveryUrl).then((response) => {
         if (!response.ok) throw new Error(`Failed to load WorkOS discovery document: ${response.status}`);
@@ -20,6 +28,8 @@ async function getRemoteJwks() {
         jwks = createRemoteJWKSet(new URL(discovery.jwks_uri));
         jwksCache.set(discovery.jwks_uri, jwks);
     }
+
+    discoveryCache = { issuer: discovery.issuer, jwks, expiresAt: now + DISCOVERY_TTL_MS };
 
     return { issuer: discovery.issuer, jwks };
 }
@@ -50,19 +60,15 @@ export async function getToken(input: { clientId: string; clientSecret: string; 
 }
 
 export async function verifyToken(token: string): Promise<JWTVerifyResult<WorkOSM2MClaims>> {
-    const decoded = decodeJwt(token) as WorkOSM2MClaims;
-    const clientId =
-        decoded.sub ??
-        (typeof decoded.aud === 'string' ? decoded.aud : Array.isArray(decoded.aud) ? decoded.aud[0] : undefined);
-
-    if (!clientId) {
-        throw new Error('WorkOS M2M token missing client identifier');
+    const expectedAudience = process.env.WORKOS_CLIENT_ID;
+    if (!expectedAudience) {
+        throw new Error('WORKOS_CLIENT_ID is required for token verification');
     }
 
     const { issuer, jwks } = await getRemoteJwks();
 
     return jwtVerify(token, jwks, {
         issuer,
-        audience: clientId,
+        audience: expectedAudience,
     });
 }

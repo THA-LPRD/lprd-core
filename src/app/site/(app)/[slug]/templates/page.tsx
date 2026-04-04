@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
-import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { toast } from 'sonner';
 import { buildEntitySlug } from '@/lib/slug';
 import { STARTER_HTML, STARTER_SAMPLE_DATA } from '@/lib/template';
+import { containsImgFuncs } from '@/lib/template-data';
 import type { Id } from '@convex/dataModel';
 
 export default function TemplatesPage() {
@@ -27,9 +28,6 @@ export default function TemplatesPage() {
     const createTemplate = useMutation(api.templates.crud.create);
     const removeTemplate = useMutation(api.templates.crud.remove);
     const duplicateTemplate = useMutation(api.templates.crud.duplicate);
-    const generateUploadUrl = useMutation(api.templates.crud.generateUploadUrl);
-    const storeTemplateThumbnail = useMutation(api.templates.crud.storeThumbnail);
-
     const handleCreate = async (data: { name: string; description: string }) => {
         const id = await createTemplate({
             siteId: site._id,
@@ -41,34 +39,44 @@ export default function TemplatesPage() {
             preferredVariantIndex: 0,
         });
 
-        // Generate initial thumbnail
-        try {
-            const res = await fetch('/api/v2/templates/createThumbnail', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    templateId: id,
-                    siteSlug: params.slug,
-                    variantIndex: 0,
-                    width: 3 * DEFAULT_CELL_SIZE,
-                    height: 2 * DEFAULT_CELL_SIZE,
-                }),
-            });
-            if (res.ok) {
-                const blob = await res.blob();
-                if (blob.size) {
-                    const uploadUrl = await generateUploadUrl();
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'image/png' },
-                        body: blob,
-                    });
-                    const { storageId } = await uploadRes.json();
-                    await storeTemplateThumbnail({ id, storageId });
-                }
-            }
-        } catch {
-            // Non-critical — template is created, thumbnail can be generated on first save
+        const nextJob = {
+            type: 'template-thumbnail' as const,
+            payload: { templateId: id, siteId: site._id, siteSlug: params.slug },
+        };
+        const response = await fetch('/api/v2/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(
+                containsImgFuncs(STARTER_SAMPLE_DATA)
+                    ? {
+                          type: 'normalize-images',
+                          resourceType: 'template',
+                          resourceId: id,
+                          siteId: site._id,
+                          source: 'templateCreate',
+                          payload: {
+                              type: 'normalize-images',
+                              payload: {
+                                  resourceType: 'template',
+                                  resourceId: id,
+                                  siteId: site._id,
+                                  source: 'templateCreate',
+                                  nextJobs: [nextJob],
+                              },
+                          },
+                      }
+                    : {
+                          type: 'template-thumbnail',
+                          resourceType: 'template',
+                          resourceId: id,
+                          siteId: site._id,
+                          source: 'templateCreate',
+                          payload: nextJob,
+                      },
+            ),
+        });
+        if (!response.ok) {
+            toast.error('Template created, but thumbnail generation failed to start');
         }
 
         router.push(`/site/${params.slug}/templates/${buildEntitySlug(data.name, id)}`);
@@ -87,42 +95,46 @@ export default function TemplatesPage() {
     const handleDuplicate = async (id: string) => {
         const newId = await duplicateTemplate({ id: id as Id<'templates'>, siteId: site._id });
 
-        // Generate thumbnail for the new copy
         const source = templates?.find((t) => t._id === id);
         if (source) {
-            const preferred = source.variants[source.preferredVariantIndex];
-            const width =
-                preferred?.type === 'content' ? preferred.w * DEFAULT_CELL_SIZE : GRID_COLS * DEFAULT_CELL_SIZE;
-            const height =
-                preferred?.type === 'content' ? preferred.h * DEFAULT_CELL_SIZE : GRID_ROWS * DEFAULT_CELL_SIZE;
-
-            try {
-                const res = await fetch('/api/v2/templates/createThumbnail', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        templateId: newId,
-                        siteSlug: params.slug,
-                        variantIndex: source.preferredVariantIndex,
-                        width,
-                        height,
-                    }),
-                });
-                if (res.ok) {
-                    const blob = await res.blob();
-                    if (blob.size) {
-                        const uploadUrl = await generateUploadUrl();
-                        const uploadRes = await fetch(uploadUrl, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'image/png' },
-                            body: blob,
-                        });
-                        const { storageId } = await uploadRes.json();
-                        await storeTemplateThumbnail({ id: newId, storageId });
-                    }
-                }
-            } catch {
-                // Non-critical — thumbnail can be generated on first save
+            const nextJob = {
+                type: 'template-thumbnail' as const,
+                payload: { templateId: newId, siteId: site._id, siteSlug: params.slug },
+            };
+            const response = await fetch('/api/v2/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(
+                    containsImgFuncs(source.sampleData)
+                        ? {
+                              type: 'normalize-images',
+                              resourceType: 'template',
+                              resourceId: newId,
+                              siteId: site._id,
+                              source: 'templateDuplicate',
+                              payload: {
+                                  type: 'normalize-images',
+                                  payload: {
+                                      resourceType: 'template',
+                                      resourceId: newId,
+                                      siteId: site._id,
+                                      source: 'templateDuplicate',
+                                      nextJobs: [nextJob],
+                                  },
+                              },
+                          }
+                        : {
+                              type: 'template-thumbnail',
+                              resourceType: 'template',
+                              resourceId: newId,
+                              siteId: site._id,
+                              source: 'templateDuplicate',
+                              payload: nextJob,
+                          },
+                ),
+            });
+            if (!response.ok) {
+                toast.error('Template duplicated, but thumbnail generation failed to start');
             }
         }
     };

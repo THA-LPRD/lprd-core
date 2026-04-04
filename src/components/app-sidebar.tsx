@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, LayoutGrid, LayoutTemplate, Monitor, Settings2 } from 'lucide-react';
+import { LayoutDashboard, LayoutGrid, LayoutTemplate, ListTodo, Monitor, Settings2 } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 
@@ -87,6 +87,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   url: `/site/${currentSite.slug}/templates`,
                   icon: LayoutTemplate,
                   isActive: pathname.startsWith(`/site/${currentSite.slug}/templates`),
+              },
+              {
+                  title: 'Jobs',
+                  url: `/site/${currentSite.slug}/jobs`,
+                  icon: ListTodo,
+                  isActive: pathname.startsWith(`/site/${currentSite.slug}/jobs`),
               },
               {
                   title: 'Settings',

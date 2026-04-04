@@ -41,8 +41,20 @@ export async function generateScreenshot(options: ScreenshotOptions): Promise<Ar
     });
 
     const page = await context.newPage();
-    await page.goto(`${origin}${renderPath}`);
-    await page.waitForSelector(waitForSelector, { timeout: 10000 });
+    const response = await page.goto(`${origin}${renderPath}`, { waitUntil: 'networkidle' });
+
+    if (!response || !response.ok()) {
+        const text = await page.content();
+        throw new Error(
+            `Render page failed: ${response?.status() ?? 'no-response'} ${response?.statusText() ?? ''} ${text.slice(0, 500)}`,
+        );
+    }
+
+    try {
+        await page.waitForSelector(waitForSelector, { timeout: 10000 });
+    } catch {
+        throw new Error(`Render marker '${waitForSelector}' not found on ${renderPath}: ${await page.content()}`);
+    }
 
     const png = await page.screenshot({ type: 'png' });
     await page.close();
@@ -57,11 +69,11 @@ async function getInternalAccessToken(): Promise<string> {
         return cachedAccessToken.token;
     }
 
-    const clientId = process.env.INTERNAL_WORKOS_CLIENT_ID;
-    const clientSecret = process.env.INTERNAL_WORKOS_CLIENT_SECRET;
+    const clientId = process.env.WORKER_CLIENT_ID;
+    const clientSecret = process.env.WORKER_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-        throw new Error('INTERNAL_WORKOS_CLIENT_ID and INTERNAL_WORKOS_CLIENT_SECRET are required');
+        throw new Error('WORKER_CLIENT_ID and WORKER_CLIENT_SECRET are required');
     }
 
     const token = await getToken({

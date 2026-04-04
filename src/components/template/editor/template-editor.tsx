@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useMutation } from 'convex/react';
 import { api } from '@convex/api';
 import { toast } from 'sonner';
+import { containsImgFuncs } from '@/lib/template-data';
 import { EditorToolbar } from './editor-toolbar';
 import { VariantBar } from './variant-bar';
 import { PreviewPanel } from './preview-panel';
@@ -16,13 +17,13 @@ import type { TemplateVariant } from '@/lib/template';
 type TemplateDoc = {
     _id: Id<'templates'>;
     scope: 'global' | 'site';
+    siteId?: Id<'sites'>;
     name: string;
     description?: string;
     templateHtml: string;
     sampleData?: unknown;
     variants: TemplateVariant[];
     preferredVariantIndex: number;
-    thumbnailStorageId?: Id<'_storage'>;
 };
 
 export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; siteSlug: string }) {
@@ -41,9 +42,6 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     const [showAddVariant, setShowAddVariant] = React.useState(false);
 
     const updateTemplate = useMutation(api.templates.crud.update);
-    const storeThumbnail = useMutation(api.templates.crud.storeThumbnail);
-    const generateUploadUrl = useMutation(api.templates.crud.generateUploadUrl);
-
     // Parse sample data safely
     const parsedSampleData = React.useMemo(() => {
         try {
@@ -65,35 +63,6 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     }, [name, templateHtml, sampleDataJson, variants, preferredVariantIndex, template]);
 
     const activeVariant = variants[activeVariantIndex] ?? variants[0];
-
-    // Generate thumbnail via server-side Playwright screenshot
-    const generateThumbnail = React.useCallback(async (): Promise<Id<'_storage'> | null> => {
-        try {
-            const res = await fetch('/api/v2/templates/createThumbnail', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ templateId: template._id, siteSlug }),
-            });
-
-            if (!res.ok) return null;
-
-            const blob = await res.blob();
-            if (!blob.size) return null;
-
-            // Upload to Convex storage
-            const uploadUrl = await generateUploadUrl();
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'image/png' },
-                body: blob,
-            });
-            const { storageId } = await uploadRes.json();
-            return storageId as Id<'_storage'>;
-        } catch (error) {
-            console.error('Failed to generate thumbnail:', error);
-            return null;
-        }
-    }, [template._id, siteSlug, generateUploadUrl]);
 
     const handleSave = async () => {
         if (isGlobal || !isDirty) return;
@@ -117,13 +86,51 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
                 preferredVariantIndex,
             });
 
-            // Generate and save thumbnail
-            const storageId = await generateThumbnail();
-            if (storageId) {
-                await storeThumbnail({ id: template._id, storageId });
+            const nextJob = {
+                type: 'template-thumbnail' as const,
+                payload: {
+                    templateId: template._id,
+                    siteId: template.scope === 'site' ? template.siteId : undefined,
+                    siteSlug,
+                },
+            };
+
+            const response = await fetch('/api/v2/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(
+                    containsImgFuncs(sampleData)
+                        ? {
+                              type: 'normalize-images',
+                              resourceType: 'template',
+                              resourceId: template._id,
+                              siteId: template.scope === 'site' ? template.siteId : undefined,
+                              source: 'templateSave',
+                              payload: {
+                                  type: 'normalize-images',
+                                  payload: {
+                                      resourceType: 'template',
+                                      resourceId: template._id,
+                                      source: 'templateSave',
+                                      nextJobs: [nextJob],
+                                  },
+                              },
+                          }
+                        : {
+                              type: 'template-thumbnail',
+                              resourceType: 'template',
+                              resourceId: template._id,
+                              siteId: template.scope === 'site' ? template.siteId : undefined,
+                              source: 'templateSave',
+                              payload: nextJob,
+                          },
+                ),
+            });
+
+            if (response.ok) {
                 toast.success('Template saved');
             } else {
-                toast.warning('Template saved, but thumbnail generation failed');
+                toast.warning('Template saved, but job enqueue failed');
             }
         } catch {
             toast.error('Failed to save template');

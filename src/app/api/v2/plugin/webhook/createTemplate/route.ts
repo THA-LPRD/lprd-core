@@ -1,8 +1,9 @@
+import { fetchMutation } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
-import { internal } from '@convex/api';
-import { convexAdmin } from '@/lib/convex-admin';
+import { api } from '@convex/api';
 import { authenticatePlugin, AuthError, requireScope } from '@/lib/application/auth';
-import { generateScreenshot, getVariantPixelSize } from '@/lib/render/thumbnail';
+import { recordAndEnqueueJob } from '@/lib/worker-jobs';
+import { containsImgFuncs } from '@/lib/template-data';
 
 /**
  * POST /api/v2/plugin/webhook/createTemplate
@@ -14,6 +15,7 @@ export async function POST(request: Request) {
         const plugin = await authenticatePlugin(request);
         requireScope(plugin, 'create_template');
 
+        const token = request.headers.get('authorization')!.slice(7);
         const body = await request.json();
         const { name, description, template_html, sample_data, variants, preferred_variant_index, version } = body;
 
@@ -24,49 +26,67 @@ export async function POST(request: Request) {
             );
         }
 
-        const result = await convexAdmin.mutation(internal.templates.global.upsertGlobal, {
-            pluginId: plugin._id,
-            name,
-            description: description ?? undefined,
-            templateHtml: template_html,
-            sampleData: sample_data ?? undefined,
-            variants,
-            preferredVariantIndex: preferred_variant_index,
-            version: version ?? undefined,
-        });
+        const result = await fetchMutation(
+            api.templates.global.upsertGlobalForApplication,
+            {
+                pluginId: plugin._id,
+                name,
+                description: description ?? undefined,
+                templateHtml: template_html,
+                sampleData: sample_data ?? undefined,
+                variants,
+                preferredVariantIndex: preferred_variant_index,
+                version: version ?? undefined,
+            },
+            { token },
+        );
 
-        // Generate and store thumbnail (best-effort — don't fail the request)
-        try {
-            const preferred = variants[preferred_variant_index];
-            if (preferred) {
-                const { origin } = new URL(request.url);
-                const { width, height } = getVariantPixelSize(preferred);
-
-                const png = await generateScreenshot({
-                    renderPath: `/site/_internal/templates/render/${result.id}`,
-                    width,
-                    height,
-                    origin,
-                });
-
-                const uploadUrl: string = await convexAdmin.mutation(
-                    internal.templates.crud.generateUploadUrlInternal,
-                    {},
-                );
-                const uploadRes = await fetch(uploadUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'image/png' },
-                    body: png,
-                });
-                const { storageId } = await uploadRes.json();
-
-                await convexAdmin.mutation(internal.templates.crud.storeThumbnailInternal, {
-                    id: result.id,
-                    storageId,
-                });
-            }
-        } catch (err) {
-            console.warn('Thumbnail generation failed for plugin template:', err);
+        if (result.needsNormalization || containsImgFuncs(sample_data)) {
+            await recordAndEnqueueJob({
+                token,
+                actorId: plugin.actorId,
+                type: 'normalize-images',
+                resourceType: 'template',
+                resourceId: result.id,
+                source: 'pluginTemplateUpsert',
+                payload: {
+                    type: 'normalize-images',
+                    payload: {
+                        resourceType: 'template',
+                        resourceId: result.id,
+                        actorId: plugin.actorId,
+                        siteId: undefined,
+                        source: 'pluginTemplateUpsert',
+                        nextJobs: [
+                            {
+                                type: 'template-thumbnail',
+                                payload: {
+                                    templateId: result.id,
+                                    siteId: undefined,
+                                    siteSlug: '_internal',
+                                },
+                            },
+                        ],
+                    },
+                },
+            });
+        } else {
+            await recordAndEnqueueJob({
+                token,
+                actorId: plugin.actorId,
+                type: 'template-thumbnail',
+                resourceType: 'template',
+                resourceId: result.id,
+                source: 'pluginTemplateUpsert',
+                payload: {
+                    type: 'template-thumbnail',
+                    payload: {
+                        templateId: result.id,
+                        siteId: undefined,
+                        siteSlug: '_internal',
+                    },
+                },
+            });
         }
 
         const status = result.created ? 201 : 200;

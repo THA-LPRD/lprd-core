@@ -9,8 +9,12 @@ export function RenderPageShell({ children, rendered }: { children: React.ReactN
     useHideDevIndicator();
 
     React.useEffect(() => {
-        if (rendered && wrapperRef.current) {
+        const body = document.body;
+        if (rendered && wrapperRef.current && body) {
             wrapperRef.current.setAttribute('data-rendered', '');
+            body.setAttribute('data-rendered', '');
+        } else if (body) {
+            body.removeAttribute('data-rendered');
         }
     }, [rendered]);
 

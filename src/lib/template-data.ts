@@ -1,4 +1,4 @@
-export { isImgFunc, containsImgFuncs, extractImageUrls } from '../../convex/lib/template_data';
+export { isImgFunc, containsImgFuncs, extractImageUrls, replaceImgUrls } from '../../convex/lib/template_data';
 
 const IMG_FUNC_RE = /^img\((.+)\)$/;
 

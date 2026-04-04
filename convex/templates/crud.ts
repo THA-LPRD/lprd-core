@@ -1,10 +1,9 @@
 import { v } from 'convex/values';
-import { internalMutation, internalQuery, mutation, query } from '../_generated/server';
-import { internal } from '../_generated/api';
+import { mutation, query } from '../_generated/server';
 import { templateVariant } from '../schema';
 import { getPermissions } from '../lib/acl';
-import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
-import { generateUploadUrl as generateUploadUrlImpl, replaceThumbnail } from '../lib/storage';
+import { deleteImageBlobs } from '../lib/template_data';
+import { canAccessWithInternalRenderScope, requireInternalRenderScope } from '../lib/internal_render';
 import { getCurrentActor, getMembership } from '../actors';
 
 /**
@@ -98,7 +97,8 @@ export const create = mutation({
         if (!perms.template.manage) throw new Error('Forbidden');
 
         const now = Date.now();
-        const id = await ctx.db.insert('templates', {
+
+        return await ctx.db.insert('templates', {
             scope: 'site',
             siteId: args.siteId,
             createdBy: actor._id,
@@ -111,15 +111,6 @@ export const create = mutation({
             createdAt: now,
             updatedAt: now,
         });
-
-        // Schedule image processing if sampleData has img() markers
-        if (containsImgFuncs(args.sampleData)) {
-            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                templateId: id,
-            });
-        }
-
-        return id;
     },
 });
 
@@ -154,12 +145,6 @@ export const update = mutation({
         void id;
         await ctx.db.patch(template._id, { ...updates, updatedAt: Date.now() });
 
-        // Schedule image processing if sampleData changed and has img() markers
-        if (args.sampleData !== undefined && containsImgFuncs(args.sampleData)) {
-            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                templateId: template._id,
-            });
-        }
     },
 });
 
@@ -231,51 +216,26 @@ export const duplicate = mutation({
 });
 
 /**
- * Save a thumbnail storage reference on a template.
- * Requires template.manage permission.
- */
-export const storeThumbnail = mutation({
-    args: {
-        id: v.id('templates'),
-        storageId: v.id('_storage'),
-    },
-    handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const template = await ctx.db.get(args.id);
-        if (!template) throw new Error('Template not found');
-        if (template.scope === 'global') throw new Error('Cannot modify global templates');
-
-        const membership = await getMembership(ctx, actor._id, template.siteId!);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.manage) throw new Error('Forbidden');
-
-        await replaceThumbnail(ctx, args.id, args.storageId);
-    },
-});
-
-/**
- * Generate an upload URL for template thumbnails.
- */
-export const generateUploadUrl = mutation({
-    args: {},
-    handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-        return generateUploadUrlImpl(ctx);
-    },
-});
-
-/**
  * Get everything needed to render a template in one query.
  * No auth — used only by the Playwright render page.
  */
 export const getRenderBundle = query({
     args: { templateId: v.id('templates') },
     handler: async (ctx, args) => {
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Render bundle: not authenticated');
+
         const template = await ctx.db.get(args.templateId);
         if (!template) return null;
+
+        if (!(await canAccessWithInternalRenderScope(ctx))) {
+            if (template.scope === 'site' && template.siteId) {
+                const membership = await getMembership(ctx, actor._id, template.siteId);
+                const perms = getPermissions(actor, membership);
+                if (!perms.template.view) throw new Error('Render bundle: template.view permission denied');
+            }
+        }
+
         return {
             templateHtml: template.templateHtml,
             sampleData: template.sampleData,
@@ -285,37 +245,24 @@ export const getRenderBundle = query({
     },
 });
 
-// --- Internal functions (no user auth, called via admin ConvexHttpClient) ---
-
-/**
- * Get a template by ID without auth. Used by server-side operations.
- */
-export const getByIdInternal = internalQuery({
+export const getByIdForJob = query({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
+        await requireInternalRenderScope(ctx);
         return ctx.db.get(args.id);
     },
 });
 
-/**
- * Generate an upload URL for internal use (no user auth required).
- */
-export const generateUploadUrlInternal = internalMutation({
-    args: {},
-    handler: async (ctx) => {
-        return generateUploadUrlImpl(ctx);
-    },
-});
-
-/**
- * Store a thumbnail on a template. No user auth — called from plugin API routes via admin client.
- */
-export const storeThumbnailInternal = internalMutation({
+export const patchSampleDataForJob = mutation({
     args: {
         id: v.id('templates'),
-        storageId: v.id('_storage'),
+        sampleData: v.any(),
     },
     handler: async (ctx, args) => {
-        await replaceThumbnail(ctx, args.id, args.storageId);
+        await requireInternalRenderScope(ctx);
+        await ctx.db.patch(args.id, {
+            sampleData: args.sampleData,
+            updatedAt: Date.now(),
+        });
     },
 });

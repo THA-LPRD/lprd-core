@@ -1,17 +1,13 @@
+import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
-import { internal } from '@convex/api';
-import { convexAdmin } from '@/lib/convex-admin';
-import { generateScreenshot } from '@/lib/render/thumbnail';
-import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { api } from '@convex/api';
 import { authenticatePlugin, AuthError, requireScope, requireSiteAccess } from '@/lib/application/auth';
-
-const WIDTH = GRID_COLS * DEFAULT_CELL_SIZE;
-const HEIGHT = GRID_ROWS * DEFAULT_CELL_SIZE;
+import { recordAndEnqueueJob } from '@/lib/worker-jobs';
 
 /**
  * POST /api/v2/plugin/webhook/data
  * Receives data pushed by a plugin, stores it in Convex,
- * then renders affected devices via Playwright.
+ * then queues any normalization/render work for the worker.
  * Authenticated via Bearer JWT token.
  */
 export async function POST(request: Request) {
@@ -20,6 +16,7 @@ export async function POST(request: Request) {
         const plugin = await authenticatePlugin(request);
         requireScope(plugin, 'push_data');
 
+        const token = request.headers.get('authorization')!.slice(7);
         const body = await request.json();
         const { data, ttl_seconds, org_slug, topic, entry } = body;
 
@@ -31,63 +28,81 @@ export async function POST(request: Request) {
         }
 
         // Check site access (plugin active + enabledByAdmin + enabledByOrg)
-        await requireSiteAccess(plugin._id, org_slug);
+        await requireSiteAccess(token, org_slug);
 
         // Store the data in Convex
-        const result = await convexAdmin.mutation(internal.applications.plugin.data.storeWebhookData, {
-            pluginId: plugin._id,
-            siteSlug: org_slug,
-            contentType: 'plugin_data',
-            data,
-            ttlSeconds: ttl_seconds,
-            topic,
-            entry,
-        });
+        const result = await fetchMutation(
+            api.applications.plugin.data.storeWebhookDataForApplication,
+            {
+                pluginId: plugin._id,
+                siteSlug: org_slug,
+                contentType: 'plugin_data',
+                data,
+                ttlSeconds: ttl_seconds,
+                topic,
+                entry,
+            },
+            { token },
+        );
 
         // Find affected devices
-        const affectedDeviceIds = await convexAdmin.query(internal.applications.plugin.data.listAffectedDevices, {
-            pluginId: result.pluginId,
-            siteId: result.siteId,
-            topic,
-            entry,
-        });
-
-        // Render affected devices in parallel
-        const { origin } = new URL(request.url);
-
-        await Promise.all(
-            affectedDeviceIds.map(async (deviceId) => {
-                try {
-                    const png = await generateScreenshot({
-                        renderPath: `/site/${result.siteSlug}/devices/render/${deviceId}`,
-                        width: WIDTH,
-                        height: HEIGHT,
-                        origin,
-                    });
-
-                    // Upload PNG to Convex storage
-                    const uploadUrl = await convexAdmin.mutation(
-                        internal.applications.plugin.data.generateRenderUploadUrl,
-                        {},
-                    );
-                    const uploadRes = await fetch(uploadUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'image/png' },
-                        body: png,
-                    });
-                    const { storageId } = await uploadRes.json();
-
-                    // Set as device.next
-                    await convexAdmin.mutation(internal.applications.plugin.data.setDeviceNext, {
-                        deviceId,
-                        storageId,
-                        renderedAt: Date.now(),
-                    });
-                } catch (err) {
-                    console.error(`Failed to render device ${deviceId}:`, err);
-                }
-            }),
+        const affectedDevices = await fetchQuery(
+            api.applications.plugin.data.listAffectedDevicesForJob,
+            {
+                pluginId: result.pluginId,
+                siteId: result.siteId,
+                topic,
+                entry,
+            },
+            { token },
         );
+
+        const nextJobs = affectedDevices.map((device) => ({
+            type: 'device-render' as const,
+            payload: {
+                deviceId: device.deviceId,
+                siteId: device.siteId,
+                siteSlug: result.siteSlug,
+            },
+        }));
+
+        if (result.needsNormalization) {
+            await recordAndEnqueueJob({
+                token,
+                actorId: plugin.actorId,
+                siteId: result.siteId,
+                type: 'normalize-images',
+                resourceType: 'pluginData',
+                resourceId: result.pluginDataId,
+                source: 'pluginPush',
+                payload: {
+                    type: 'normalize-images',
+                    payload: {
+                        resourceType: 'pluginData',
+                        resourceId: result.pluginDataId,
+                        actorId: plugin.actorId,
+                        siteId: result.siteId,
+                        source: 'pluginPush',
+                        nextJobs,
+                    },
+                },
+            });
+        } else {
+            await Promise.all(
+                nextJobs.map((job) =>
+                    recordAndEnqueueJob({
+                        token,
+                        actorId: plugin.actorId,
+                        siteId: result.siteId,
+                        type: job.type,
+                        resourceType: 'device',
+                        resourceId: job.payload.deviceId,
+                        source: 'pluginPush',
+                        payload: job,
+                    }),
+                ),
+            );
+        }
 
         return new Response(null, { status: 202 });
     } catch (error) {

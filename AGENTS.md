@@ -35,6 +35,13 @@ This is a Next.js 16 application with a Convex backend and WorkOS AuthKit authen
 - `convex/` - Convex backend functions and schema
 - `convex/_generated/` - Auto-generated Convex types (do not edit)
 
+### App Router Boundary
+
+- Keep
+  `src/app/**` limited to Next.js App Router concerns: pages, layouts, route handlers, loading/error files, and route-local helpers only.
+- Do not place shared helpers, auth utilities, generic data mappers, or reusable business logic under `src/app/**`.
+- Shared code belongs in directories like `src/lib/`, `src/components/`, or other non-App-Router modules.
+
 ### Route Groups (`src/app/site/`)
 
 The `site/` route uses two route groups to control which pages get the sidebar/header layout:
@@ -92,6 +99,20 @@ Permission keys: `platform.setUserRoles`, `site.{create,view,manage}`, `device.{
 Pure TypeScript types, constants, and logic shared between Convex and Next.js live in `convex/lib/`. Each file is re-exported from a matching `src/lib/` file so components can use the `@/lib/` alias.
 
 **Rule:** never duplicate these constants or types in components. Import from `@/lib/<name>` instead.
+
+### API Design
+
+- Prefer explicit, dedicated endpoints over multiplexed
+  `action` payload endpoints when the actions are semantically distinct.
+- Prefer routes like `/cancel`, `/pause`, `/resume`, `/retry` over `POST /resource/:id` with `{ action: ... }`.
+- If a faster but less explicit API shape is tempting during a refactor, prefer the final clear route structure directly.
+- Do not introduce temporary “internal command” endpoint shapes unless the user explicitly approves that tradeoff.
+
+### Refactor Discipline
+
+- When choosing between a quick patch and the proper final architecture, prefer the proper final architecture by default.
+- Do not take implementation shortcuts solely to reduce file count when the result makes the API, ownership boundaries, or code layout less clear.
+- If you are about to trade architecture clarity for speed, stop and ask first.
 
 ### Plugin System
 

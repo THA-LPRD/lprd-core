@@ -1,6 +1,6 @@
 import { httpAction } from '../_generated/server';
 import { internal } from '../_generated/api';
-import { storeAvatar, verifyAndParse } from './helpers';
+import { storeAvatar, verifyAndParse } from './utils';
 
 /**
  * Webhook handler for user.created events

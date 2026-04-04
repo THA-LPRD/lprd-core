@@ -1,7 +1,24 @@
+import { config } from '@worker/config';
 import { startScheduler } from '@worker/scheduler';
 import { startWorker } from '@worker/worker';
 
+function validateConfig() {
+    if (!config.app.workerClientId || !config.app.workerClientSecret) {
+        throw new Error('WORKER_CLIENT_ID and WORKER_CLIENT_SECRET environment variables are required');
+    }
+    if (!config.convex.url) {
+        throw new Error('CONVEX_URL or NEXT_PUBLIC_CONVEX_URL environment variable is required');
+    }
+    if (!config.convex.deployKey) {
+        throw new Error('CONVEX_DEPLOY_KEY environment variable is required');
+    }
+    if (!config.app.baseUrl) {
+        throw new Error('APP_BASE_URL or NEXT_PUBLIC_APP_URL environment variable is required');
+    }
+}
+
 async function main() {
+    validateConfig();
     console.log('[worker] Starting health check worker...');
 
     const { worker: schedulerWorker, queue: schedulerQueue } = await startScheduler();

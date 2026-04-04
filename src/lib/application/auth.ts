@@ -1,8 +1,8 @@
-import { internal } from '@convex/api';
+import { fetchQuery } from 'convex/nextjs';
+import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import type { ApplicationType } from '@/lib/applications';
 import { isPluginApplication } from '@/lib/applications';
-import { convexAdmin } from '@/lib/convex-admin';
 import { verifyToken } from '@/lib/workos/connect';
 
 export class AuthError extends Error {
@@ -28,7 +28,7 @@ export type AuthenticatedApplication = {
 /**
  * Authenticate a service account request.
  * Verifies the M2M Bearer token directly from the Authorization header,
- * then looks up the application in Convex and enforces status/type checks.
+ * then resolves the application via Convex (which independently verifies the token).
  */
 export async function authenticateApplication(
     request: Request,
@@ -39,23 +39,17 @@ export async function authenticateApplication(
         throw new AuthError('Missing or invalid Authorization header', 401);
     }
 
-    let clientId: string | undefined;
+    const token = authHeader.slice(7);
+
+    // Next.js independently verifies the JWT
     try {
-        const { payload } = await verifyToken(authHeader.slice(7));
-        clientId =
-            payload.sub ??
-            (typeof payload.aud === 'string' ? payload.aud : Array.isArray(payload.aud) ? payload.aud[0] : undefined);
+        await verifyToken(token);
     } catch {
         throw new AuthError('Invalid or expired token', 401);
     }
 
-    if (!clientId) {
-        throw new AuthError('Token missing client identifier', 401);
-    }
-
-    const result = await convexAdmin.query(internal.applications.crud.getByWorkosClientId, {
-        workosClientId: clientId,
-    });
+    // Convex independently verifies the caller via getCurrentActor
+    const result = await fetchQuery(api.applications.crud.resolveMyApplication, { expectedType }, { token });
 
     if (!result?.application || !result.actor) {
         throw new AuthError('Application not found', 401);
@@ -98,16 +92,13 @@ export function requireScope(
     application: AuthenticatedApplication,
     scope: 'push_data' | 'create_template' | 'internal_render',
 ): void {
-    if (application.scopes && !application.scopes.includes(scope)) {
+    if (!application.scopes || !application.scopes.includes(scope)) {
         throw new AuthError(`Application does not have '${scope}' scope`, 403);
     }
 }
 
-export async function requireSiteAccess(applicationId: Id<'applications'>, siteSlug: string): Promise<void> {
-    const hasAccess = await convexAdmin.query(internal.applications.plugin.siteAccess.checkAccess, {
-        pluginId: applicationId,
-        siteSlug,
-    });
+export async function requireSiteAccess(token: string, siteSlug: string): Promise<void> {
+    const hasAccess = await fetchQuery(api.applications.plugin.siteAccess.checkMyAccess, { siteSlug }, { token });
 
     if (!hasAccess) {
         throw new AuthError('Application does not have access to this site', 403);

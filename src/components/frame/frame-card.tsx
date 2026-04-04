@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, LayoutGrid, Pencil, Trash2 } from 'lucide-react';
@@ -13,6 +14,7 @@ export type Frame = {
     name: string;
     description?: string;
     thumbnailUrl: string | null;
+    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
     widgets: { id: string; w: number; h: number }[];
     createdAt: number;
     updatedAt: number;
@@ -35,7 +37,7 @@ export function FrameCard({
         <Card className="hover:bg-accent/50 transition-colors overflow-hidden group">
             {/* Thumbnail area */}
             <div className="border-b bg-muted mx-3 rounded-md">
-                <div className="relative aspect-[5/3] mx-auto">
+                <div className="relative aspect-video mx-auto">
                     {frame.thumbnailUrl ? (
                         <Image src={frame.thumbnailUrl} alt={frame.name} fill className="object-contain" unoptimized />
                     ) : (
@@ -49,6 +51,7 @@ export function FrameCard({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 min-w-0">
                     <span className="truncate">{frame.name}</span>
+                    <JobStatusBadge latestJob={frame.latestJob} />
                 </CardTitle>
                 {frame.description && <CardDescription className="truncate">{frame.description}</CardDescription>}
                 {canManage && (

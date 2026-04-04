@@ -6,6 +6,14 @@ import { getPermissions } from './lib/acl';
 
 type Ctx = QueryCtx | MutationCtx;
 
+async function tryGetActorById(ctx: Ctx, value: string) {
+    try {
+        return await ctx.db.get(value as Id<'actors'>);
+    } catch {
+        return null;
+    }
+}
+
 /**
  * Get current authenticated actor from context.
  * Returns null if not authenticated or actor not found.
@@ -14,10 +22,24 @@ export async function getCurrentActor(ctx: Ctx) {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) return null;
 
-    const actorId = identity.external_id;
-    if (typeof actorId !== 'string') return null;
+    const externalId = identity.external_id;
+    if (typeof externalId === 'string') {
+        const actor = await tryGetActorById(ctx, externalId);
+        if (actor) return actor;
+    }
 
-    return ctx.db.get(actorId as Id<'actors'>);
+    const subject = identity.subject;
+
+    const directActor = await tryGetActorById(ctx, subject);
+    if (directActor) return directActor;
+
+    const application = await ctx.db
+        .query('applications')
+        .withIndex('by_workosClientId', (q) => q.eq('workosClientId', subject))
+        .unique();
+
+    if (!application) return null;
+    return ctx.db.get(application.actorId);
 }
 
 /**

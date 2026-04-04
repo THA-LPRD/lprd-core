@@ -1,14 +1,10 @@
 import { v } from 'convex/values';
-import { internalMutation } from '../_generated/server';
-import { internal } from '../_generated/api';
+import { mutation } from '../_generated/server';
 import { templateVariant } from '../schema';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
+import { getCurrentActor } from '../actors';
 
-/**
- * Upsert a global template from a plugin.
- * Called from the plugin createTemplate endpoint.
- */
-export const upsertGlobal = internalMutation({
+export const upsertGlobalForApplication = mutation({
     args: {
         pluginId: v.id('applications'),
         name: v.string(),
@@ -20,6 +16,12 @@ export const upsertGlobal = internalMutation({
         version: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
+        const actor = await getCurrentActor(ctx);
+        if (!actor) throw new Error('Not authenticated');
+
+        const application = await ctx.db.get(args.pluginId);
+        if (!application || application.actorId !== actor._id) throw new Error('Not authorized for this plugin');
+
         const existing = await ctx.db
             .query('templates')
             .withIndex('by_application_and_name', (q) => q.eq('applicationId', args.pluginId).eq('name', args.name))
@@ -28,7 +30,6 @@ export const upsertGlobal = internalMutation({
         const now = Date.now();
 
         if (existing) {
-            // Clean up old image blobs if sampleData is changing
             if (args.sampleData !== undefined) {
                 await deleteImageBlobs(ctx, existing.sampleData);
             }
@@ -43,14 +44,7 @@ export const upsertGlobal = internalMutation({
                 updatedAt: now,
             });
 
-            // Schedule image processing if data has img() markers
-            if (containsImgFuncs(args.sampleData)) {
-                await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                    templateId: existing._id,
-                });
-            }
-
-            return { id: existing._id, created: false };
+            return { id: existing._id, created: false, needsNormalization: containsImgFuncs(args.sampleData) };
         }
 
         const id = await ctx.db.insert('templates', {
@@ -67,13 +61,6 @@ export const upsertGlobal = internalMutation({
             updatedAt: now,
         });
 
-        // Schedule image processing if data has img() markers
-        if (containsImgFuncs(args.sampleData)) {
-            await ctx.scheduler.runAfter(0, internal.templates.images.processTemplateImages, {
-                templateId: id,
-            });
-        }
-
-        return { id, created: true };
+        return { id, created: true, needsNormalization: containsImgFuncs(args.sampleData) };
     },
 });

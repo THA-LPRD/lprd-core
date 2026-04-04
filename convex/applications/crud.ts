@@ -210,17 +210,20 @@ export const getCredentialsTarget = query({
     },
 });
 
-export const getByWorkosClientId = internalQuery({
-    args: { workosClientId: v.string() },
+export const resolveMyApplication = query({
+    args: { expectedType: v.optional(v.string()) },
     handler: async (ctx, args) => {
+        const actor = await getCurrentActor(ctx);
+        if (!actor) return null;
+
         const application = await ctx.db
             .query('applications')
-            .withIndex('by_workosClientId', (q) => q.eq('workosClientId', args.workosClientId))
+            .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
             .unique();
 
         if (!application) return null;
+        if (args.expectedType && application.type !== args.expectedType) return null;
 
-        const actor = await ctx.db.get(application.actorId);
         return { application, actor };
     },
 });

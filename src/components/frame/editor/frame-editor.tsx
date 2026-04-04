@@ -12,7 +12,7 @@ import { WidgetConfigPanel } from './widget-config-panel';
 import { LayerControls } from './layer-controls';
 import { AddWidgetDialog } from './add-widget-dialog';
 import { type TemplateOption, TemplatePicker, type TemplateSelection } from './template-picker';
-import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import type { Id } from '@convex/dataModel';
 import type { TemplateVariant } from '@/lib/template';
 
@@ -57,8 +57,6 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
     const [pickerTarget, setPickerTarget] = React.useState<PickerTarget | null>(null);
 
     const updateFrame = useMutation(api.frames.update);
-    const storeThumbnail = useMutation(api.frames.storeThumbnail);
-    const generateUploadUrl = useMutation(api.frames.generateUploadUrl);
 
     // Fetch templates for this org
     const templates = useQuery(api.templates.crud.listBySite, {
@@ -106,39 +104,6 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
 
     const selectedWidget = selectedWidgetId ? (widgets.find((w) => w.id === selectedWidgetId) ?? null) : null;
 
-    // Generate thumbnail via server-side Playwright screenshot
-    const generateThumbnail = React.useCallback(async (): Promise<Id<'_storage'> | null> => {
-        try {
-            const res = await fetch('/api/v2/frames/createThumbnail', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    frameId: frame._id,
-                    siteSlug,
-                    width: GRID_COLS * DEFAULT_CELL_SIZE,
-                    height: GRID_ROWS * DEFAULT_CELL_SIZE,
-                }),
-            });
-
-            if (!res.ok) return null;
-
-            const blob = await res.blob();
-            if (!blob.size) return null;
-
-            const uploadUrl = await generateUploadUrl();
-            const uploadRes = await fetch(uploadUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'image/png' },
-                body: blob,
-            });
-            const { storageId } = await uploadRes.json();
-            return storageId as Id<'_storage'>;
-        } catch (error) {
-            console.error('Failed to generate thumbnail:', error);
-            return null;
-        }
-    }, [frame._id, siteSlug, generateUploadUrl]);
-
     const handleSave = async () => {
         if (!isDirty) return;
         setIsSaving(true);
@@ -156,13 +121,30 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
                 clearForeground: !foreground,
             });
 
-            // Generate and save thumbnail
-            const storageId = await generateThumbnail();
-            if (storageId) {
-                await storeThumbnail({ id: frame._id, storageId });
+            const response = await fetch('/api/v2/jobs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'frame-thumbnail',
+                    resourceType: 'frame',
+                    resourceId: frame._id,
+                    siteId: frame.siteId,
+                    source: 'frameSave',
+                    payload: {
+                        type: 'frame-thumbnail',
+                        payload: {
+                            frameId: frame._id,
+                            siteId: frame.siteId,
+                            siteSlug,
+                        },
+                    },
+                }),
+            });
+
+            if (response.ok) {
                 toast.success('Frame saved');
             } else {
-                toast.warning('Frame saved, but thumbnail generation failed');
+                toast.warning('Frame saved, but thumbnail job enqueue failed');
             }
         } catch {
             toast.error('Failed to save frame');

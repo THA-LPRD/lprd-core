@@ -1,6 +1,5 @@
 import { v } from 'convex/values';
 import { mutation, type MutationCtx, query } from '../_generated/server';
-import { internal } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
 import { deviceDataBinding, deviceStatus } from '../schema';
 import { getPermissions } from '../lib/acl';
@@ -277,6 +276,7 @@ export const saveManualData = mutation({
 
         const pluginId = await getOrCreateManualPlugin(ctx);
         const now = Date.now();
+        const normalizationRecordIds: Id<'pluginData'>[] = [];
 
         // Store each entry
         const savedWidgetIds = new Set<string>();
@@ -329,9 +329,7 @@ export const saveManualData = mutation({
 
             // Schedule image processing if data has img() markers
             if (containsImgFuncs(data)) {
-                await ctx.scheduler.runAfter(0, internal.applications.plugin.images.processPluginDataImages, {
-                    pluginDataId: recordId,
-                });
+                normalizationRecordIds.push(recordId);
             }
         }
 
@@ -360,6 +358,8 @@ export const saveManualData = mutation({
             dataBindings: newBindings,
             updatedAt: now,
         });
+
+        return { normalizationRecordIds };
     },
 });
 

@@ -53,6 +53,47 @@ export const applicationScope = v.union(
 // Health check status (individual check result)
 export const healthCheckStatus = v.union(v.literal('healthy'), v.literal('unhealthy'), v.literal('error'));
 
+// Background job status
+export const jobStatus = v.union(
+    v.literal('pending'),
+    v.literal('paused'),
+    v.literal('running'),
+    v.literal('succeeded'),
+    v.literal('failed'),
+    v.literal('cancelled'),
+);
+
+// Background job type
+export const jobType = v.union(
+    v.literal('normalize-images'),
+    v.literal('template-thumbnail'),
+    v.literal('frame-thumbnail'),
+    v.literal('device-render'),
+    v.literal('health-check'),
+);
+
+// Resource type associated with a job
+export const jobResourceType = v.union(
+    v.literal('pluginData'),
+    v.literal('template'),
+    v.literal('frame'),
+    v.literal('device'),
+    v.literal('application'),
+);
+
+// Source that requested a job
+export const jobSource = v.union(
+    v.literal('pluginPush'),
+    v.literal('manualSave'),
+    v.literal('templateSave'),
+    v.literal('templateCreate'),
+    v.literal('templateDuplicate'),
+    v.literal('frameSave'),
+    v.literal('deviceConfigure'),
+    v.literal('pluginTemplateUpsert'),
+    v.literal('scheduler'),
+);
+
 // Plugin health status (derived from recent checks)
 export const pluginHealthStatus = v.union(
     v.literal('unknown'), // no checks yet
@@ -109,6 +150,13 @@ export const frameLayer = v.object({
     variantIndex: v.number(),
 });
 
+export const latestJobState = v.object({
+    status: jobStatus,
+    updatedAt: v.number(),
+    errorMessage: v.optional(v.string()),
+    jobId: v.optional(v.id('jobs')),
+});
+
 export default defineSchema({
     actors: defineTable({
         type: actorType,
@@ -135,14 +183,12 @@ export default defineSchema({
         name: v.string(),
         slug: v.string(),
         logoUrl: v.optional(v.string()),
-        tenantId: v.optional(v.string()), // deprecated: old field, will be removed after migration
         createdAt: v.number(),
         updatedAt: v.number(),
     }).index('by_slug', ['slug']),
 
     siteMembers: defineTable({
         actorId: v.id('actors'),
-        userId: v.optional(v.string()), // deprecated: old field, will be removed after migration
         siteId: v.id('sites'),
         role: siteMemberRole,
         createdAt: v.number(),
@@ -165,6 +211,7 @@ export default defineSchema({
         last: v.optional(deviceRender),
         current: v.optional(deviceRender),
         next: v.optional(deviceRender),
+        latestJob: v.optional(latestJobState),
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -263,6 +310,7 @@ export default defineSchema({
         ttlSeconds: v.number(),
         expiresAt: v.number(),
         receivedAt: v.number(),
+        latestJob: v.optional(latestJobState),
     })
         .index('by_application', ['applicationId'])
         .index('by_site', ['siteId'])
@@ -275,7 +323,6 @@ export default defineSchema({
         // Ownership
         scope: templateScope,
         applicationId: v.optional(v.id('applications')),
-        pluginId: v.optional(v.string()), // deprecated: old field from plugins table era
         siteId: v.optional(v.id('sites')),
         createdBy: v.optional(v.id('actors')),
 
@@ -289,6 +336,7 @@ export default defineSchema({
         variants: v.array(templateVariant),
         preferredVariantIndex: v.number(),
         thumbnailStorageId: v.optional(v.id('_storage')),
+        latestJob: v.optional(latestJobState),
 
         // Metadata
         version: v.optional(v.string()),
@@ -316,8 +364,31 @@ export default defineSchema({
 
         // Thumbnail
         thumbnailStorageId: v.optional(v.id('_storage')),
+        latestJob: v.optional(latestJobState),
 
         createdAt: v.number(),
         updatedAt: v.number(),
     }).index('by_site', ['siteId']),
+
+    jobs: defineTable({
+        siteId: v.optional(v.id('sites')),
+        actorId: v.id('actors'),
+        type: jobType,
+        resourceType: jobResourceType,
+        resourceId: v.string(),
+        source: jobSource,
+        status: jobStatus,
+        dedupeKey: v.string(),
+        attempts: v.number(),
+        errorMessage: v.optional(v.string()),
+        payload: v.any(),
+        createdAt: v.number(),
+        startedAt: v.optional(v.number()),
+        finishedAt: v.optional(v.number()),
+    })
+        .index('by_site', ['siteId'])
+        .index('by_site_and_createdAt', ['siteId', 'createdAt'])
+        .index('by_dedupeKey', ['dedupeKey'])
+        .index('by_resource', ['resourceType', 'resourceId'])
+        .index('by_status', ['status']),
 });

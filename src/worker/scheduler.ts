@@ -1,8 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { config } from '@worker/config';
-import { convexClient } from '@worker/convex-client';
-import { healthCheckQueue } from '@worker/queue';
-import { internal } from '@convex/api';
+import { getDueHealthChecks } from '@worker/app-client';
+import { enqueueWorkerJob } from '@worker/queue';
+import { makeJobKey } from '@/lib/jobs';
 
 const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
     connection: config.redis,
@@ -16,26 +16,26 @@ export async function startScheduler() {
     const worker = new Worker(
         config.healthCheck.schedulerQueueName,
         async () => {
-            const duePlugins = await convexClient.query(internal.applications.plugin.health.listDueForHealthCheck);
+            const duePlugins = await getDueHealthChecks();
 
             if (duePlugins.length === 0) {
-                console.log('[scheduler] No plugins due for health check');
                 return;
             }
 
-            console.log(`[scheduler] ${duePlugins.length} plugin(s) due for health check`);
-
-            await healthCheckQueue.addBulk(
-                duePlugins.map((plugin) => ({
-                    name: 'health-check',
-                    data: { pluginId: plugin._id, baseUrl: plugin.baseUrl },
-                    opts: {
-                        jobId: `hc-${plugin._id}`,
-                        removeOnComplete: true,
-                        removeOnFail: true,
+            for (const plugin of duePlugins) {
+                await enqueueWorkerJob(
+                    {
+                        type: 'health-check',
+                        payload: {
+                            applicationId: plugin.applicationId,
+                            actorId: plugin.actorId,
+                            siteId: plugin.siteId,
+                            baseUrl: plugin.baseUrl,
+                        },
                     },
-                })),
-            );
+                    makeJobKey('health-check', plugin.applicationId),
+                );
+            }
         },
         { connection: config.redis },
     );

@@ -11,9 +11,16 @@ export const config = {
     scheduler: {
         intervalMs: 30_000,
     },
+    app: {
+        baseUrl: process.env.APP_BASE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
+        workerClientId: process.env.WORKER_CLIENT_ID ?? '',
+        workerClientSecret: process.env.WORKER_CLIENT_SECRET ?? '',
+    },
+    jobs: {
+        queueName: 'app-jobs',
+    },
     healthCheck: {
         timeoutMs: 10_000,
-        queueName: 'plugin-health-checks',
         schedulerQueueName: 'health-check-scheduler',
     },
 } as const;

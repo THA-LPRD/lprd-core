@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { DeviceStatusDot } from './device-status-dot';
 import { Monitor } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/date';
@@ -19,6 +20,7 @@ type Device = {
     status: 'pending' | 'active';
     lastSeen?: number;
     currentUrl?: string | null;
+    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
     createdAt: number;
     updatedAt: number;
 };
@@ -41,6 +43,7 @@ export function DeviceCard({ device, siteSlug }: { device: Device; siteSlug: str
                     <div className="flex items-center gap-2 mb-1">
                         <DeviceStatusDot status={device.status} />
                         <h3 className="font-medium truncate">{device.name}</h3>
+                        <JobStatusBadge latestJob={device.latestJob} />
                     </div>
 
                     {/* Tags */}

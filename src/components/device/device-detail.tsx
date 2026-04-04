@@ -7,6 +7,7 @@ import { api } from '@convex/api';
 import type { DeviceData } from '@/components/device/types';
 import { DeviceStatusDot } from '@/components/device/device-status-dot';
 import { DeviceActivityChart } from '@/components/device/device-activity-chart';
+import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -42,6 +43,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                     <div className="flex items-center gap-3 mb-2">
                         <h1 className="text-2xl font-bold tracking-tight">{device.name}</h1>
                         <DeviceStatusDot status={device.status} className="size-3" />
+                        <JobStatusBadge latestJob={device.latestJob} />
                     </div>
                     {device.description && <p className="text-muted-foreground">{device.description}</p>}
                 </div>

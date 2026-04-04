@@ -18,6 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { toast } from 'sonner';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSite } from '@/providers/site-provider';
@@ -82,8 +83,6 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
     const updateDevice = useMutation(api.devices.crud.update);
     const deleteDevice = useMutation(api.devices.crud.remove);
     const saveManualDataMutation = useMutation(api.devices.crud.saveManualData);
-    const setNextRender = useMutation(api.devices.render.setNext);
-    const generateUploadUrl = useMutation(api.devices.render.generateUploadUrl);
 
     const getTemplateName = (templateId?: string) => {
         if (!templateId || !templates) return 'Untitled';
@@ -119,22 +118,62 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                     widgetId: w.id,
                     data: manualData[w.id] ?? undefined,
                 }));
-                await saveManualDataMutation({ deviceId: rawId, entries });
-            }
+                const manualSave = await saveManualDataMutation({ deviceId: rawId, entries });
+                const nextJob = {
+                    type: 'device-render' as const,
+                    payload: {
+                        deviceId: rawId,
+                        siteId: site._id,
+                        siteSlug: params.slug,
+                    },
+                };
 
-            if (selectedFrameId) {
-                const res = await fetch('/api/v2/devices/render', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ deviceId: rawId, siteSlug: params.slug }),
-                });
-
-                if (res.ok) {
-                    const blob = await res.blob();
-                    const uploadUrl = await generateUploadUrl();
-                    const uploadRes = await fetch(uploadUrl, { method: 'POST', body: blob });
-                    const { storageId } = await uploadRes.json();
-                    await setNextRender({ deviceId: rawId, storageId, renderedAt: Date.now() });
+                if (manualSave.normalizationRecordIds.length > 0) {
+                    const results = await Promise.all(
+                        manualSave.normalizationRecordIds.map((pluginDataId) =>
+                            fetch('/api/v2/jobs', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    type: 'normalize-images',
+                                    resourceType: 'pluginData',
+                                    resourceId: pluginDataId,
+                                    siteId: site._id,
+                                    source: 'deviceConfigure',
+                                    dedupeKey: `normalize-images__${pluginDataId}`,
+                                    payload: {
+                                        type: 'normalize-images',
+                                        payload: {
+                                            resourceType: 'pluginData',
+                                            resourceId: pluginDataId,
+                                            siteId: site._id,
+                                            source: 'deviceConfigure',
+                                            nextJobs: [nextJob],
+                                        },
+                                    },
+                                }),
+                            }),
+                        ),
+                    );
+                    if (results.some((r) => !r.ok)) {
+                        toast.error('Device saved, but some render jobs failed to start');
+                    }
+                } else {
+                    const response = await fetch('/api/v2/jobs', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            type: 'device-render',
+                            resourceType: 'device',
+                            resourceId: rawId,
+                            siteId: site._id,
+                            source: 'deviceConfigure',
+                            payload: nextJob,
+                        }),
+                    });
+                    if (!response.ok) {
+                        toast.error('Device saved, but render job failed to start');
+                    }
                 }
             }
 

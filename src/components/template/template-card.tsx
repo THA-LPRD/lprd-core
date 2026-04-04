@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Copy, LayoutTemplate, Pencil, Trash2 } from 'lucide-react';
@@ -17,6 +18,7 @@ export type Template = {
     description?: string;
     variants: TemplateVariant[];
     thumbnailUrl: string | null;
+    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
     createdAt: number;
     updatedAt: number;
 };
@@ -67,6 +69,7 @@ export function TemplateCard({
                     <Badge variant={isGlobal ? 'outline' : 'secondary'} className="text-xs shrink-0">
                         {isGlobal ? 'Global' : 'Org'}
                     </Badge>
+                    <JobStatusBadge latestJob={template.latestJob} />
                 </CardTitle>
                 {template.description && <CardDescription className="truncate">{template.description}</CardDescription>}
                 <CardAction>
