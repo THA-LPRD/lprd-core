@@ -2,9 +2,11 @@ import { v } from 'convex/values';
 import { mutation, type MutationCtx, query } from '../_generated/server';
 import type { Id } from '../_generated/dataModel';
 import { deviceDataBinding, deviceStatus } from '../schema';
-import { getPermissions } from '../lib/acl';
+import { permissionCatalog } from '../lib/permissions';
+import { requirePermission, resolveAuthorization } from '../lib/authz';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
-import { getCurrentActor, getMembership } from '../actors';
+import { generateUploadUrl } from '../lib/storage';
+import { markDeviceJobSucceeded } from '../jobs/deviceJobs';
 
 const MANUAL_APPLICATION_NAME = '__manual__';
 
@@ -66,7 +68,7 @@ async function deleteManualDataForDevice(
 
 /**
  * Create a new device.
- * Requires device.manage permission.
+ * Requires `org.site.device.manage`.
  */
 export const create = mutation({
     args: {
@@ -76,12 +78,7 @@ export const create = mutation({
         tags: v.optional(v.array(v.string())),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.self, { siteId: args.siteId });
 
         const now = Date.now();
         return ctx.db.insert('devices', {
@@ -99,21 +96,17 @@ export const create = mutation({
 
 /**
  * Get a device by its Convex ID.
- * Requires device.view permission.
+ * Requires `org.site.device.view`.
  * Resolves current/next storage URLs.
  */
 export const getById = query({
     args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-
         const device = await ctx.db.get(args.id);
         if (!device) return null;
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return null;
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return null;
 
         let lastUrl: string | null = null;
         let currentUrl: string | null = null;
@@ -135,18 +128,14 @@ export const getById = query({
 
 /**
  * List devices in a site.
- * Requires device.view permission.
+ * Requires `org.site.device.view`.
  * Resolves current storage URLs for card display.
  */
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: args.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return [];
 
         const devices = await ctx.db
             .query('devices')
@@ -167,7 +156,7 @@ export const listBySite = query({
 
 /**
  * Update a device.
- * Requires device.manage permission.
+ * Requires `org.site.device.manage`.
  */
 export const update = mutation({
     args: {
@@ -181,15 +170,10 @@ export const update = mutation({
         clearFrame: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.self, { siteId: device.siteId });
 
         const { id, clearFrame, ...rest } = args;
         void id;
@@ -213,20 +197,15 @@ export const update = mutation({
 
 /**
  * Delete a device.
- * Requires device.manage permission.
+ * Requires `org.site.device.manage`.
  */
 export const remove = mutation({
     args: { id: v.id('devices') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const device = await ctx.db.get(args.id);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.self, { siteId: device.siteId });
 
         // Clean up manual data
         const manualPluginId = await findManualPlugin(ctx);
@@ -251,7 +230,7 @@ export const remove = mutation({
 /**
  * Save manual data for device widgets.
  * Creates/updates pluginData entries and manages bindings.
- * Requires device.manage permission.
+ * Requires `org.site.device.manage`.
  */
 export const saveManualData = mutation({
     args: {
@@ -264,15 +243,10 @@ export const saveManualData = mutation({
         ),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const device = await ctx.db.get(args.deviceId);
         if (!device) throw new Error('Device not found');
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.self, { siteId: device.siteId });
 
         const pluginId = await getOrCreateManualPlugin(ctx);
         const now = Date.now();
@@ -363,23 +337,62 @@ export const saveManualData = mutation({
     },
 });
 
+export const setNextRenderForJob = mutation({
+    args: {
+        deviceId: v.id('devices'),
+        storageId: v.id('_storage'),
+        renderedAt: v.number(),
+        jobId: v.optional(v.id('jobs')),
+    },
+    handler: async (ctx, args) => {
+        const device = await ctx.db.get(args.deviceId);
+        if (!device) return;
+
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.artifact.write, {
+            siteId: device.siteId,
+        });
+
+        if (device.next?.storageId) {
+            await ctx.storage.delete(device.next.storageId);
+        }
+
+        await ctx.db.patch(device._id, {
+            next: { storageId: args.storageId, renderedAt: args.renderedAt },
+            updatedAt: Date.now(),
+        });
+
+        if (args.jobId) {
+            await markDeviceJobSucceeded(ctx, args.jobId, args.deviceId);
+        }
+    },
+});
+
+export const createRenderUploadUrl = mutation({
+    args: { deviceId: v.id('devices') },
+    handler: async (ctx, args) => {
+        const device = await ctx.db.get(args.deviceId);
+        if (!device) throw new Error('Device not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.device.manage.artifact.write, {
+            siteId: device.siteId,
+        });
+        return generateUploadUrl(ctx);
+    },
+});
+
 /**
  * Get manual data for all widgets on a device.
  * Returns Record<widgetId, data>.
- * Requires device.view permission.
+ * Requires `org.site.device.view`.
  */
 export const getManualData = query({
     args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return {};
-
         const device = await ctx.db.get(args.deviceId);
         if (!device) return {};
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return {};
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return {};
 
         // Find system manual plugin
         const allPlugins = await ctx.db.query('applications').collect();

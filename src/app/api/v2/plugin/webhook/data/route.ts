@@ -1,8 +1,10 @@
 import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
-import { authenticatePlugin, AuthError, requireScope, requireSiteAccess } from '@/lib/application/auth';
-import { recordAndEnqueueJob } from '@/lib/worker-jobs';
+import { AuthError } from '@/lib/auth-errors';
+import { requirePermission } from '@/lib/authz';
+import { recordAndEnqueueJob } from '@/lib/jobs/dispatch';
+import { permissionCatalog } from '@/lib/permissions';
 
 /**
  * POST /api/v2/plugin/webhook/data
@@ -12,30 +14,35 @@ import { recordAndEnqueueJob } from '@/lib/worker-jobs';
  */
 export async function POST(request: Request) {
     try {
-        // Authenticate plugin via JWT
-        const plugin = await authenticatePlugin(request);
-        requireScope(plugin, 'push_data');
+        const authorization = await requirePermission(permissionCatalog.org.site.pluginData.manage.self, { request });
+        if (!authorization.application) {
+            throw new AuthError('Application not found', 401);
+        }
+        if (authorization.application.type !== 'plugin') {
+            throw new AuthError(`Application type '${authorization.application.type}' is not allowed here`, 403);
+        }
 
-        const token = request.headers.get('authorization')!.slice(7);
+        const token = authorization.accessToken;
         const body = await request.json();
-        const { data, ttl_seconds, org_slug, topic, entry } = body;
+        const { data, ttl_seconds, site_slug, topic, entry } = body;
 
-        if (data === undefined || !ttl_seconds || !org_slug || !topic || !entry) {
+        if (data === undefined || !ttl_seconds || !site_slug || !topic || !entry) {
             return NextResponse.json(
-                { error: 'data, ttl_seconds, org_slug, topic, and entry are required' },
+                { error: 'data, ttl_seconds, site_slug, topic, and entry are required' },
                 { status: 400 },
             );
         }
 
-        // Check site access (plugin active + enabledByAdmin + enabledByOrg)
-        await requireSiteAccess(token, org_slug);
+        const hasAccess = await fetchQuery(api.siteActors.checkMySiteAccessBySlug, { siteSlug: site_slug }, { token });
+        if (!hasAccess) {
+            throw new AuthError('Application is not installed on this site', 403);
+        }
 
         // Store the data in Convex
         const result = await fetchMutation(
             api.applications.plugin.data.storeWebhookDataForApplication,
             {
-                pluginId: plugin._id,
-                siteSlug: org_slug,
+                siteSlug: site_slug,
                 contentType: 'plugin_data',
                 data,
                 ttlSeconds: ttl_seconds,
@@ -49,7 +56,6 @@ export async function POST(request: Request) {
         const affectedDevices = await fetchQuery(
             api.applications.plugin.data.listAffectedDevicesForJob,
             {
-                pluginId: result.pluginId,
                 siteId: result.siteId,
                 topic,
                 entry,
@@ -69,7 +75,7 @@ export async function POST(request: Request) {
         if (result.needsNormalization) {
             await recordAndEnqueueJob({
                 token,
-                actorId: plugin.actorId,
+                actorId: authorization.actor._id,
                 siteId: result.siteId,
                 type: 'normalize-images',
                 resourceType: 'pluginData',
@@ -80,7 +86,7 @@ export async function POST(request: Request) {
                     payload: {
                         resourceType: 'pluginData',
                         resourceId: result.pluginDataId,
-                        actorId: plugin.actorId,
+                        actorId: authorization.actor._id,
                         siteId: result.siteId,
                         source: 'pluginPush',
                         nextJobs,
@@ -92,7 +98,7 @@ export async function POST(request: Request) {
                 nextJobs.map((job) =>
                     recordAndEnqueueJob({
                         token,
-                        actorId: plugin.actorId,
+                        actorId: authorization.actor._id,
                         siteId: result.siteId,
                         type: job.type,
                         resourceType: 'device',

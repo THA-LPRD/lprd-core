@@ -17,7 +17,12 @@ export type DeviceData = {
     lastUrl?: string | null;
     currentUrl?: string | null;
     nextUrl?: string | null;
-    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
+    latestJob?: {
+        status: 'pending' | 'paused' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+        errorMessage?: string;
+        jobId?: string;
+        updatedAt: number;
+    };
     frameId?: Id<'frames'>;
     dataBindings?: Binding[];
     createdAt: number;

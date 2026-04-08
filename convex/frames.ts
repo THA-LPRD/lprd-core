@@ -1,24 +1,20 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { frameLayer, frameWidget } from './schema';
-import { getPermissions } from './lib/acl';
-import { canAccessWithInternalRenderScope } from './lib/internal_render';
-import { fetchTemplateMap } from './lib/storage';
-import { getCurrentActor, getMembership } from './actors';
+import { permissionCatalog } from './lib/permissions';
+import { requirePermission, resolveAuthorization } from './lib/authz';
+import { fetchTemplateMap, generateUploadUrl, replaceThumbnail } from './lib/storage';
+import { markFrameJobSucceeded } from './jobs/frameJobs';
 
 /**
  * List all frames for a site.
- * Requires frame.view permission.
+ * Requires `org.site.frame.view`.
  */
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: args.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.frame.view)) return [];
 
         const frames = await ctx.db
             .query('frames')
@@ -39,20 +35,16 @@ export const listBySite = query({
 
 /**
  * Get a single frame by ID.
- * Requires frame.view permission.
+ * Requires `org.site.frame.view`.
  */
 export const getById = query({
     args: { id: v.id('frames') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-
         const frame = await ctx.db.get(args.id);
         if (!frame) return null;
 
-        const membership = await getMembership(ctx, actor._id, frame.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.view) return null;
+        const authorization = await resolveAuthorization(ctx, { siteId: frame.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.frame.view)) return null;
 
         let thumbnailUrl: string | null = null;
         if (frame.thumbnailStorageId) {
@@ -65,7 +57,7 @@ export const getById = query({
 
 /**
  * Create a new frame.
- * Requires frame.manage permission.
+ * Requires `org.site.frame.manage`.
  */
 export const create = mutation({
     args: {
@@ -78,12 +70,10 @@ export const create = mutation({
         foreground: v.optional(frameLayer),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.manage) throw new Error('Forbidden');
+        const authorization = await requirePermission(ctx, permissionCatalog.org.site.frame.manage.self, {
+            siteId: args.siteId,
+        });
+        const { actor } = authorization;
 
         const now = Date.now();
         return ctx.db.insert('frames', {
@@ -103,7 +93,7 @@ export const create = mutation({
 
 /**
  * Update a frame.
- * Requires frame.manage permission.
+ * Requires `org.site.frame.manage`.
  */
 export const update = mutation({
     args: {
@@ -119,15 +109,10 @@ export const update = mutation({
         clearForeground: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, actor._id, frame.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.frame.manage.self, { siteId: frame.siteId });
 
         const { id, clearBackground, clearBackgroundColor, clearForeground, ...updates } = args;
         void id;
@@ -150,20 +135,15 @@ export const update = mutation({
 
 /**
  * Delete a frame and its thumbnail.
- * Requires frame.manage permission.
+ * Requires `org.site.frame.manage`.
  */
 export const remove = mutation({
     args: { id: v.id('frames') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const frame = await ctx.db.get(args.id);
         if (!frame) throw new Error('Frame not found');
 
-        const membership = await getMembership(ctx, actor._id, frame.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.frame.manage.self, { siteId: frame.siteId });
 
         if (frame.thumbnailStorageId) {
             await ctx.storage.delete(frame.thumbnailStorageId);
@@ -175,7 +155,7 @@ export const remove = mutation({
 
 /**
  * Duplicate a frame within a site.
- * Requires frame.manage permission.
+ * Requires `org.site.frame.manage`.
  */
 export const duplicate = mutation({
     args: {
@@ -183,12 +163,10 @@ export const duplicate = mutation({
         siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.frame.manage) throw new Error('Forbidden');
+        const authorization = await requirePermission(ctx, permissionCatalog.org.site.frame.manage.self, {
+            siteId: args.siteId,
+        });
+        const { actor } = authorization;
 
         const source = await ctx.db.get(args.id);
         if (!source) throw new Error('Frame not found');
@@ -210,21 +188,20 @@ export const duplicate = mutation({
 
 /**
  * Get everything needed to render a frame in one query.
- * No auth — used only by the Playwright render page.
+ * Requires `org.site.frame.view`.
+ * Used by the Playwright render page and worker artifact routes.
  */
 export const getRenderBundle = query({
     args: { frameId: v.id('frames') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Render bundle: not authenticated');
-
         const frame = await ctx.db.get(args.frameId);
         if (!frame) return null;
 
-        if (!(await canAccessWithInternalRenderScope(ctx))) {
-            const membership = await getMembership(ctx, actor._id, frame.siteId);
-            const perms = getPermissions(actor, membership);
-            if (!perms.frame.view) throw new Error('Render bundle: frame.view permission denied');
+        const authorization = await resolveAuthorization(ctx, { siteId: frame.siteId });
+        if (!authorization) throw new Error('Render bundle: not authenticated');
+
+        if (!authorization.can(permissionCatalog.org.site.frame.view)) {
+            throw new Error('Render bundle: frame.view permission denied');
         }
 
         const templateIds = new Set<string>();
@@ -236,5 +213,35 @@ export const getRenderBundle = query({
 
         const templates = await fetchTemplateMap(ctx, templateIds);
         return { frame, templates };
+    },
+});
+
+export const storeThumbnailForJob = mutation({
+    args: {
+        id: v.id('frames'),
+        storageId: v.id('_storage'),
+        jobId: v.optional(v.id('jobs')),
+    },
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.id);
+        if (!frame) throw new Error('Frame not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.frame.manage.thumbnail.write, { siteId: frame.siteId });
+        await replaceThumbnail(ctx, args.id, args.storageId);
+
+        if (args.jobId) {
+            await markFrameJobSucceeded(ctx, args.jobId, args.id);
+        }
+    },
+});
+
+export const createThumbnailUploadUrl = mutation({
+    args: { id: v.id('frames') },
+    handler: async (ctx, args) => {
+        const frame = await ctx.db.get(args.id);
+        if (!frame) throw new Error('Frame not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.frame.manage.thumbnail.write, { siteId: frame.siteId });
+        return generateUploadUrl(ctx);
     },
 });

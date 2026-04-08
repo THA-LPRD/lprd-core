@@ -1,8 +1,16 @@
 import { v } from 'convex/values';
+import { paginationOptsValidator } from 'convex/server';
 import { internalMutation, mutation, type MutationCtx, query, type QueryCtx } from './_generated/server';
-import type { Id } from './_generated/dataModel';
-import { actorRole } from './schema';
-import { getPermissions } from './lib/acl';
+import type { Doc, Id } from './_generated/dataModel';
+import { actorRole, actorType, applicationType } from './schema';
+import { permissionCatalog } from './lib/permissions';
+import { requireAuthorization, requireSiteAuthorization, resolveAuthorization } from './lib/authz';
+import {
+    deletePermissionGrantsForActor,
+    hasSubjectPermissionGrantOnTarget,
+    listPermissionGrantRowsForSubject,
+} from './lib/permissionGrants';
+import { syncActorRolePermissionGrants } from './lib/permissionSync';
 
 type Ctx = QueryCtx | MutationCtx;
 
@@ -57,13 +65,66 @@ export async function withAvatarUrl<T extends { avatarStorageId?: Id<'_storage'>
 }
 
 /**
- * Get membership for an actor in a site.
+ * Get site actor attachment for an actor in a site.
  */
-export async function getMembership(ctx: Ctx, actorId: Id<'actors'>, siteId: Id<'sites'>) {
+export async function getSiteActor(ctx: Ctx, actorId: Id<'actors'>, siteId: Id<'sites'>) {
     return ctx.db
-        .query('siteMembers')
+        .query('siteActors')
         .withIndex('by_actor_and_site', (q) => q.eq('actorId', actorId).eq('siteId', siteId))
         .unique();
+}
+
+function decodeOffsetCursor(cursor: string | null): number {
+    if (!cursor) return 0;
+
+    const offset = Number.parseInt(cursor, 10);
+    return Number.isFinite(offset) && offset >= 0 ? offset : 0;
+}
+
+function encodeOffsetCursor(offset: number): string {
+    return String(offset);
+}
+
+async function getActorAvailabilityForSite(
+    ctx: Ctx,
+    site: Pick<Doc<'sites'>, '_id' | 'organizationId'>,
+    actorId: Id<'actors'>,
+) {
+    const [[organizationCanView, siteCanView], [organizationCanInvite, siteCanInvite]] = await Promise.all([
+        Promise.all([
+            hasSubjectPermissionGrantOnTarget(
+                ctx,
+                { subjectType: 'organization', subjectId: site.organizationId },
+                permissionCatalog.org.actor.view,
+                { targetType: 'actor', targetId: actorId },
+            ),
+            hasSubjectPermissionGrantOnTarget(
+                ctx,
+                { subjectType: 'site', subjectId: site._id },
+                permissionCatalog.org.actor.view,
+                { targetType: 'actor', targetId: actorId },
+            ),
+        ]),
+        Promise.all([
+            hasSubjectPermissionGrantOnTarget(
+                ctx,
+                { subjectType: 'organization', subjectId: site.organizationId },
+                permissionCatalog.org.actor.invite,
+                { targetType: 'actor', targetId: actorId },
+            ),
+            hasSubjectPermissionGrantOnTarget(
+                ctx,
+                { subjectType: 'site', subjectId: site._id },
+                permissionCatalog.org.actor.invite,
+                { targetType: 'actor', targetId: actorId },
+            ),
+        ]),
+    ]);
+
+    return {
+        canView: organizationCanView && siteCanView,
+        canInvite: organizationCanInvite && siteCanInvite,
+    };
 }
 
 /**
@@ -83,7 +144,7 @@ export const createFromWebhook = internalMutation({
         if (existingActor) return existingActor._id;
 
         const now = Date.now();
-        return ctx.db.insert('actors', {
+        const actorId = await ctx.db.insert('actors', {
             type: 'user',
             organizationId: args.organizationId,
             email: args.email,
@@ -94,6 +155,10 @@ export const createFromWebhook = internalMutation({
             createdAt: now,
             updatedAt: now,
         });
+        const actor = await ctx.db.get(actorId);
+        if (!actor) throw new Error('Actor not found after create');
+        await syncActorRolePermissionGrants(ctx, actor);
+        return actorId;
     },
 });
 
@@ -122,11 +187,14 @@ export const updateFromWebhook = internalMutation({
         if (args.avatarStorageId !== undefined) updates.avatarStorageId = args.avatarStorageId;
 
         await ctx.db.patch(actor._id, updates);
+        const nextActor = await ctx.db.get(actor._id);
+        if (!nextActor) throw new Error('Actor not found after update');
+        await syncActorRolePermissionGrants(ctx, nextActor);
     },
 });
 
 /**
- * Delete actor from WorkOS webhook (cascade to memberships).
+ * Delete actor from WorkOS webhook (cascade to site actors).
  * Called when user.deleted event is received.
  */
 export const deleteFromWebhook = internalMutation({
@@ -136,15 +204,16 @@ export const deleteFromWebhook = internalMutation({
 
         if (!actor) return;
 
-        const memberships = await ctx.db
-            .query('siteMembers')
+        const siteActors = await ctx.db
+            .query('siteActors')
             .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
             .collect();
 
-        for (const membership of memberships) {
-            await ctx.db.delete(membership._id);
+        for (const siteActor of siteActors) {
+            await ctx.db.delete(siteActor._id);
         }
 
+        await deletePermissionGrantsForActor(ctx, actor._id);
         await ctx.db.delete(actor._id);
     },
 });
@@ -155,22 +224,21 @@ export const deleteFromWebhook = internalMutation({
 export const me = query({
     args: {},
     handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-        return withAvatarUrl(ctx, actor);
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization) return null;
+        return withAvatarUrl(ctx, authorization.actor);
     },
 });
 
 /**
- * List all human actors. AppAdmin only.
+ * List all human actors.
+ * Requires `platform.actor.manage`.
  */
 export const listAll = query({
     args: {},
     handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-        const perms = getPermissions(actor, null);
-        if (!perms.platform.setUserRoles) return [];
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization?.can(permissionCatalog.platform.actor.manage)) return [];
 
         return ctx.db
             .query('actors')
@@ -191,9 +259,113 @@ export const getById = query({
     },
 });
 
+export const listForSiteSelection = query({
+    args: {
+        siteId: v.id('sites'),
+        paginationOpts: paginationOptsValidator,
+        filters: v.optional(
+            v.object({
+                actorType: v.optional(actorType),
+                applicationType: v.optional(applicationType),
+            }),
+        ),
+    },
+    handler: async (ctx, args) => {
+        const authorization = await requireSiteAuthorization(ctx, args.siteId);
+        if (!authorization.can(permissionCatalog.org.site.actor.manage)) {
+            throw new Error('Forbidden');
+        }
+
+        const organizationRows = await listPermissionGrantRowsForSubject(ctx, {
+            subjectType: 'organization',
+            subjectId: authorization.site.organizationId,
+        });
+        const installedSiteActors = await ctx.db
+            .query('siteActors')
+            .withIndex('by_site', (q) => q.eq('siteId', args.siteId))
+            .collect();
+
+        const actorIds = new Set<Id<'actors'>>();
+
+        for (const row of organizationRows) {
+            if (row.permission === permissionCatalog.org.actor.view && row.targetType === 'actor') {
+                actorIds.add(row.targetId as Id<'actors'>);
+            }
+        }
+
+        for (const siteActor of installedSiteActors) {
+            actorIds.add(siteActor.actorId as Id<'actors'>);
+        }
+
+        const rows = [];
+
+        for (const actorId of [...actorIds].sort()) {
+            const actor = await ctx.db.get(actorId);
+            if (!actor) continue;
+
+            if (args.filters?.actorType && actor.type !== args.filters.actorType) {
+                continue;
+            }
+
+            const application =
+                actor.type === 'serviceAccount'
+                    ? await ctx.db
+                          .query('applications')
+                          .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
+                          .unique()
+                    : null;
+
+            if (args.filters?.applicationType) {
+                if (!application || application.type !== args.filters.applicationType) {
+                    continue;
+                }
+            }
+
+            const installed = installedSiteActors.some((siteActor) => siteActor.actorId === actor._id);
+            const availability = await getActorAvailabilityForSite(ctx, authorization.site, actor._id);
+
+            if (!installed && !availability.canView) {
+                continue;
+            }
+
+            rows.push({
+                actor: {
+                    _id: actor._id,
+                    type: actor.type,
+                    status: actor.status,
+                    name: actor.name,
+                    email: actor.email,
+                },
+                application: application
+                    ? {
+                          _id: application._id,
+                          type: application.type,
+                          status: application.status,
+                          name: application.name,
+                          description: application.description,
+                      }
+                    : null,
+                installed,
+                canView: availability.canView,
+                canInvite: availability.canInvite,
+            });
+        }
+
+        const offset = decodeOffsetCursor(args.paginationOpts.cursor);
+        const end = offset + args.paginationOpts.numItems;
+        const page = rows.slice(offset, end);
+
+        return {
+            page,
+            isDone: end >= rows.length,
+            continueCursor: encodeOffsetCursor(end),
+        };
+    },
+});
+
 /**
  * Set an actor's platform role.
- * Only appAdmins can do this.
+ * Requires `platform.actor.manage`.
  */
 export const setRole = mutation({
     args: {
@@ -201,13 +373,15 @@ export const setRole = mutation({
         role: actorRole,
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const perms = getPermissions(actor, null);
-        if (!perms.platform.setUserRoles) throw new Error('Forbidden');
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.platform.actor.manage)) {
+            throw new Error('Forbidden');
+        }
 
         await ctx.db.patch(args.id, { role: args.role, updatedAt: Date.now() });
+        const actor = await ctx.db.get(args.id);
+        if (!actor) throw new Error('Actor not found');
+        await syncActorRolePermissionGrants(ctx, actor);
     },
 });
 
@@ -218,9 +392,8 @@ export const setRole = mutation({
 export const setLastSite = mutation({
     args: { slug: v.string() },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
+        const authorization = await requireAuthorization(ctx);
 
-        await ctx.db.patch(actor._id, { lastSiteSlug: args.slug, updatedAt: Date.now() });
+        await ctx.db.patch(authorization.actor._id, { lastSiteSlug: args.slug, updatedAt: Date.now() });
     },
 });

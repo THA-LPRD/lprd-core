@@ -1,8 +1,10 @@
 import { fetchMutation } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
-import { authenticatePlugin, AuthError, requireScope } from '@/lib/application/auth';
-import { recordAndEnqueueJob } from '@/lib/worker-jobs';
+import { AuthError } from '@/lib/auth-errors';
+import { requirePermission } from '@/lib/authz';
+import { recordAndEnqueueJob } from '@/lib/jobs/dispatch';
+import { permissionCatalog } from '@/lib/permissions';
 import { containsImgFuncs } from '@/lib/template-data';
 
 /**
@@ -12,10 +14,12 @@ import { containsImgFuncs } from '@/lib/template-data';
  */
 export async function POST(request: Request) {
     try {
-        const plugin = await authenticatePlugin(request);
-        requireScope(plugin, 'create_template');
+        const authorization = await requirePermission(permissionCatalog.org.template.manage.upsert.self, { request });
+        if (!authorization.application) {
+            throw new AuthError('Application not found', 401);
+        }
 
-        const token = request.headers.get('authorization')!.slice(7);
+        const token = authorization.accessToken;
         const body = await request.json();
         const { name, description, template_html, sample_data, variants, preferred_variant_index, version } = body;
 
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
         const result = await fetchMutation(
             api.templates.global.upsertGlobalForApplication,
             {
-                pluginId: plugin._id,
+                pluginId: authorization.application._id,
                 name,
                 description: description ?? undefined,
                 templateHtml: template_html,
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
         if (result.needsNormalization || containsImgFuncs(sample_data)) {
             await recordAndEnqueueJob({
                 token,
-                actorId: plugin.actorId,
+                actorId: authorization.actor._id,
                 type: 'normalize-images',
                 resourceType: 'template',
                 resourceId: result.id,
@@ -54,7 +58,7 @@ export async function POST(request: Request) {
                     payload: {
                         resourceType: 'template',
                         resourceId: result.id,
-                        actorId: plugin.actorId,
+                        actorId: authorization.actor._id,
                         siteId: undefined,
                         source: 'pluginTemplateUpsert',
                         nextJobs: [
@@ -73,7 +77,7 @@ export async function POST(request: Request) {
         } else {
             await recordAndEnqueueJob({
                 token,
-                actorId: plugin.actorId,
+                actorId: authorization.actor._id,
                 type: 'template-thumbnail',
                 resourceType: 'template',
                 resourceId: result.id,

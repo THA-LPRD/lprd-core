@@ -75,7 +75,7 @@ export default function AdminApplicationsPage() {
                                     <TableHead>Name</TableHead>
                                     <TableHead>Type</TableHead>
                                     <TableHead className="w-28">Status</TableHead>
-                                    <TableHead>Scopes</TableHead>
+                                    <TableHead>Permissions</TableHead>
                                     <TableHead>Created</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -103,7 +103,7 @@ export default function AdminApplicationsPage() {
                                             <ApplicationStatusBadge status={application.status} />
                                         </TableCell>
                                         <TableCell className="text-sm text-muted-foreground">
-                                            {application.scopes?.join(', ') || '-'}
+                                            {application.permissions?.join(', ') || '-'}
                                         </TableCell>
                                         <TableCell className="text-sm text-muted-foreground">
                                             {new Date(application.createdAt).toLocaleDateString()}

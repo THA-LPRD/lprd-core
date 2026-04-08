@@ -21,12 +21,18 @@ import {
     SidebarRail,
 } from '@/components/ui/sidebar';
 import { useAuth } from '@workos-inc/authkit-nextjs/components';
+import { buildPermissionState, permissionCatalog } from '@/lib/permissions';
 
 export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
     const router = useRouter();
     const { signOut } = useAuth();
-    const actor = useQuery(api.actors.me);
+    const authorization = useQuery(api.authorization.current);
+    const actor = authorization?.actor;
+    const canAccessAdmin = React.useMemo(() => {
+        if (!authorization) return false;
+        return buildPermissionState(authorization.grantedPermissions).can(permissionCatalog.platform.actor.manage);
+    }, [authorization]);
 
     const handleSignOut = async () => {
         await signOut();
@@ -91,8 +97,8 @@ export function AdminSidebar({ ...props }: React.ComponentProps<typeof Sidebar>)
                             name: actor.name,
                             email: actor.email ?? '',
                             avatar: actor.avatarUrl ?? undefined,
-                            role: actor.role,
                         }}
+                        canAccessAdmin={canAccessAdmin}
                         onSignOut={handleSignOut}
                         context="admin"
                     />

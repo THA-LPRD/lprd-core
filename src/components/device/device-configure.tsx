@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { DataBindingsCard } from '@/components/device/data-bindings-card';
 import { DeviceInfoCard } from '@/components/device/device-info-card';
@@ -23,6 +23,7 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSite } from '@/providers/site-provider';
 import { extractId } from '@/lib/slug';
+import { configureSiteDevice, deleteSiteDevice } from '@/lib/device-actions';
 import type { Id } from '@convex/dataModel';
 
 export function DeviceConfigure({ device }: { device: DeviceData }) {
@@ -80,10 +81,6 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
 
     const selectedFrame = frames?.find((f) => f._id === selectedFrameId);
 
-    const updateDevice = useMutation(api.devices.crud.update);
-    const deleteDevice = useMutation(api.devices.crud.remove);
-    const saveManualDataMutation = useMutation(api.devices.crud.saveManualData);
-
     const getTemplateName = (templateId?: string) => {
         if (!templateId || !templates) return 'Untitled';
         return templates.find((t) => t._id === templateId)?.name ?? 'Untitled';
@@ -96,85 +93,36 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            const updates: Parameters<typeof updateDevice>[0] = {
-                id: rawId,
+            const updates = {
                 name: name.trim(),
                 description: description.trim() || undefined,
                 tags,
                 status,
             };
 
-            if (selectedFrameId) {
-                updates.frameId = selectedFrameId;
-                updates.dataBindings = bindings;
-            } else {
-                updates.clearFrame = true;
-            }
+            const result = await configureSiteDevice({
+                siteId: site._id,
+                deviceId: rawId,
+                siteSlug: params.slug,
+                manualEntries: selectedFrame
+                    ? selectedFrame.widgets.map((w) => ({
+                          widgetId: w.id,
+                          data: manualData[w.id] ?? undefined,
+                      }))
+                    : [],
+                ...updates,
+                ...(selectedFrameId
+                    ? {
+                          frameId: selectedFrameId,
+                          dataBindings: bindings,
+                      }
+                    : {
+                          frameId: null,
+                      }),
+            });
 
-            await updateDevice(updates);
-
-            if (selectedFrameId && selectedFrame) {
-                const entries = selectedFrame.widgets.map((w) => ({
-                    widgetId: w.id,
-                    data: manualData[w.id] ?? undefined,
-                }));
-                const manualSave = await saveManualDataMutation({ deviceId: rawId, entries });
-                const nextJob = {
-                    type: 'device-render' as const,
-                    payload: {
-                        deviceId: rawId,
-                        siteId: site._id,
-                        siteSlug: params.slug,
-                    },
-                };
-
-                if (manualSave.normalizationRecordIds.length > 0) {
-                    const results = await Promise.all(
-                        manualSave.normalizationRecordIds.map((pluginDataId) =>
-                            fetch('/api/v2/jobs', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    type: 'normalize-images',
-                                    resourceType: 'pluginData',
-                                    resourceId: pluginDataId,
-                                    siteId: site._id,
-                                    source: 'deviceConfigure',
-                                    dedupeKey: `normalize-images__${pluginDataId}`,
-                                    payload: {
-                                        type: 'normalize-images',
-                                        payload: {
-                                            resourceType: 'pluginData',
-                                            resourceId: pluginDataId,
-                                            siteId: site._id,
-                                            source: 'deviceConfigure',
-                                            nextJobs: [nextJob],
-                                        },
-                                    },
-                                }),
-                            }),
-                        ),
-                    );
-                    if (results.some((r) => !r.ok)) {
-                        toast.error('Device saved, but some render jobs failed to start');
-                    }
-                } else {
-                    const response = await fetch('/api/v2/jobs', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            type: 'device-render',
-                            resourceType: 'device',
-                            resourceId: rawId,
-                            siteId: site._id,
-                            source: 'deviceConfigure',
-                            payload: nextJob,
-                        }),
-                    });
-                    if (!response.ok) {
-                        toast.error('Device saved, but render job failed to start');
-                    }
-                }
+            if (result.enqueueWarning) {
+                toast.warning(`Device saved, but ${result.enqueueWarning.toLowerCase()}`);
             }
 
             router.push(`/site/${params.slug}/devices/${params.id}`);
@@ -186,7 +134,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
     const handleDelete = async () => {
         setIsDeleting(true);
         try {
-            await deleteDevice({ id: rawId });
+            await deleteSiteDevice({ siteId: site._id, deviceId: rawId });
             router.push(`/site/${params.slug}/devices`);
         } finally {
             setIsDeleting(false);
@@ -266,7 +214,7 @@ export function DeviceConfigure({ device }: { device: DeviceData }) {
                             />
                         )}
 
-                        {permissions.device.manage && (
+                        {permissions.org.site.device.manage && (
                             <Card className="border-destructive/50">
                                 <CardHeader>
                                     <CardTitle className="text-lg text-destructive">Danger Zone</CardTitle>

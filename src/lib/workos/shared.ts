@@ -16,7 +16,7 @@ export async function workosRequest<T>(path: string, init?: RequestInit): Promis
         headers: {
             'Authorization': `Bearer ${getWorkOSApiKey()}`,
             'Content-Type': 'application/json',
-            ...(init?.headers ?? {}),
+            ...init?.headers,
         },
     });
 

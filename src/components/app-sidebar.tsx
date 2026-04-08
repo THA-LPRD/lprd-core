@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import Link from 'next/link';
 import { useAuth } from '@workos-inc/authkit-nextjs/components';
+import { buildPermissionState, permissionCatalog } from '@/lib/permissions';
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const pathname = usePathname();
@@ -29,7 +30,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     const { signOut } = useAuth();
 
     // Get current actor
-    const actor = useQuery(api.actors.me);
+    const authorization = useQuery(api.authorization.current);
+    const actor = authorization?.actor;
 
     // Get all sites actor has access to
     const sites = useQuery(api.sites.list);
@@ -43,6 +45,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         if (!currentSlug || !sites) return undefined;
         return sites.find((s) => s.slug === currentSlug);
     }, [currentSlug, sites]);
+
+    const canAccessAdmin = React.useMemo(() => {
+        if (!authorization) return false;
+        return buildPermissionState(authorization.grantedPermissions).can(permissionCatalog.platform.actor.manage);
+    }, [authorization]);
 
     // Update lastSiteSlug when visiting a site
     const setLastSite = useMutation(api.actors.setLastSite);
@@ -136,8 +143,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                             name: actor.name,
                             email: actor.email ?? '',
                             avatar: actor.avatarUrl ?? undefined,
-                            role: actor.role,
                         }}
+                        canAccessAdmin={canAccessAdmin}
                         onSignOut={handleSignOut}
                         context="site"
                     />

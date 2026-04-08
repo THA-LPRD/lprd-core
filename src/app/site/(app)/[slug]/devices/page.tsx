@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { DeviceGrid } from '@/components/device/device-grid';
 import { DeviceForm } from '@/components/device/device-form';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useSite } from '@/providers/site-provider';
 import { buildEntitySlug } from '@/lib/slug';
 import { Plus } from 'lucide-react';
+import { createSiteDevice } from '@/lib/device-actions';
 
 export default function DevicesPage() {
     const params = useParams<{ slug: string }>();
@@ -21,16 +22,14 @@ export default function DevicesPage() {
 
     const devices = useQuery(api.devices.crud.listBySite, { siteId: site._id });
 
-    const createDevice = useMutation(api.devices.crud.create);
-
     const handleCreateDevice = async (data: { name: string; description: string; tags: string[] }) => {
-        const newId = await createDevice({
+        const result = await createSiteDevice({
             siteId: site._id,
             name: data.name,
             description: data.description || undefined,
             tags: data.tags,
         });
-        router.push(`/site/${params.slug}/devices/${buildEntitySlug(data.name, newId)}`);
+        router.push(`/site/${params.slug}/devices/${buildEntitySlug(data.name, result.id)}`);
     };
 
     if (devices === undefined) {
@@ -59,7 +58,7 @@ export default function DevicesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Devices</h1>
                     <p className="text-muted-foreground">Manage devices in {site.name}</p>
                 </div>
-                {permissions.device.manage && (
+                {permissions.org.site.device.manage && (
                     <Button onClick={() => setShowAddForm(true)}>
                         <Plus className="size-4 mr-2" />
                         Add Device

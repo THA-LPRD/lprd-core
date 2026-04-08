@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { toast } from 'sonner';
 import { Plus } from 'lucide-react';
@@ -13,6 +13,7 @@ import { LayerControls } from './layer-controls';
 import { AddWidgetDialog } from './add-widget-dialog';
 import { type TemplateOption, TemplatePicker, type TemplateSelection } from './template-picker';
 import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
+import { updateSiteFrame } from '@/lib/frame-actions';
 import type { Id } from '@convex/dataModel';
 import type { TemplateVariant } from '@/lib/template';
 
@@ -55,8 +56,6 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
     const [isSaving, setIsSaving] = React.useState(false);
     const [showAddWidget, setShowAddWidget] = React.useState(false);
     const [pickerTarget, setPickerTarget] = React.useState<PickerTarget | null>(null);
-
-    const updateFrame = useMutation(api.frames.update);
 
     // Fetch templates for this org
     const templates = useQuery(api.templates.crud.listBySite, {
@@ -109,8 +108,10 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
         setIsSaving(true);
 
         try {
-            await updateFrame({
-                id: frame._id,
+            const result = await updateSiteFrame({
+                siteId: frame.siteId,
+                frameId: frame._id,
+                siteSlug,
                 name,
                 widgets,
                 background,
@@ -121,30 +122,10 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
                 clearForeground: !foreground,
             });
 
-            const response = await fetch('/api/v2/jobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    type: 'frame-thumbnail',
-                    resourceType: 'frame',
-                    resourceId: frame._id,
-                    siteId: frame.siteId,
-                    source: 'frameSave',
-                    payload: {
-                        type: 'frame-thumbnail',
-                        payload: {
-                            frameId: frame._id,
-                            siteId: frame.siteId,
-                            siteSlug,
-                        },
-                    },
-                }),
-            });
-
-            if (response.ok) {
-                toast.success('Frame saved');
+            if (result.enqueueWarning) {
+                toast.warning(`Frame saved, but ${result.enqueueWarning.toLowerCase()}`);
             } else {
-                toast.warning('Frame saved, but thumbnail job enqueue failed');
+                toast.success('Frame saved');
             }
         } catch {
             toast.error('Failed to save frame');

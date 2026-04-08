@@ -1,10 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { useMutation } from 'convex/react';
-import { api } from '@convex/api';
 import { toast } from 'sonner';
-import { containsImgFuncs } from '@/lib/template-data';
+import { updateSiteTemplate } from '@/lib/template-actions';
 import { EditorToolbar } from './editor-toolbar';
 import { VariantBar } from './variant-bar';
 import { PreviewPanel } from './preview-panel';
@@ -16,7 +14,7 @@ import type { TemplateVariant } from '@/lib/template';
 
 type TemplateDoc = {
     _id: Id<'templates'>;
-    scope: 'global' | 'site';
+    scope: 'organization' | 'site';
     siteId?: Id<'sites'>;
     name: string;
     description?: string;
@@ -27,7 +25,7 @@ type TemplateDoc = {
 };
 
 export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; siteSlug: string }) {
-    const isGlobal = template.scope === 'global';
+    const isOrganizationScoped = template.scope === 'organization';
 
     const [name, setName] = React.useState(template.name);
     const [templateHtml, setTemplateHtml] = React.useState(template.templateHtml);
@@ -41,7 +39,6 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     const [isSaving, setIsSaving] = React.useState(false);
     const [showAddVariant, setShowAddVariant] = React.useState(false);
 
-    const updateTemplate = useMutation(api.templates.crud.update);
     // Parse sample data safely
     const parsedSampleData = React.useMemo(() => {
         try {
@@ -65,7 +62,7 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     const activeVariant = variants[activeVariantIndex] ?? variants[0];
 
     const handleSave = async () => {
-        if (isGlobal || !isDirty) return;
+        if (isOrganizationScoped || !isDirty) return;
         setIsSaving(true);
 
         try {
@@ -77,8 +74,10 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
                 sampleData = undefined;
             }
 
-            await updateTemplate({
-                id: template._id,
+            const result = await updateSiteTemplate({
+                siteId: template.siteId!,
+                templateId: template._id,
+                siteSlug,
                 name,
                 templateHtml,
                 sampleData,
@@ -86,51 +85,10 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
                 preferredVariantIndex,
             });
 
-            const nextJob = {
-                type: 'template-thumbnail' as const,
-                payload: {
-                    templateId: template._id,
-                    siteId: template.scope === 'site' ? template.siteId : undefined,
-                    siteSlug,
-                },
-            };
-
-            const response = await fetch('/api/v2/jobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(
-                    containsImgFuncs(sampleData)
-                        ? {
-                              type: 'normalize-images',
-                              resourceType: 'template',
-                              resourceId: template._id,
-                              siteId: template.scope === 'site' ? template.siteId : undefined,
-                              source: 'templateSave',
-                              payload: {
-                                  type: 'normalize-images',
-                                  payload: {
-                                      resourceType: 'template',
-                                      resourceId: template._id,
-                                      source: 'templateSave',
-                                      nextJobs: [nextJob],
-                                  },
-                              },
-                          }
-                        : {
-                              type: 'template-thumbnail',
-                              resourceType: 'template',
-                              resourceId: template._id,
-                              siteId: template.scope === 'site' ? template.siteId : undefined,
-                              source: 'templateSave',
-                              payload: nextJob,
-                          },
-                ),
-            });
-
-            if (response.ok) {
-                toast.success('Template saved');
+            if (result.enqueueWarning) {
+                toast.warning(`Template saved, but ${result.enqueueWarning.toLowerCase()}`);
             } else {
-                toast.warning('Template saved, but job enqueue failed');
+                toast.success('Template saved');
             }
         } catch {
             toast.error('Failed to save template');
@@ -165,11 +123,11 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
             <EditorToolbar
                 siteSlug={siteSlug}
                 name={name}
-                onNameChange={setName}
+                onNameChangeAction={setName}
                 scope={template.scope}
                 isDirty={isDirty}
                 isSaving={isSaving}
-                onSave={handleSave}
+                onSaveAction={handleSave}
             />
 
             <VariantBar
@@ -180,7 +138,7 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
                 onSetPreferred={setPreferredVariantIndex}
                 onRemoveVariant={handleRemoveVariant}
                 onAddVariant={() => setShowAddVariant(true)}
-                disabled={isGlobal}
+                disabled={isOrganizationScoped}
             />
 
             <div className="flex-1 flex min-h-0 min-w-0 overflow-hidden">
@@ -200,7 +158,7 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
                         onTemplateHtmlChange={setTemplateHtml}
                         sampleDataJson={sampleDataJson}
                         onSampleDataJsonChange={setSampleDataJson}
-                        disabled={isGlobal}
+                        disabled={isOrganizationScoped}
                     />
                 </div>
             </div>

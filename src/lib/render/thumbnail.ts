@@ -41,26 +41,27 @@ export async function generateScreenshot(options: ScreenshotOptions): Promise<Ar
     });
 
     const page = await context.newPage();
-    const response = await page.goto(`${origin}${renderPath}`, { waitUntil: 'networkidle' });
-
-    if (!response || !response.ok()) {
-        const text = await page.content();
-        throw new Error(
-            `Render page failed: ${response?.status() ?? 'no-response'} ${response?.statusText() ?? ''} ${text.slice(0, 500)}`,
-        );
-    }
-
     try {
-        await page.waitForSelector(waitForSelector, { timeout: 10000 });
-    } catch {
-        throw new Error(`Render marker '${waitForSelector}' not found on ${renderPath}: ${await page.content()}`);
+        const response = await page.goto(`${origin}${renderPath}`, { waitUntil: 'networkidle' });
+
+        if (!response || !response.ok()) {
+            const text = await page.content();
+            throw new Error(
+                `Render page failed: ${response?.status() ?? 'no-response'} ${response?.statusText() ?? ''} ${text.slice(0, 500)}`,
+            );
+        }
+
+        try {
+            await page.waitForSelector(waitForSelector, { timeout: 10000 });
+        } catch {
+            throw new Error(`Render marker '${waitForSelector}' not found on ${renderPath}: ${await page.content()}`);
+        }
+
+        const png = await page.screenshot({ type: 'png' });
+        return Uint8Array.from(png).buffer;
+    } finally {
+        await context.close();
     }
-
-    const png = await page.screenshot({ type: 'png' });
-    await page.close();
-    await context.close();
-
-    return png.buffer as ArrayBuffer;
 }
 
 async function getInternalAccessToken(): Promise<string> {

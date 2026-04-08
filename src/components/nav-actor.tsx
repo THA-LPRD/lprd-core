@@ -26,6 +26,7 @@ function getInitials(name: string | undefined): string {
 
 export function NavActor({
     actor,
+    canAccessAdmin,
     onSettingsClick,
     onSignOut,
     context,
@@ -34,8 +35,8 @@ export function NavActor({
         name?: string;
         email: string;
         avatar?: string;
-        role?: string;
     };
+    canAccessAdmin?: boolean;
     onSettingsClick?: () => void;
     onSignOut?: () => void;
     context?: 'site' | 'admin';
@@ -95,7 +96,7 @@ export function NavActor({
                                 Account
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
-                        {actor.role === 'appAdmin' && (
+                        {canAccessAdmin && (
                             <>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuGroup>

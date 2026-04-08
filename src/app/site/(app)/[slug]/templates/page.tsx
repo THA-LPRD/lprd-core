@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { TemplateGrid } from '@/components/template/template-grid';
 import { TemplateForm } from '@/components/template/template-form';
@@ -12,8 +12,7 @@ import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { buildEntitySlug } from '@/lib/slug';
-import { STARTER_HTML, STARTER_SAMPLE_DATA } from '@/lib/template';
-import { containsImgFuncs } from '@/lib/template-data';
+import { createSiteTemplate, deleteSiteTemplate, duplicateSiteTemplate } from '@/lib/template-actions';
 import type { Id } from '@convex/dataModel';
 
 export default function TemplatesPage() {
@@ -25,61 +24,18 @@ export default function TemplatesPage() {
 
     const templates = useQuery(api.templates.crud.listBySite, { siteId: site._id });
 
-    const createTemplate = useMutation(api.templates.crud.create);
-    const removeTemplate = useMutation(api.templates.crud.remove);
-    const duplicateTemplate = useMutation(api.templates.crud.duplicate);
     const handleCreate = async (data: { name: string; description: string }) => {
-        const id = await createTemplate({
+        const result = await createSiteTemplate({
             siteId: site._id,
+            siteSlug: params.slug,
             name: data.name,
             description: data.description || undefined,
-            templateHtml: STARTER_HTML,
-            sampleData: STARTER_SAMPLE_DATA,
-            variants: [{ type: 'content', w: 3, h: 2 }],
-            preferredVariantIndex: 0,
         });
-
-        const nextJob = {
-            type: 'template-thumbnail' as const,
-            payload: { templateId: id, siteId: site._id, siteSlug: params.slug },
-        };
-        const response = await fetch('/api/v2/jobs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(
-                containsImgFuncs(STARTER_SAMPLE_DATA)
-                    ? {
-                          type: 'normalize-images',
-                          resourceType: 'template',
-                          resourceId: id,
-                          siteId: site._id,
-                          source: 'templateCreate',
-                          payload: {
-                              type: 'normalize-images',
-                              payload: {
-                                  resourceType: 'template',
-                                  resourceId: id,
-                                  siteId: site._id,
-                                  source: 'templateCreate',
-                                  nextJobs: [nextJob],
-                              },
-                          },
-                      }
-                    : {
-                          type: 'template-thumbnail',
-                          resourceType: 'template',
-                          resourceId: id,
-                          siteId: site._id,
-                          source: 'templateCreate',
-                          payload: nextJob,
-                      },
-            ),
-        });
-        if (!response.ok) {
-            toast.error('Template created, but thumbnail generation failed to start');
+        if (result.enqueueWarning) {
+            toast.warning(`Template created, but ${result.enqueueWarning.toLowerCase()}`);
         }
 
-        router.push(`/site/${params.slug}/templates/${buildEntitySlug(data.name, id)}`);
+        router.push(`/site/${params.slug}/templates/${buildEntitySlug(data.name, result.id)}`);
     };
 
     const handleEdit = (id: string) => {
@@ -89,53 +45,18 @@ export default function TemplatesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        await removeTemplate({ id: id as Id<'templates'> });
+        await deleteSiteTemplate({ siteId: site._id, templateId: id as Id<'templates'> });
     };
 
     const handleDuplicate = async (id: string) => {
-        const newId = await duplicateTemplate({ id: id as Id<'templates'>, siteId: site._id });
+        const result = await duplicateSiteTemplate({
+            siteId: site._id,
+            templateId: id as Id<'templates'>,
+            siteSlug: params.slug,
+        });
 
-        const source = templates?.find((t) => t._id === id);
-        if (source) {
-            const nextJob = {
-                type: 'template-thumbnail' as const,
-                payload: { templateId: newId, siteId: site._id, siteSlug: params.slug },
-            };
-            const response = await fetch('/api/v2/jobs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(
-                    containsImgFuncs(source.sampleData)
-                        ? {
-                              type: 'normalize-images',
-                              resourceType: 'template',
-                              resourceId: newId,
-                              siteId: site._id,
-                              source: 'templateDuplicate',
-                              payload: {
-                                  type: 'normalize-images',
-                                  payload: {
-                                      resourceType: 'template',
-                                      resourceId: newId,
-                                      siteId: site._id,
-                                      source: 'templateDuplicate',
-                                      nextJobs: [nextJob],
-                                  },
-                              },
-                          }
-                        : {
-                              type: 'template-thumbnail',
-                              resourceType: 'template',
-                              resourceId: newId,
-                              siteId: site._id,
-                              source: 'templateDuplicate',
-                              payload: nextJob,
-                          },
-                ),
-            });
-            if (!response.ok) {
-                toast.error('Template duplicated, but thumbnail generation failed to start');
-            }
+        if (result.enqueueWarning) {
+            toast.warning(`Template duplicated, but ${result.enqueueWarning.toLowerCase()}`);
         }
     };
 
@@ -165,7 +86,7 @@ export default function TemplatesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
                     <p className="text-muted-foreground">Manage display templates in {site.name}</p>
                 </div>
-                {permissions.template.manage && (
+                {permissions.org.site.template.manage && (
                     <Button onClick={() => setShowCreateForm(true)}>
                         <Plus className="size-4 mr-2" />
                         New Template

@@ -1,32 +1,23 @@
 import Link from 'next/link';
 import { fetchQuery } from 'convex/nextjs';
-import { Building2, Plug, Users } from 'lucide-react';
 import { redirect } from 'next/navigation';
+import { Building2, Plug, Users } from 'lucide-react';
 import { api } from '@convex/api';
-import { withAuth } from '@workos-inc/authkit-nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { permissionCatalog } from '@/lib/permissions';
+import { requireAuthorization } from '@/lib/authz';
 
 export default async function AdminDashboardPage() {
-    const auth = await withAuth();
+    const session = await requireAuthorization({ redirectTo: '/login' });
 
-    if (!auth.user || !auth.accessToken) {
-        redirect('/login');
-    }
-
-    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
-
-    if (!actor) {
-        redirect('/login');
-    }
-
-    if (actor.role !== 'appAdmin') {
+    if (!session.can(permissionCatalog.platform.actor.manage)) {
         redirect('/site');
     }
 
     const [applications, actors, sites] = await Promise.all([
-        fetchQuery(api.applications.crud.listAll, {}, { token: auth.accessToken }),
-        fetchQuery(api.actors.listAll, {}, { token: auth.accessToken }),
-        fetchQuery(api.sites.list, {}, { token: auth.accessToken }),
+        fetchQuery(api.applications.crud.listAll, {}, { token: session.accessToken }),
+        fetchQuery(api.actors.listAll, {}, { token: session.accessToken }),
+        fetchQuery(api.sites.list, {}, { token: session.accessToken }),
     ]);
 
     const activeApplications = applications.filter((application) => application.status === 'active').length;

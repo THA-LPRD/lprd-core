@@ -18,6 +18,7 @@ export const config = {
     },
     jobs: {
         queueName: 'app-jobs',
+        timeoutMs: 15_000,
     },
     healthCheck: {
         timeoutMs: 10_000,

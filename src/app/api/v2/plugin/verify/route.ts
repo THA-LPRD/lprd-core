@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { authenticatePlugin, AuthError } from '@/lib/application/auth';
+import { AuthError } from '@/lib/auth-errors';
+import { requireAuthorization } from '@/lib/authz';
 
 /**
  * GET /api/v2/plugin/verify
@@ -8,13 +9,19 @@ import { authenticatePlugin, AuthError } from '@/lib/application/auth';
  */
 export async function GET(request: Request) {
     try {
-        const plugin = await authenticatePlugin(request);
+        const authorization = await requireAuthorization({ request });
+        if (!authorization.application) {
+            throw new AuthError('Application not found', 401);
+        }
+        if (authorization.application.type !== 'plugin') {
+            throw new AuthError(`Application type '${authorization.application.type}' is not allowed here`, 403);
+        }
 
         return NextResponse.json({
-            plugin_id: plugin._id,
-            name: plugin.name,
-            status: plugin.status,
-            scopes: plugin.scopes ?? null,
+            plugin_id: authorization.application._id,
+            name: authorization.application.name,
+            status: authorization.application.status,
+            permissions: authorization.grantedPermissions,
         });
     } catch (error) {
         if (error instanceof AuthError) {

@@ -1,8 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { config } from '@worker/config';
-import { getDueHealthChecks } from '@worker/app-client';
-import { enqueueWorkerJob } from '@worker/queue';
+import { enqueueWorkerJob } from '@/lib/jobs/dispatch';
 import { makeJobKey } from '@/lib/jobs';
+import { workerRequestJson } from '@worker/app-client';
 
 const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
     connection: config.redis,
@@ -16,7 +16,14 @@ export async function startScheduler() {
     const worker = new Worker(
         config.healthCheck.schedulerQueueName,
         async () => {
-            const duePlugins = await getDueHealthChecks();
+            const duePlugins = await workerRequestJson<
+                Array<{
+                    applicationId: string;
+                    actorId: string;
+                    siteId: string | null;
+                    baseUrl: string;
+                }>
+            >('/api/v2/applications/health-checks/due');
 
             if (duePlugins.length === 0) {
                 return;

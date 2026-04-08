@@ -1,28 +1,26 @@
 import { v } from 'convex/values';
 import { query } from '../_generated/server';
 import { fetchTemplateMap } from '../lib/storage';
-import { getPermissions } from '../lib/acl';
-import { canAccessWithInternalRenderScope } from '../lib/internal_render';
-import { getCurrentActor, getMembership } from '../actors';
+import { permissionCatalog } from '../lib/permissions';
+import { resolveAuthorization } from '../lib/authz';
 
 /**
  * Get everything needed to render a device in one query.
- * No auth — used only by the Playwright render page.
+ * Requires `org.site.device.view`.
+ * Used by the Playwright render page and worker artifact routes.
  * Returns device, frame, templates, and resolved binding data.
  */
 export const getRenderBundle = query({
     args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Render bundle: not authenticated');
-
         const device = await ctx.db.get(args.deviceId);
         if (!device?.frameId) return null;
 
-        if (!(await canAccessWithInternalRenderScope(ctx))) {
-            const membership = await getMembership(ctx, actor._id, device.siteId);
-            const perms = getPermissions(actor, membership);
-            if (!perms.device.view) throw new Error('Render bundle: device.view permission denied');
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization) throw new Error('Render bundle: not authenticated');
+
+        if (!authorization.can(permissionCatalog.org.site.device.view)) {
+            throw new Error('Render bundle: device.view permission denied');
         }
 
         const frame = await ctx.db.get(device.frameId);

@@ -90,7 +90,7 @@ export function ApplicationActions({ application }: { application: Doc<'applicat
                 open={showPermanentDelete}
                 onOpenChange={setShowPermanentDelete}
                 title="Permanently Delete Service Account"
-                description={`This will permanently delete "${application.name}" and ALL associated data including site access records, health check history, and templates. This cannot be undone.`}
+                description={`This will permanently delete "${application.name}" and ALL associated data including site attachments, permission grants, health check history, and templates. This cannot be undone.`}
                 confirmLabel="Delete Permanently"
                 onConfirm={async () => {
                     await permanentDelete({ id: application._id });

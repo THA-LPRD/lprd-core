@@ -13,12 +13,17 @@ import type { TemplateVariant } from '@/lib/template';
 
 export type Template = {
     _id: Id<'templates'>;
-    scope: 'global' | 'site';
+    scope: 'organization' | 'site';
     name: string;
     description?: string;
     variants: TemplateVariant[];
     thumbnailUrl: string | null;
-    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
+    latestJob?: {
+        status: 'pending' | 'paused' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+        errorMessage?: string;
+        jobId?: string;
+        updatedAt: number;
+    };
     createdAt: number;
     updatedAt: number;
 };
@@ -40,7 +45,7 @@ export function TemplateCard({
     onDelete: () => void;
     onDuplicate: () => void;
 }) {
-    const isGlobal = template.scope === 'global';
+    const isOrganizationScoped = template.scope === 'organization';
 
     return (
         <Card className="hover:bg-accent/50 transition-colors overflow-hidden group">
@@ -66,8 +71,8 @@ export function TemplateCard({
             <CardHeader>
                 <CardTitle className="flex items-center gap-2 min-w-0">
                     <span className="truncate">{template.name}</span>
-                    <Badge variant={isGlobal ? 'outline' : 'secondary'} className="text-xs shrink-0">
-                        {isGlobal ? 'Global' : 'Org'}
+                    <Badge variant={isOrganizationScoped ? 'outline' : 'secondary'} className="text-xs shrink-0">
+                        {isOrganizationScoped ? 'Organization' : 'Site'}
                     </Badge>
                     <JobStatusBadge latestJob={template.latestJob} />
                 </CardTitle>
@@ -82,12 +87,14 @@ export function TemplateCard({
                                     variant="ghost"
                                     size="icon-sm"
                                     onClick={onEdit}
-                                    disabled={isGlobal}
+                                    disabled={isOrganizationScoped}
                                 >
                                     <Pencil className="size-3.5" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{isGlobal ? 'Global templates are read-only' : 'Edit'}</TooltipContent>
+                            <TooltipContent>
+                                {isOrganizationScoped ? 'Organization templates are read-only' : 'Edit'}
+                            </TooltipContent>
                         </Tooltip>
 
                         <Tooltip>
@@ -98,12 +105,14 @@ export function TemplateCard({
                                     variant="ghost"
                                     size="icon-sm"
                                     onClick={onDelete}
-                                    disabled={isGlobal}
+                                    disabled={isOrganizationScoped}
                                 >
                                     <Trash2 className="size-3.5" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent>{isGlobal ? 'Global templates are read-only' : 'Delete'}</TooltipContent>
+                            <TooltipContent>
+                                {isOrganizationScoped ? 'Organization templates are read-only' : 'Delete'}
+                            </TooltipContent>
                         </Tooltip>
 
                         <Tooltip>

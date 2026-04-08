@@ -2,8 +2,8 @@ import { v } from 'convex/values';
 import { internalMutation, query } from '../_generated/server';
 import { paginationOptsValidator } from 'convex/server';
 import { deviceLogStatus, deviceLogType } from '../schema';
-import { getPermissions } from '../lib/acl';
-import { getCurrentActor, getMembership } from '../actors';
+import { permissionCatalog } from '../lib/permissions';
+import { resolveAuthorization } from '../lib/authz';
 
 // ---------------------------------------------------------------------------
 // Internal mutations — called from Next.js API routes
@@ -75,7 +75,7 @@ export const logWithSnapshot = internalMutation({
 
 /**
  * Paginated list of access log entries for a device.
- * Requires device.view permission.
+ * Requires `org.site.device.view`.
  */
 export const list = query({
     args: {
@@ -83,15 +83,13 @@ export const list = query({
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return { page: [], isDone: true, continueCursor: '' };
-
         const device = await ctx.db.get(args.deviceId);
         if (!device) return { page: [], isDone: true, continueCursor: '' };
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return { page: [], isDone: true, continueCursor: '' };
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) {
+            return { page: [], isDone: true, continueCursor: '' };
+        }
 
         return ctx.db
             .query('deviceAccessLogs')
@@ -111,15 +109,11 @@ export const getDailyStats = query({
         days: v.optional(v.number()),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return [];
 
         const days = args.days ?? 7;
         const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
@@ -160,15 +154,11 @@ export const listByDay = query({
         date: v.string(), // 'YYYY-MM-DD'
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
         const device = await ctx.db.get(args.deviceId);
         if (!device) return [];
 
-        const membership = await getMembership(ctx, actor._id, device.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: device.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return [];
 
         const start = new Date(args.date + 'T00:00:00.000Z').getTime();
         const end = start + 24 * 60 * 60 * 1000;

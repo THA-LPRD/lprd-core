@@ -1,8 +1,9 @@
 import { v } from 'convex/values';
 import { mutation } from '../_generated/server';
 import { templateVariant } from '../schema';
+import { permissionCatalog } from '../lib/permissions';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
-import { getCurrentActor } from '../actors';
+import { requirePermission } from '../lib/authz';
 
 export const upsertGlobalForApplication = mutation({
     args: {
@@ -16,11 +17,12 @@ export const upsertGlobalForApplication = mutation({
         version: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
+        const authorization = await requirePermission(ctx, permissionCatalog.org.template.manage.upsert.self);
+        const { actor } = authorization;
 
         const application = await ctx.db.get(args.pluginId);
         if (!application || application.actorId !== actor._id) throw new Error('Not authorized for this plugin');
+        if (!application.organizationId) throw new Error('Application organization required');
 
         const existing = await ctx.db
             .query('templates')
@@ -48,7 +50,8 @@ export const upsertGlobalForApplication = mutation({
         }
 
         const id = await ctx.db.insert('templates', {
-            scope: 'global',
+            scope: 'organization',
+            organizationId: application.organizationId,
             applicationId: args.pluginId,
             name: args.name,
             description: args.description,

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useMutation, useQuery } from 'convex/react';
+import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { FrameGridView } from '@/components/frame/frame-grid';
 import { FrameForm } from '@/components/frame/frame-form';
@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
-import { GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { buildEntitySlug } from '@/lib/slug';
+import { createSiteFrame, deleteSiteFrame, duplicateSiteFrame } from '@/lib/frame-actions';
 import type { Id } from '@convex/dataModel';
 
 export default function FramesPage() {
@@ -23,27 +23,14 @@ export default function FramesPage() {
 
     const frames = useQuery(api.frames.listBySite, { siteId: site._id });
 
-    const createFrame = useMutation(api.frames.create);
-    const removeFrame = useMutation(api.frames.remove);
-    const duplicateFrame = useMutation(api.frames.duplicate);
-
     const handleCreate = async (data: { name: string; description: string }) => {
-        const id = await createFrame({
+        const result = await createSiteFrame({
             siteId: site._id,
             name: data.name,
             description: data.description || undefined,
-            widgets: [
-                {
-                    id: crypto.randomUUID(),
-                    x: 0,
-                    y: 0,
-                    w: GRID_COLS,
-                    h: GRID_ROWS,
-                },
-            ],
         });
 
-        router.push(`/site/${params.slug}/frames/${buildEntitySlug(data.name, id)}`);
+        router.push(`/site/${params.slug}/frames/${buildEntitySlug(data.name, result.id)}`);
     };
 
     const handleEdit = (id: string) => {
@@ -53,11 +40,11 @@ export default function FramesPage() {
     };
 
     const handleDelete = async (id: string) => {
-        await removeFrame({ id: id as Id<'frames'> });
+        await deleteSiteFrame({ siteId: site._id, frameId: id as Id<'frames'> });
     };
 
     const handleDuplicate = async (id: string) => {
-        await duplicateFrame({ id: id as Id<'frames'>, siteId: site._id });
+        await duplicateSiteFrame({ siteId: site._id, frameId: id as Id<'frames'> });
     };
 
     if (frames === undefined) {
@@ -86,7 +73,7 @@ export default function FramesPage() {
                     <h1 className="text-2xl font-bold tracking-tight">Frames</h1>
                     <p className="text-muted-foreground">Manage display frames in {site.name}</p>
                 </div>
-                {permissions.frame.manage && (
+                {permissions.org.site.frame.manage && (
                     <Button onClick={() => setShowCreateForm(true)}>
                         <Plus className="size-4 mr-2" />
                         New Frame
@@ -96,7 +83,7 @@ export default function FramesPage() {
 
             <FrameGridView
                 frames={frames}
-                canManage={permissions.frame.manage}
+                canManage={permissions.org.site.frame.manage}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onDuplicate={handleDuplicate}

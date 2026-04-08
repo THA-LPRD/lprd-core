@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation } from 'convex/react';
+import { useAction, useMutation } from 'convex/react';
 import { api } from '@convex/api';
 import type { Doc } from '@convex/dataModel';
 import { KeyRound, Pause, Play, Trash2 } from 'lucide-react';
@@ -25,7 +25,7 @@ export function ApplicationDetailsCard({
 }) {
     const router = useRouter();
     const updateStatus = useMutation(api.applications.crud.updateStatus);
-    const permanentDelete = useMutation(api.applications.crud.permanentDelete);
+    const deprovision = useAction(api.applications.provision.deprovision);
     const [showReissue, setShowReissue] = React.useState(false);
     const [showSuspendConfirm, setShowSuspendConfirm] = React.useState(false);
     const [showRemoveConfirm, setShowRemoveConfirm] = React.useState(false);
@@ -126,13 +126,9 @@ export function ApplicationDetailsCard({
                             </div>
                         )}
                         <div>
-                            <dt className="text-muted-foreground">Scopes</dt>
+                            <dt className="text-muted-foreground">Permissions</dt>
                             <dd className="mt-1 flex gap-1 flex-wrap">
-                                {application.scopes?.map((scope) => (
-                                    <Badge key={scope} variant="secondary">
-                                        {scope}
-                                    </Badge>
-                                )) ?? <span className="text-muted-foreground">All</span>}
+                                <span className="text-muted-foreground">All</span>
                             </dd>
                         </div>
                         <div>
@@ -193,10 +189,10 @@ export function ApplicationDetailsCard({
                 open={showPermanentDelete}
                 onOpenChange={setShowPermanentDelete}
                 title="Permanently Delete Service Account"
-                description={`This will permanently delete "${application.name}" and all associated data including site access records, health check history, and templates. This cannot be undone.`}
+                description={`This will permanently delete "${application.name}" and ALL associated data including site attachments, permission grants, health check history, and templates. This cannot be undone.`}
                 confirmLabel="Delete Permanently"
                 onConfirm={async () => {
-                    await permanentDelete({ id: application._id });
+                    await deprovision({ id: application._id });
                     router.push('/admin/applications');
                 }}
             />

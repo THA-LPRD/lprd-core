@@ -14,7 +14,12 @@ export type Frame = {
     name: string;
     description?: string;
     thumbnailUrl: string | null;
-    latestJob?: { status: 'pending' | 'running' | 'succeeded' | 'failed'; errorMessage?: string };
+    latestJob?: {
+        status: 'pending' | 'paused' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+        errorMessage?: string;
+        jobId?: string;
+        updatedAt: number;
+    };
     widgets: { id: string; w: number; h: number }[];
     createdAt: number;
     updatedAt: number;

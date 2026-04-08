@@ -1,25 +1,14 @@
-import { fetchQuery } from 'convex/nextjs';
 import { redirect } from 'next/navigation';
-import { api } from '@convex/api';
-import { withAuth } from '@workos-inc/authkit-nextjs';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { permissionCatalog } from '@/lib/permissions';
+import { requireAuthorization } from '@/lib/authz';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    const auth = await withAuth();
+    const authorization = await requireAuthorization({ redirectTo: '/login' });
 
-    if (!auth.user || !auth.accessToken) {
-        redirect('/login');
-    }
-
-    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
-
-    if (!actor) {
-        redirect('/login');
-    }
-
-    if (actor.role !== 'appAdmin') {
+    if (!authorization.can(permissionCatalog.platform.actor.manage)) {
         redirect('/site');
     }
 

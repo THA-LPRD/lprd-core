@@ -7,7 +7,8 @@ This file provides guidance to agents when working with code in this repository.
 Always use `bun` to run scripts.
 
 - `bun dev` - Start Next.js development server [Note: Don't use this unless otherwise told to]
-- `bun lint` - Type-aware Oxlint linting (also reports TypeScript errors)
+- `bun typecheck` - Run TypeScript type checking (`tsc --noEmit`)
+- `bun lint` - Oxlint (fast, general rules) followed by ESLint (Next.js-specific rules)
 - `bun lint --fix` - Apply fixes for autofixable lint issues
 - `bunx convex dev` - Start Convex backend [Note: Don't use this unless otherwise told to]
 
@@ -116,11 +117,12 @@ Pure TypeScript types, constants, and logic shared between Convex and Next.js li
 
 ### Plugin System
 
-**Two-phase authentication:**
+**Plugin authentication:**
 
-1. AppAdmin creates a plugin slot via `/admin/plugins` → gets a one-time registration key
-2. Plugin self-registers via `POST /api/v2/plugin/register` with the key → receives an ES256 JWT token
-3. All subsequent API calls use `Authorization: Bearer <token>` header
+1. AppAdmin creates a plugin service account in `/admin/applications`
+2. Plugin exchanges its WorkOS `client_id` + `client_secret` for a bearer token
+3. Plugin bootstraps metadata via `POST /api/v2/plugin/bootstrap`
+4. All subsequent API calls use `Authorization: Bearer <token>` header
 
 **Three-level access control:**
 
@@ -132,7 +134,8 @@ Enforcement: JWT valid → plugin `active` → token not revoked → scope allow
 
 - Plugin data is keyed by `(pluginId, siteId, topic, entry)` — pushing the same key overwrites the previous record
 - Plugin data is site-scoped — plugins specify `site_slug` in webhook payloads
-- **Mock plugin script**: `./scripts/mock-plugin.sh` — set `REGISTRATION_KEY` and `AUTH_TOKEN` env vars
+- **Mock plugin script**: `./scripts/mock-plugin.sh` — set `CLIENT_ID`, `CLIENT_SECRET`, `WORKOS_AUTHKIT_DOMAIN`, and
+  `SITE_SLUG`
 
 ### Device–Frame–Plugin Integration
 

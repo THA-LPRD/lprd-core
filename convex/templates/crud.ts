@@ -1,28 +1,30 @@
 import { v } from 'convex/values';
 import { mutation, query } from '../_generated/server';
 import { templateVariant } from '../schema';
-import { getPermissions } from '../lib/acl';
+import { permissionCatalog } from '../lib/permissions';
+import { requirePermission, resolveAuthorization } from '../lib/authz';
 import { deleteImageBlobs } from '../lib/template_data';
-import { canAccessWithInternalRenderScope, requireInternalRenderScope } from '../lib/internal_render';
-import { getCurrentActor, getMembership } from '../actors';
+import { generateUploadUrl, replaceThumbnail } from '../lib/storage';
+import { markTemplateJobSucceeded } from '../jobs/templateJobs';
 
 /**
- * List all templates available to a site (global + site-scoped).
- * Requires template.view permission.
+ * List all templates available to a site (organization-shared + site-scoped).
+ * Requires `org.site.template.view`.
  */
 export const listBySite = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: args.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.template.view)) return [];
 
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.view) return [];
+        const organizationId = authorization.site?.organizationId;
+        if (!organizationId) return [];
 
-        const globalTemplates = await ctx.db
+        const organizationTemplates = await ctx.db
             .query('templates')
-            .withIndex('by_scope', (q) => q.eq('scope', 'global'))
+            .withIndex('by_organization_and_scope', (q) =>
+                q.eq('organizationId', organizationId).eq('scope', 'organization'),
+            )
             .collect();
 
         const orgTemplates = await ctx.db
@@ -31,7 +33,7 @@ export const listBySite = query({
             .collect();
 
         // Resolve thumbnail URLs
-        const all = [...globalTemplates, ...orgTemplates];
+        const all = [...organizationTemplates, ...orgTemplates];
         return Promise.all(
             all.map(async (t) => {
                 let thumbnailUrl: string | null = null;
@@ -46,23 +48,24 @@ export const listBySite = query({
 
 /**
  * Get a single template by ID.
- * Requires template.view permission for site-scoped templates.
+ * Requires `org.site.template.view` for site-scoped templates and `org.template.view` for organization-scoped templates.
  * Resolves img field storageIds to serving URLs.
  */
 export const getById = query({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-
         const template = await ctx.db.get(args.id);
         if (!template) return null;
 
-        // Global templates are visible to any authenticated user
+        // Organization-scoped templates use the organization-level permission branch.
         if (template.scope === 'site' && template.siteId) {
-            const membership = await getMembership(ctx, actor._id, template.siteId);
-            const perms = getPermissions(actor, membership);
-            if (!perms.template.view) return null;
+            const authorization = await resolveAuthorization(ctx, { siteId: template.siteId });
+            if (!authorization?.can(permissionCatalog.org.site.template.view)) return null;
+        } else {
+            const authorization = await resolveAuthorization(ctx, {
+                organizationId: template.organizationId ?? undefined,
+            });
+            if (!authorization?.can(permissionCatalog.org.template.view)) return null;
         }
 
         let thumbnailUrl: string | null = null;
@@ -76,7 +79,7 @@ export const getById = query({
 
 /**
  * Create a new site-scoped template.
- * Requires template.manage permission.
+ * Requires `org.site.template.manage`.
  */
 export const create = mutation({
     args: {
@@ -89,17 +92,17 @@ export const create = mutation({
         preferredVariantIndex: v.number(),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.manage) throw new Error('Forbidden');
+        const authorization = await requirePermission(ctx, permissionCatalog.org.site.template.manage.self, {
+            siteId: args.siteId,
+        });
+        const { actor, site } = authorization;
+        if (!site?.organizationId) throw new Error('Site organization required');
 
         const now = Date.now();
 
         return await ctx.db.insert('templates', {
             scope: 'site',
+            organizationId: site.organizationId,
             siteId: args.siteId,
             createdBy: actor._id,
             name: args.name,
@@ -115,8 +118,8 @@ export const create = mutation({
 });
 
 /**
- * Update an site-scoped template.
- * Requires template.manage permission. Rejects global templates.
+ * Update a site-scoped template.
+ * Requires `org.site.template.manage`. Rejects organization-scoped templates.
  */
 export const update = mutation({
     args: {
@@ -130,42 +133,31 @@ export const update = mutation({
         thumbnailStorageId: v.optional(v.id('_storage')),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const template = await ctx.db.get(args.id);
         if (!template) throw new Error('Template not found');
-        if (template.scope === 'global') throw new Error('Cannot edit global templates');
+        if (template.scope !== 'site') throw new Error('Cannot edit organization templates');
 
-        const membership = await getMembership(ctx, actor._id, template.siteId!);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.template.manage.self, { siteId: template.siteId! });
 
         const { id, ...updates } = args;
         void id;
         await ctx.db.patch(template._id, { ...updates, updatedAt: Date.now() });
-
     },
 });
 
 /**
- * Delete an site-scoped template.
- * Requires template.manage permission. Rejects global templates.
+ * Delete a site-scoped template.
+ * Requires `org.site.template.manage`. Rejects organization-scoped templates.
  * Cleans up thumbnail and image storage blobs.
  */
 export const remove = mutation({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
         const template = await ctx.db.get(args.id);
         if (!template) throw new Error('Template not found');
-        if (template.scope === 'global') throw new Error('Cannot delete global templates');
+        if (template.scope !== 'site') throw new Error('Cannot delete organization templates');
 
-        const membership = await getMembership(ctx, actor._id, template.siteId!);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.manage) throw new Error('Forbidden');
+        await requirePermission(ctx, permissionCatalog.org.site.template.manage.self, { siteId: template.siteId! });
 
         if (template.thumbnailStorageId) {
             await ctx.storage.delete(template.thumbnailStorageId);
@@ -180,7 +172,7 @@ export const remove = mutation({
 
 /**
  * Duplicate any template as a new site-scoped template.
- * Requires template.manage permission on the target site.
+ * Requires `org.site.template.manage` on the target site.
  */
 export const duplicate = mutation({
     args: {
@@ -188,12 +180,11 @@ export const duplicate = mutation({
         siteId: v.id('sites'),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.template.manage) throw new Error('Forbidden');
+        const authorization = await requirePermission(ctx, permissionCatalog.org.site.template.manage.self, {
+            siteId: args.siteId,
+        });
+        const { actor, site } = authorization;
+        if (!site?.organizationId) throw new Error('Site organization required');
 
         const source = await ctx.db.get(args.id);
         if (!source) throw new Error('Template not found');
@@ -201,6 +192,7 @@ export const duplicate = mutation({
         const now = Date.now();
         return ctx.db.insert('templates', {
             scope: 'site',
+            organizationId: site.organizationId,
             siteId: args.siteId,
             createdBy: actor._id,
             name: `${source.name} (Copy)`,
@@ -217,23 +209,27 @@ export const duplicate = mutation({
 
 /**
  * Get everything needed to render a template in one query.
- * No auth — used only by the Playwright render page.
+ * Requires `org.site.template.view` for site templates or `org.template.view` for organization-scoped templates.
+ * Used by the Playwright render page and worker artifact routes.
  */
 export const getRenderBundle = query({
     args: { templateId: v.id('templates') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Render bundle: not authenticated');
-
         const template = await ctx.db.get(args.templateId);
         if (!template) return null;
 
-        if (!(await canAccessWithInternalRenderScope(ctx))) {
-            if (template.scope === 'site' && template.siteId) {
-                const membership = await getMembership(ctx, actor._id, template.siteId);
-                const perms = getPermissions(actor, membership);
-                if (!perms.template.view) throw new Error('Render bundle: template.view permission denied');
+        const authorization = await resolveAuthorization(ctx, {
+            siteId: template.siteId ?? undefined,
+            organizationId: template.organizationId ?? undefined,
+        });
+        if (!authorization) throw new Error('Render bundle: not authenticated');
+
+        if (template.scope === 'site' && template.siteId) {
+            if (!authorization.can(permissionCatalog.org.site.template.view)) {
+                throw new Error('Render bundle: template.view permission denied');
             }
+        } else if (!authorization.can(permissionCatalog.org.template.view)) {
+            throw new Error('Render bundle: template.view permission denied');
         }
 
         return {
@@ -248,8 +244,83 @@ export const getRenderBundle = query({
 export const getByIdForJob = query({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
-        await requireInternalRenderScope(ctx);
-        return ctx.db.get(args.id);
+        const template = await ctx.db.get(args.id);
+        if (!template) return null;
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.read, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.read, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
+        return template;
+    },
+});
+
+export const createSampleDataUploadUrl = mutation({
+    args: { id: v.id('templates') },
+    handler: async (ctx, args) => {
+        const template = await ctx.db.get(args.id);
+        if (!template) throw new Error('Template not found');
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
+        return generateUploadUrl(ctx);
+    },
+});
+
+export const getSampleDataStoredFileUrl = query({
+    args: {
+        id: v.id('templates'),
+        storageId: v.id('_storage'),
+    },
+    handler: async (ctx, args) => {
+        const template = await ctx.db.get(args.id);
+        if (!template) throw new Error('Template not found');
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
+        return ctx.storage.getUrl(args.storageId);
+    },
+});
+
+export const createThumbnailUploadUrl = mutation({
+    args: { id: v.id('templates') },
+    handler: async (ctx, args) => {
+        const template = await ctx.db.get(args.id);
+        if (!template) throw new Error('Template not found');
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.thumbnail.write, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.thumbnail.write, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
+        return generateUploadUrl(ctx);
     },
 });
 
@@ -257,12 +328,57 @@ export const patchSampleDataForJob = mutation({
     args: {
         id: v.id('templates'),
         sampleData: v.any(),
+        jobId: v.optional(v.id('jobs')),
     },
     handler: async (ctx, args) => {
-        await requireInternalRenderScope(ctx);
+        const template = await ctx.db.get(args.id);
+        if (!template) throw new Error('Template not found');
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
         await ctx.db.patch(args.id, {
             sampleData: args.sampleData,
             updatedAt: Date.now(),
         });
+
+        if (args.jobId) {
+            await markTemplateJobSucceeded(ctx, args.jobId, args.id);
+        }
+    },
+});
+
+export const storeThumbnailForJob = mutation({
+    args: {
+        id: v.id('templates'),
+        storageId: v.id('_storage'),
+        jobId: v.optional(v.id('jobs')),
+    },
+    handler: async (ctx, args) => {
+        const template = await ctx.db.get(args.id);
+        if (!template) throw new Error('Template not found');
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(ctx, permissionCatalog.org.site.template.manage.thumbnail.write, {
+                siteId: template.siteId,
+            });
+        } else {
+            await requirePermission(ctx, permissionCatalog.org.template.manage.thumbnail.write, {
+                organizationId: template.organizationId ?? undefined,
+            });
+        }
+
+        await replaceThumbnail(ctx, args.id, args.storageId);
+
+        if (args.jobId) {
+            await markTemplateJobSucceeded(ctx, args.jobId, args.id);
+        }
     },
 });

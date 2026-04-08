@@ -62,8 +62,8 @@ export function MemberTable({
     const [memberToRemove, setMemberToRemove] = React.useState<Member | null>(null);
     const [isRemoving, setIsRemoving] = React.useState(false);
 
-    const updateMemberRole = useMutation(api.sites.updateMemberRole);
-    const removeMember = useMutation(api.sites.removeMember);
+    const updateMemberRole = useMutation(api.siteActors.updateMemberRole);
+    const removeActor = useMutation(api.siteActors.removeActor);
 
     const handleRoleChange = async (actorId: Id<'actors'>, newRole: 'siteAdmin' | 'user') => {
         await updateMemberRole({
@@ -78,7 +78,7 @@ export function MemberTable({
 
         setIsRemoving(true);
         try {
-            await removeMember({
+            await removeActor({
                 siteId,
                 actorId: memberToRemove.actor._id,
             });

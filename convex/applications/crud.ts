@@ -1,84 +1,58 @@
-import { internalQuery, mutation, type MutationCtx, query, type QueryCtx } from '../_generated/server';
-import { getPermissions } from '../lib/acl';
+import { internalQuery, mutation, query } from '../_generated/server';
+import { permissionCatalog } from '../lib/permissions';
 import { isPluginApplication } from '../lib/applications';
-import { applicationScope, applicationType, pluginTopic } from '../schema';
-import { getCurrentActor } from '../actors';
+import { applicationPermission, applicationType, pluginTopic } from '../schema';
+import { requireAuthorization, resolveAuthorization } from '../lib/authz';
 import { v } from 'convex/values';
-import type { Id } from '../_generated/dataModel';
-
-async function getApplicationPluginProfile(ctx: QueryCtx | MutationCtx, applicationId: Id<'applications'>) {
-    return ctx.db
-        .query('pluginProfiles')
-        .withIndex('by_application', (q) => q.eq('applicationId', applicationId))
-        .unique();
-}
-
-type ManageCtx = QueryCtx | MutationCtx;
-
-async function requireManagingActor(ctx: ManageCtx) {
-    const actor = await getCurrentActor(ctx);
-    if (!actor) throw new Error('Not authenticated');
-
-    const perms = getPermissions(actor, null);
-    if (!perms.plugin.manage) throw new Error('Not authorized');
-
-    return actor;
-}
-
-export const requireManager = internalQuery({
-    args: {},
-    handler: async (ctx) => requireManagingActor(ctx),
-});
-
-export const assertCanManage = query({
-    args: {},
-    handler: async (ctx) => {
-        await requireManagingActor(ctx);
-        return true;
-    },
-});
+import {
+    deletePermissionGrantsForActor,
+    listActorPermissionGrantRows,
+    normalizePermissionGrantRows,
+} from '../lib/permissionGrants';
+import { syncApplicationPermissionGrants } from '../lib/permissionSync';
 
 export const listAll = query({
     args: {},
     handler: async (ctx) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization?.can(permissionCatalog.org.actor.serviceAccount.manage)) return [];
 
-        const perms = getPermissions(actor, null);
-        if (!perms.plugin.manage) return [];
-
-        return ctx.db.query('applications').collect();
+        const applications = await ctx.db.query('applications').collect();
+        return Promise.all(
+            applications.map(async (application) => {
+                const grants = await listActorPermissionGrantRows(ctx, application.actorId);
+                return { ...application, permissions: normalizePermissionGrantRows(grants) };
+            }),
+        );
     },
 });
 
 export const getDetails = query({
     args: { id: v.id('applications') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-
-        const perms = getPermissions(actor, null);
-        if (!perms.plugin.manage) return null;
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization?.can(permissionCatalog.org.actor.serviceAccount.manage)) return null;
 
         const application = await ctx.db.get(args.id);
         if (!application) return null;
 
         const org = application.organizationId ? await ctx.db.get(application.organizationId) : null;
+        const grants = await listActorPermissionGrantRows(ctx, application.actorId);
 
-        return { ...application, organizationName: org?.name };
+        return { ...application, permissions: normalizePermissionGrantRows(grants), organizationName: org?.name };
     },
 });
 
 export const getPluginProfile = query({
     args: { id: v.id('applications') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization?.can(permissionCatalog.org.actor.serviceAccount.manage)) return null;
 
-        const perms = getPermissions(actor, null);
-        if (!perms.plugin.manage) return null;
-
-        return getApplicationPluginProfile(ctx, args.id);
+        return ctx.db
+            .query('pluginProfiles')
+            .withIndex('by_application', (q) => q.eq('applicationId', args.id))
+            .unique();
     },
 });
 
@@ -93,7 +67,10 @@ export const updateStatus = mutation({
         status: v.union(v.literal('active'), v.literal('inactive'), v.literal('suspended'), v.literal('removed')),
     },
     handler: async (ctx, args) => {
-        await requireManagingActor(ctx);
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            throw new Error('Not authorized');
+        }
 
         const application = await ctx.db.get(args.id);
         if (!application) throw new Error('Application not found');
@@ -116,7 +93,7 @@ export const createApplicationRecord = mutation({
         workosApplicationId: v.string(),
         workosClientId: v.string(),
         lastSecretHint: v.optional(v.string()),
-        scopes: v.optional(v.array(applicationScope)),
+        permissions: v.optional(v.array(applicationPermission)),
         // Plugin-specific — required when type === 'plugin'
         plugin: v.optional(
             v.object({
@@ -129,7 +106,12 @@ export const createApplicationRecord = mutation({
         ),
     },
     handler: async (ctx, args) => {
-        const actor = await requireManagingActor(ctx);
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            throw new Error('Not authorized');
+        }
+
+        const actor = authorization.actor;
 
         const now = Date.now();
 
@@ -154,7 +136,6 @@ export const createApplicationRecord = mutation({
             workosApplicationId: args.workosApplicationId,
             workosClientId: args.workosClientId,
             lastSecretHint: args.lastSecretHint,
-            scopes: args.scopes,
             createdBy: actor._id,
             createdAt: now,
             updatedAt: now,
@@ -173,6 +154,10 @@ export const createApplicationRecord = mutation({
             });
         }
 
+        const application = await ctx.db.get(applicationId);
+        if (!application) throw new Error('Application not found after create');
+        await syncApplicationPermissionGrants(ctx, application, args.permissions);
+
         return { actorId, applicationId };
     },
 });
@@ -183,7 +168,10 @@ export const updateProvisionedCredentials = mutation({
         lastSecretHint: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
-        await requireManagingActor(ctx);
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            throw new Error('Not authorized');
+        }
 
         const application = await ctx.db.get(args.id);
         if (!application) throw new Error('Application not found');
@@ -198,7 +186,10 @@ export const updateProvisionedCredentials = mutation({
 export const getCredentialsTarget = query({
     args: { applicationId: v.id('applications') },
     handler: async (ctx, args) => {
-        await requireManagingActor(ctx);
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            throw new Error('Not authorized');
+        }
 
         const application = await ctx.db.get(args.applicationId);
         if (!application) return null;
@@ -210,32 +201,23 @@ export const getCredentialsTarget = query({
     },
 });
 
-export const resolveMyApplication = query({
-    args: { expectedType: v.optional(v.string()) },
-    handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return null;
-
-        const application = await ctx.db
-            .query('applications')
-            .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
-            .unique();
-
-        if (!application) return null;
-        if (args.expectedType && application.type !== args.expectedType) return null;
-
-        return { application, actor };
-    },
-});
-
 export const permanentDelete = mutation({
     args: { id: v.id('applications') },
     handler: async (ctx, args) => {
-        await requireManagingActor(ctx);
+        const authorization = await requireAuthorization(ctx);
+        if (!authorization.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            throw new Error('Not authorized');
+        }
 
         const application = await ctx.db.get(args.id);
         if (!application) throw new Error('Application not found');
         if (application.status !== 'removed') throw new Error('Application must be removed before permanent deletion');
+
+        const profile = await ctx.db
+            .query('pluginProfiles')
+            .withIndex('by_application', (q) => q.eq('applicationId', args.id))
+            .unique();
+        if (profile) await ctx.db.delete(profile._id);
 
         const data = await ctx.db
             .query('pluginData')
@@ -243,11 +225,11 @@ export const permanentDelete = mutation({
             .collect();
         for (const row of data) await ctx.db.delete(row._id);
 
-        const access = await ctx.db
-            .query('pluginSiteAccess')
-            .withIndex('by_application', (q) => q.eq('applicationId', args.id))
+        const siteActors = await ctx.db
+            .query('siteActors')
+            .withIndex('by_actor', (q) => q.eq('actorId', application.actorId))
             .collect();
-        for (const row of access) await ctx.db.delete(row._id);
+        for (const row of siteActors) await ctx.db.delete(row._id);
 
         const checks = await ctx.db
             .query('pluginHealthChecks')
@@ -264,6 +246,7 @@ export const permanentDelete = mutation({
             await ctx.db.delete(template._id);
         }
 
+        await deletePermissionGrantsForActor(ctx, application.actorId);
         await ctx.db.delete(application.actorId);
         await ctx.db.delete(args.id);
     },

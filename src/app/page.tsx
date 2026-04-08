@@ -1,26 +1,19 @@
 import { fetchQuery } from 'convex/nextjs';
 import { redirect } from 'next/navigation';
 import { api } from '@convex/api';
-import { withAuth } from '@workos-inc/authkit-nextjs';
+import { permissionCatalog } from '@/lib/permissions';
+import { requireAuthorization } from '@/lib/authz';
 
 export default async function RootPage() {
-    const auth = await withAuth();
+    const session = await requireAuthorization({ redirectTo: '/login' });
 
-    if (!auth.user || !auth.accessToken) {
-        redirect('/login');
-    }
+    const { actor } = session;
 
-    const actor = await fetchQuery(api.actors.me, {}, { token: auth.accessToken });
-
-    if (!actor) {
-        redirect('/login');
-    }
-
-    if (actor.role === 'appAdmin') {
+    if (session.can(permissionCatalog.platform.actor.manage)) {
         redirect('/admin');
     }
 
-    const sites = await fetchQuery(api.sites.list, {}, { token: auth.accessToken });
+    const sites = await fetchQuery(api.sites.list, {}, { token: session.accessToken });
     const lastSite = actor.lastSiteSlug ? sites.find((site) => site.slug === actor.lastSiteSlug) : null;
 
     if (sites.length > 0) {

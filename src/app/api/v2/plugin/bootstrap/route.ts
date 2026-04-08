@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
-import { authenticatePlugin, AuthError } from '@/lib/application/auth';
+import { AuthError } from '@/lib/auth-errors';
+import { requireAuthorization } from '@/lib/authz';
 import { convex } from '@/lib/convex';
 
 export async function POST(request: Request) {
     try {
-        const plugin = await authenticatePlugin(request);
+        const authorization = await requireAuthorization({ request });
+        if (!authorization.application) {
+            throw new AuthError('Application not found', 401);
+        }
+        if (authorization.application.type !== 'plugin') {
+            throw new AuthError(`Application type '${authorization.application.type}' is not allowed here`, 403);
+        }
+
         const body = await request.json();
 
         if (!body?.baseUrl || typeof body.baseUrl !== 'string') {
@@ -13,7 +21,7 @@ export async function POST(request: Request) {
         }
 
         await convex.mutation(api.applications.plugin.registration.registerMetadata, {
-            id: plugin._id,
+            id: authorization.application._id,
             baseUrl: body.baseUrl,
             version: typeof body.version === 'string' ? body.version : undefined,
             topics: Array.isArray(body.topics) ? body.topics : undefined,

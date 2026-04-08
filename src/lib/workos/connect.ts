@@ -1,4 +1,5 @@
 import { createRemoteJWKSet, type JWTPayload, jwtVerify, type JWTVerifyResult } from 'jose';
+import { AuthError } from '@/lib/auth-errors';
 import { getAuthkitOrigin } from '@/lib/workos/shared';
 
 type WorkOSM2MClaims = JWTPayload & {
@@ -71,4 +72,31 @@ export async function verifyToken(token: string): Promise<JWTVerifyResult<WorkOS
         issuer,
         audience: expectedAudience,
     });
+}
+
+export function getBearerToken(authHeader: string | null): string | null {
+    if (!authHeader) {
+        return null;
+    }
+
+    if (!authHeader.startsWith('Bearer ')) {
+        throw new AuthError('Missing or invalid Authorization header', 401);
+    }
+
+    return authHeader.slice(7);
+}
+
+export async function requireVerifiedBearerToken(authHeader: string | null): Promise<string> {
+    const token = getBearerToken(authHeader);
+    if (!token) {
+        throw new AuthError('Missing or invalid Authorization header', 401);
+    }
+
+    try {
+        await verifyToken(token);
+    } catch {
+        throw new AuthError('Invalid or expired token', 401);
+    }
+
+    return token;
 }

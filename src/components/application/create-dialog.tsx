@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useAction, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
+import { type ApplicationPermission, getServiceAccountDefaultPermissions, permissionCatalog } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -25,6 +26,28 @@ type ProvisionedCredentials = {
     clientSecret: string;
 };
 
+function getProvisionPermissions(input: {
+    type: 'plugin' | 'internal';
+    pluginDataWrite: boolean;
+    organizationTemplateUpsert: boolean;
+}): ApplicationPermission[] | undefined {
+    if (input.type === 'internal') return undefined;
+
+    const permissions = new Set(getServiceAccountDefaultPermissions('plugin'));
+
+    if (!input.pluginDataWrite) {
+        permissions.delete(permissionCatalog.org.site.pluginData.manage.self);
+        permissions.delete(permissionCatalog.org.site.pluginData.manage.job.enqueue);
+    }
+
+    if (!input.organizationTemplateUpsert) {
+        permissions.delete(permissionCatalog.org.template.manage.upsert.self);
+        permissions.delete(permissionCatalog.org.template.manage.upsert.job.enqueue);
+    }
+
+    return [...permissions] as ApplicationPermission[];
+}
+
 export function CreateApplicationDialog({
     open,
     onOpenChange,
@@ -32,7 +55,7 @@ export function CreateApplicationDialog({
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }) {
-    const organizations = useQuery(api.organizations.listAll);
+    const organizations = useQuery(api.organizations.list);
     const provision = useAction(api.applications.provision.provision);
     const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
@@ -40,7 +63,6 @@ export function CreateApplicationDialog({
     const [organizationId, setOrganizationId] = React.useState<Id<'organizations'> | ''>('');
     const [scopePushData, setScopePushData] = React.useState(true);
     const [scopeCreateTemplate, setScopeCreateTemplate] = React.useState(true);
-    const [scopeInternalRender, setScopeInternalRender] = React.useState(false);
     const [isCreating, setIsCreating] = React.useState(false);
     const [credentials, setCredentials] = React.useState<ProvisionedCredentials | null>(null);
     const [copied, setCopied] = React.useState(false);
@@ -63,10 +85,11 @@ export function CreateApplicationDialog({
         setIsCreating(true);
         setError(null);
         try {
-            const scopes: Array<'push_data' | 'create_template' | 'internal_render'> = [];
-            if (scopePushData) scopes.push('push_data');
-            if (scopeCreateTemplate) scopes.push('create_template');
-            if (scopeInternalRender) scopes.push('internal_render');
+            const permissions = getProvisionPermissions({
+                type,
+                pluginDataWrite: scopePushData,
+                organizationTemplateUpsert: scopeCreateTemplate,
+            });
 
             const data = await provision({
                 type,
@@ -74,7 +97,7 @@ export function CreateApplicationDialog({
                 actorName,
                 description: description.trim() || undefined,
                 organizationId,
-                scopes: scopes.length > 0 ? scopes : undefined,
+                permissions,
             });
 
             setCredentials({
@@ -103,7 +126,6 @@ export function CreateApplicationDialog({
             setDescription('');
             setScopePushData(true);
             setScopeCreateTemplate(true);
-            setScopeInternalRender(false);
             setCredentials(null);
             setCopied(false);
             setError(null);
@@ -203,29 +225,34 @@ export function CreateApplicationDialog({
                                 placeholder="Optional description"
                             />
                         </Field>
-                        <Field>
-                            <FieldLabel>Scopes</FieldLabel>
-                            <div className="flex flex-col gap-2">
-                                <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox checked={scopePushData} onCheckedChange={(c) => setScopePushData(c)} />
-                                    Push Data
-                                </label>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox
-                                        checked={scopeCreateTemplate}
-                                        onCheckedChange={(c) => setScopeCreateTemplate(c)}
-                                    />
-                                    Create Template
-                                </label>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <Checkbox
-                                        checked={scopeInternalRender}
-                                        onCheckedChange={(c) => setScopeInternalRender(c)}
-                                    />
-                                    Internal Render
-                                </label>
-                            </div>
-                        </Field>
+                        {type === 'plugin' ? (
+                            <Field>
+                                <FieldLabel>Permissions</FieldLabel>
+                                <div className="flex flex-col gap-2">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={scopePushData}
+                                            onCheckedChange={(c) => setScopePushData(c)}
+                                        />
+                                        Push Data
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={scopeCreateTemplate}
+                                            onCheckedChange={(c) => setScopeCreateTemplate(c)}
+                                        />
+                                        Upsert Organization Templates
+                                    </label>
+                                </div>
+                            </Field>
+                        ) : (
+                            <Field>
+                                <FieldLabel>Permissions</FieldLabel>
+                                <p className="text-sm text-muted-foreground">
+                                    Internal service accounts receive their worker permissions automatically.
+                                </p>
+                            </Field>
+                        )}
                         {error && <p className="text-sm text-destructive">{error}</p>}
                     </FieldGroup>
                 )}

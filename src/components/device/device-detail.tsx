@@ -47,7 +47,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                     </div>
                     {device.description && <p className="text-muted-foreground">{device.description}</p>}
                 </div>
-                {permissions.device.manage && (
+                {permissions.org.site.device.manage && (
                     <Button
                         variant="outline"
                         render={<Link href={`/site/${params.slug}/devices/${params.id}/configure`} />}

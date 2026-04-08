@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/dialog';
 import { Save, Trash2 } from 'lucide-react';
 import { useSite } from '@/providers/site-provider';
-import { SitePluginSettings } from '@/components/application/plugin/site-settings';
+import { SitePluginInstallations } from '@/components/application/plugin/site-installations';
 
 export default function SiteSettingsPage() {
     const router = useRouter();
@@ -70,7 +70,7 @@ export default function SiteSettingsPage() {
         }
     };
 
-    if (!permissions.site.manage) {
+    if (!permissions.org.site.manage) {
         return <AccessDenied />;
     }
 
@@ -126,20 +126,20 @@ export default function SiteSettingsPage() {
                             members={members}
                             siteId={site._id}
                             currentActorId={actor._id as Id<'actors'>}
-                            canManage={permissions.site.manage}
+                            canManage={permissions.org.site.actor.manage}
                         />
                     </CardContent>
                 </Card>
 
                 {/* Plugins */}
-                {permissions.plugin.siteManage && (
+                {permissions.org.site.actor.manage && (
                     <Card>
                         <CardHeader>
                             <CardTitle>Plugins</CardTitle>
-                            <CardDescription>Enable or disable plugins for this site</CardDescription>
+                            <CardDescription>Install or remove plugins for this site</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <SitePluginSettings siteId={site._id} />
+                            <SitePluginInstallations siteId={site._id} />
                         </CardContent>
                     </Card>
                 )}

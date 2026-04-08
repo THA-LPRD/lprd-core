@@ -8,7 +8,7 @@ import { ArrowLeft } from 'lucide-react';
 import { isPluginApplication } from '@/lib/applications';
 import { ApplicationDetailsCard } from '@/components/application/details-card';
 import { PluginHealthCard } from '@/components/application/plugin/health-card';
-import { PluginSiteAccessCard } from '@/components/application/plugin/site-access-card';
+import { PluginOrganizationAvailabilityCard } from '@/components/application/plugin/organization-availability-card';
 import { Button } from '@/components/ui/button';
 
 export default function ApplicationDetailPage() {
@@ -54,7 +54,7 @@ export default function ApplicationDetailPage() {
                             application={application}
                             applicationPluginProfile={applicationPluginProfile ?? undefined}
                         />
-                        <PluginSiteAccessCard pluginId={application._id} />
+                        <PluginOrganizationAvailabilityCard actorId={application.actorId} />
                         <PluginHealthCard pluginId={application._id} />
                     </div>
 
@@ -67,7 +67,7 @@ export default function ApplicationDetailPage() {
                                 />
                             </div>
                             <div className="min-h-0 flex-1 overflow-y-auto">
-                                <PluginSiteAccessCard pluginId={application._id} />
+                                <PluginOrganizationAvailabilityCard actorId={application.actorId} />
                             </div>
                         </div>
 

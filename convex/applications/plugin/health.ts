@@ -1,16 +1,17 @@
 import { v } from 'convex/values';
 import { paginationOptsValidator } from 'convex/server';
 import { mutation, query } from '../../_generated/server';
+import { markApplicationJobSucceeded } from '../../jobs/applicationJobs';
 import { healthCheckStatus } from '../../schema';
-import { getCurrentActor } from '../../actors';
-import { getPermissions } from '../../lib/acl';
-import { requireInternalRenderScope } from '../../lib/internal_render';
+import { permissionCatalog } from '../../lib/permissions';
+import { requirePermission, resolveAuthorization } from '../../lib/authz';
 
 /** Number of consecutive failures before marking unhealthy */
 const UNHEALTHY_THRESHOLD = 3;
 
 /**
- * List recent health checks for a plugin (paginated). AppAdmin only.
+ * List recent health checks for a plugin (paginated).
+ * Requires `org.actor.serviceAccount.manage`.
  */
 export const listByPlugin = query({
     args: {
@@ -18,10 +19,10 @@ export const listByPlugin = query({
         paginationOpts: paginationOptsValidator,
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return { page: [], isDone: true, continueCursor: '' };
-        const perms = getPermissions(actor, null);
-        if (!perms.plugin.manage) return { page: [], isDone: true, continueCursor: '' };
+        const authorization = await resolveAuthorization(ctx);
+        if (!authorization?.can(permissionCatalog.org.actor.serviceAccount.manage)) {
+            return { page: [], isDone: true, continueCursor: '' };
+        }
 
         return await ctx.db
             .query('pluginHealthChecks')
@@ -34,7 +35,7 @@ export const listByPlugin = query({
 export const listDueForHealthCheck = query({
     args: {},
     handler: async (ctx) => {
-        await requireInternalRenderScope(ctx);
+        await requirePermission(ctx, permissionCatalog.org.actor.serviceAccount.healthCheck.read);
 
         const now = Date.now();
         const activePluginApps = await ctx.db
@@ -53,15 +54,15 @@ export const listDueForHealthCheck = query({
             if (!plugin) continue;
             if (now - (plugin.lastHealthCheckAt ?? 0) < plugin.healthCheckIntervalMs) continue;
 
-            const siteAccess = await ctx.db
-                .query('pluginSiteAccess')
-                .withIndex('by_application', (q) => q.eq('applicationId', app._id))
+            const siteActor = await ctx.db
+                .query('siteActors')
+                .withIndex('by_actor', (q) => q.eq('actorId', app.actorId))
                 .first();
 
             results.push({
                 applicationId: app._id,
                 actorId: app.actorId,
-                siteId: siteAccess?.siteId ?? null,
+                siteId: siteActor?.siteId ?? null,
                 baseUrl: plugin.baseUrl,
             });
         }
@@ -77,9 +78,10 @@ export const recordHealthCheck = mutation({
         responseTimeMs: v.optional(v.number()),
         pluginVersion: v.optional(v.string()),
         errorMessage: v.optional(v.string()),
+        jobId: v.optional(v.id('jobs')),
     },
     handler: async (ctx, args) => {
-        await requireInternalRenderScope(ctx);
+        await requirePermission(ctx, permissionCatalog.org.actor.serviceAccount.healthCheck.write.self);
 
         const now = Date.now();
 
@@ -119,5 +121,9 @@ export const recordHealthCheck = mutation({
             healthStatus,
             updatedAt: now,
         });
+
+        if (args.jobId) {
+            await markApplicationJobSucceeded(ctx, args.jobId, args.pluginId);
+        }
     },
 });

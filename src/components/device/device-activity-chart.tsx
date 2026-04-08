@@ -4,10 +4,9 @@ import * as React from 'react';
 import { useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import type { TooltipProps } from 'recharts';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
-import { LOG_TYPE_LABELS, LOG_TYPE_CHART_COLOR } from '@/lib/deviceLogs';
+import { LOG_TYPE_CHART_COLOR, LOG_TYPE_LABELS } from '@/lib/deviceLogs';
 
 type DayStats = {
     date: string;
@@ -23,7 +22,15 @@ function formatDate(dateStr: string) {
     });
 }
 
-function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function CustomTooltip({
+    active,
+    payload,
+    label,
+}: {
+    active?: boolean;
+    payload?: Array<{ payload: DayStats }>;
+    label?: string;
+}) {
     if (!active || !payload?.length) return null;
     const stats = payload[0]?.payload as DayStats | undefined;
     if (!stats) return null;

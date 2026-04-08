@@ -1,15 +1,12 @@
 import { v } from 'convex/values';
 import { mutation, query } from '../../_generated/server';
+import { getSiteActor } from '../../actors';
+import { markPluginDataJobSucceeded } from '../../jobs/pluginDataJobs';
+import { permissionCatalog } from '../../lib/permissions';
+import { requireAuthorization, requirePermission, resolveAuthorization } from '../../lib/authz';
 import { containsImgFuncs, deleteImageBlobs } from '../../lib/template_data';
-import { getCurrentActor, getMembership } from '../../actors';
-import { getPermissions } from '../../lib/acl';
-import { requireInternalRenderScope } from '../../lib/internal_render';
+import { generateUploadUrl } from '../../lib/storage';
 
-/**
- * Find devices affected by a data change.
- * Returns device Convex IDs whose bindings match the given application + topic + entry.
- * Called from the Next.js webhook route to know which devices need re-rendering.
- */
 /**
  * List active plugins that have topics and are enabled for the given site.
  * Used by the device config UI plugin picker.
@@ -17,12 +14,8 @@ import { requireInternalRenderScope } from '../../lib/internal_render';
 export const listPluginsWithTopics = query({
     args: { siteId: v.id('sites') },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: args.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return [];
 
         const activePluginApps = await ctx.db
             .query('applications')
@@ -39,12 +32,8 @@ export const listPluginsWithTopics = query({
 
             if (!plugin || plugin.topics.length === 0) continue;
 
-            const access = await ctx.db
-                .query('pluginSiteAccess')
-                .withIndex('by_application_and_site', (q) => q.eq('applicationId', app._id).eq('siteId', args.siteId))
-                .unique();
-
-            if (!access || !access.enabledByAdmin || !access.enabledBySite) continue;
+            const siteActor = await getSiteActor(ctx, app.actorId, args.siteId);
+            if (!siteActor) continue;
 
             results.push({
                 _id: app._id,
@@ -68,12 +57,8 @@ export const listEntries = query({
         topic: v.string(),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) return [];
-
-        const membership = await getMembership(ctx, actor._id, args.siteId);
-        const perms = getPermissions(actor, membership);
-        if (!perms.device.view) return [];
+        const authorization = await resolveAuthorization(ctx, { siteId: args.siteId });
+        if (!authorization?.can(permissionCatalog.org.site.device.view)) return [];
 
         const records = await ctx.db
             .query('pluginData')
@@ -97,8 +82,36 @@ export const listEntries = query({
 export const getByIdForJob = query({
     args: { id: v.id('pluginData') },
     handler: async (ctx, args) => {
-        await requireInternalRenderScope(ctx);
-        return ctx.db.get(args.id);
+        const record = await ctx.db.get(args.id);
+        if (!record) return null;
+
+        await requirePermission(ctx, permissionCatalog.org.site.pluginData.view, { siteId: record.siteId });
+        return record;
+    },
+});
+
+export const createDataUploadUrl = mutation({
+    args: { id: v.id('pluginData') },
+    handler: async (ctx, args) => {
+        const record = await ctx.db.get(args.id);
+        if (!record) throw new Error('Plugin data not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
+        return generateUploadUrl(ctx);
+    },
+});
+
+export const getStoredDataFileUrl = query({
+    args: {
+        id: v.id('pluginData'),
+        storageId: v.id('_storage'),
+    },
+    handler: async (ctx, args) => {
+        const record = await ctx.db.get(args.id);
+        if (!record) throw new Error('Plugin data not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
+        return ctx.storage.getUrl(args.storageId);
     },
 });
 
@@ -106,19 +119,26 @@ export const patchDataForJob = mutation({
     args: {
         id: v.id('pluginData'),
         data: v.any(),
+        jobId: v.optional(v.id('jobs')),
     },
     handler: async (ctx, args) => {
-        await requireInternalRenderScope(ctx);
+        const record = await ctx.db.get(args.id);
+        if (!record) throw new Error('Plugin data not found');
+
+        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
         await ctx.db.patch(args.id, {
             data: args.data,
             receivedAt: Date.now(),
         });
+
+        if (args.jobId) {
+            await markPluginDataJobSucceeded(ctx, args.jobId, args.id);
+        }
     },
 });
 
 export const storeWebhookDataForApplication = mutation({
     args: {
-        pluginId: v.id('applications'),
         siteSlug: v.string(),
         contentType: v.string(),
         data: v.any(),
@@ -127,20 +147,17 @@ export const storeWebhookDataForApplication = mutation({
         entry: v.string(),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
-
-        const plugin = await ctx.db.get(args.pluginId);
-        if (!plugin) throw new Error('Plugin not found');
-        if (plugin.actorId !== actor._id) throw new Error('Not authorized for this plugin');
-        if (plugin.status !== 'active') throw new Error(`Plugin is not active (status: ${plugin.status})`);
-
         const site = await ctx.db
             .query('sites')
             .withIndex('by_slug', (q) => q.eq('slug', args.siteSlug))
             .unique();
 
         if (!site) throw new Error(`Site not found: ${args.siteSlug}`);
+
+        const siteAuthorization = await requireAuthorization(ctx, { siteId: site._id });
+        const plugin = siteAuthorization.application;
+        if (!plugin) throw new Error('Forbidden');
+        if (!siteAuthorization.can(permissionCatalog.org.site.pluginData.manage.self)) throw new Error('Forbidden');
 
         const now = Date.now();
         const existing = await ctx.db
@@ -191,17 +208,18 @@ export const storeWebhookDataForApplication = mutation({
 
 export const listAffectedDevicesForJob = query({
     args: {
-        pluginId: v.id('applications'),
         siteId: v.id('sites'),
         topic: v.string(),
         entry: v.string(),
     },
     handler: async (ctx, args) => {
-        const actor = await getCurrentActor(ctx);
-        if (!actor) throw new Error('Not authenticated');
+        const site = await ctx.db.get(args.siteId);
+        if (!site) throw new Error('Site not found');
 
-        const plugin = await ctx.db.get(args.pluginId);
-        if (!plugin || plugin.actorId !== actor._id) throw new Error('Not authorized for this plugin');
+        const siteAuthorization = await requireAuthorization(ctx, { siteId: args.siteId });
+        const plugin = siteAuthorization.application;
+        if (!plugin) throw new Error('Forbidden');
+        if (!siteAuthorization.can(permissionCatalog.org.site.pluginData.manage.self)) throw new Error('Forbidden');
 
         const devices = await ctx.db
             .query('devices')
@@ -213,7 +231,7 @@ export const listAffectedDevicesForJob = query({
                 if (!device.dataBindings || !device.frameId) return false;
                 return device.dataBindings.some(
                     (binding) =>
-                        binding.applicationId === args.pluginId &&
+                        binding.applicationId === plugin._id &&
                         binding.topic === args.topic &&
                         binding.entry === args.entry,
                 );

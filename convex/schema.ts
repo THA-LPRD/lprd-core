@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
+import { permissionValues } from './lib/permissions';
 
 // Platform-level role
 export const actorRole = v.union(v.literal('appAdmin'), v.literal('user'));
@@ -10,8 +11,8 @@ export const actorType = v.union(v.literal('user'), v.literal('serviceAccount'))
 // Shared actor status
 export const actorStatus = v.union(v.literal('active'), v.literal('inactive'));
 
-// Site-level role
-export const siteMemberRole = v.union(v.literal('siteAdmin'), v.literal('user'));
+// Human site-actor role
+export const siteActorRole = v.union(v.literal('siteAdmin'), v.literal('user'));
 
 // Device status
 export const deviceStatus = v.union(v.literal('pending'), v.literal('active'));
@@ -43,11 +44,31 @@ export const applicationStatus = v.union(
     v.literal('removed'),
 );
 
-// Application scope (allowed actions)
-export const applicationScope = v.union(
-    v.literal('push_data'),
-    v.literal('create_template'),
-    v.literal('internal_render'),
+// `v.union(...)` needs a non-empty tuple of literal validators, but `.map(...)`
+// erases the tuple shape from `permissionValues`, so we cast it back here.
+const applicationPermissionLiterals = permissionValues.map((permission) => v.literal(permission)) as unknown as [
+    ReturnType<typeof v.literal>,
+    ReturnType<typeof v.literal>,
+    ...ReturnType<typeof v.literal>[],
+];
+
+// Canonical permission validator derived from the shared permission catalog.
+export const applicationPermission = v.union(...applicationPermissionLiterals);
+
+export const permissionGrantTargetType = v.union(
+    v.literal('actor'),
+    v.literal('platform'),
+    v.literal('organization'),
+    v.literal('site'),
+);
+
+export const permissionGrantSubjectType = v.union(v.literal('actor'), v.literal('organization'), v.literal('site'));
+
+export const permissionGrantSource = v.union(
+    v.literal('actorRole'),
+    v.literal('siteActor'),
+    v.literal('application'),
+    v.literal('manual'),
 );
 
 // Health check status (individual check result)
@@ -81,6 +102,13 @@ export const jobResourceType = v.union(
     v.literal('application'),
 );
 
+export const siteJobResourceType = v.union(
+    v.literal('template'),
+    v.literal('frame'),
+    v.literal('device'),
+    v.literal('pluginData'),
+);
+
 // Source that requested a job
 export const jobSource = v.union(
     v.literal('pluginPush'),
@@ -109,8 +137,8 @@ export const templateVariant = v.union(
     v.object({ type: v.literal('foreground') }),
 );
 
-// Template scope
-export const templateScope = v.union(v.literal('global'), v.literal('site'));
+// Template attachment scope.
+export const templateScope = v.union(v.literal('organization'), v.literal('site'));
 
 // Plugin topic
 export const pluginTopic = v.object({
@@ -180,17 +208,20 @@ export default defineSchema({
     }),
 
     sites: defineTable({
+        organizationId: v.id('organizations'),
         name: v.string(),
         slug: v.string(),
         logoUrl: v.optional(v.string()),
         createdAt: v.number(),
         updatedAt: v.number(),
-    }).index('by_slug', ['slug']),
+    })
+        .index('by_slug', ['slug'])
+        .index('by_organization', ['organizationId']),
 
-    siteMembers: defineTable({
+    siteActors: defineTable({
         actorId: v.id('actors'),
         siteId: v.id('sites'),
-        role: siteMemberRole,
+        role: v.optional(siteActorRole),
         createdAt: v.number(),
     })
         .index('by_actor', ['actorId'])
@@ -250,7 +281,6 @@ export default defineSchema({
         workosApplicationId: v.string(),
         workosClientId: v.string(),
         lastSecretHint: v.optional(v.string()),
-        scopes: v.optional(v.array(applicationScope)),
         createdBy: v.optional(v.id('actors')),
         createdAt: v.number(),
         updatedAt: v.number(),
@@ -261,6 +291,21 @@ export default defineSchema({
         .index('by_workosClientId', ['workosClientId'])
         .index('by_organization', ['organizationId'])
         .index('by_type', ['type']),
+
+    permissionGrants: defineTable({
+        subjectType: permissionGrantSubjectType,
+        subjectId: v.union(v.id('actors'), v.id('organizations'), v.id('sites')),
+        permission: v.string(),
+        targetType: permissionGrantTargetType,
+        targetId: v.union(v.id('actors'), v.id('organizations'), v.id('sites'), v.null()),
+        source: permissionGrantSource,
+        createdAt: v.number(),
+        updatedAt: v.number(),
+    })
+        .index('by_subject', ['subjectType', 'subjectId'])
+        .index('by_subject_and_source', ['subjectType', 'subjectId', 'source'])
+        .index('by_subject_and_target', ['subjectType', 'subjectId', 'targetType', 'targetId'])
+        .index('by_target', ['targetType', 'targetId']),
 
     pluginProfiles: defineTable({
         applicationId: v.id('applications'),
@@ -274,20 +319,6 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
     }).index('by_application', ['applicationId']),
-
-    pluginSiteAccess: defineTable({
-        applicationId: v.id('applications'),
-        siteId: v.id('sites'),
-        enabledByAdmin: v.boolean(), // appAdmin per-site control (default true)
-        enabledBySite: v.boolean(), // siteAdmin choice (default false — opt-in)
-        updatedByAdmin: v.optional(v.id('actors')),
-        updatedBySite: v.optional(v.id('actors')),
-        createdAt: v.number(),
-        updatedAt: v.number(),
-    })
-        .index('by_application', ['applicationId'])
-        .index('by_site', ['siteId'])
-        .index('by_application_and_site', ['applicationId', 'siteId']),
 
     pluginHealthChecks: defineTable({
         applicationId: v.id('applications'),
@@ -320,8 +351,9 @@ export default defineSchema({
         .index('by_application_site_topic_entry', ['applicationId', 'siteId', 'topic', 'entry']),
 
     templates: defineTable({
-        // Ownership
+        // Scope & ownership
         scope: templateScope,
+        organizationId: v.id('organizations'),
         applicationId: v.optional(v.id('applications')),
         siteId: v.optional(v.id('sites')),
         createdBy: v.optional(v.id('actors')),
@@ -345,6 +377,7 @@ export default defineSchema({
     })
         .index('by_scope', ['scope'])
         .index('by_site', ['siteId'])
+        .index('by_organization_and_scope', ['organizationId', 'scope'])
         .index('by_application', ['applicationId'])
         .index('by_application_and_name', ['applicationId', 'name']),
 
@@ -388,6 +421,7 @@ export default defineSchema({
     })
         .index('by_site', ['siteId'])
         .index('by_site_and_createdAt', ['siteId', 'createdAt'])
+        .index('by_site_and_resourceType_and_createdAt', ['siteId', 'resourceType', 'createdAt'])
         .index('by_dedupeKey', ['dedupeKey'])
         .index('by_resource', ['resourceType', 'resourceId'])
         .index('by_status', ['status']),

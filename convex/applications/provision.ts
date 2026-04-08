@@ -1,11 +1,13 @@
 'use node';
 
 import { action } from '../_generated/server';
-import { api, internal } from '../_generated/api';
+import { api } from '../_generated/api';
 import { v } from 'convex/values';
 import type { Id } from '../_generated/dataModel';
-import { applicationScope, applicationType, pluginTopic } from '../schema';
+import { applicationPermission, applicationType, pluginTopic } from '../schema';
 import { WorkOS } from '@workos-inc/node';
+import { requirePermissionFromAction } from '../lib/authz';
+import { permissionCatalog } from '../lib/permissions';
 
 async function workosPost<T>(path: string, body?: unknown): Promise<T> {
     const apiKey = process.env.WORKOS_API_KEY;
@@ -24,6 +26,18 @@ async function workosPost<T>(path: string, body?: unknown): Promise<T> {
     return res.json() as Promise<T>;
 }
 
+async function workosDelete(path: string): Promise<void> {
+    const apiKey = process.env.WORKOS_API_KEY;
+    if (!apiKey) throw new Error('WORKOS_API_KEY is required');
+
+    const res = await fetch(`https://api.workos.com${path}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${apiKey}` },
+    });
+
+    if (!res.ok && res.status !== 404) throw new Error(`WorkOS API error ${res.status}: ${await res.text()}`);
+}
+
 type WorkOSApp = { id: string; client_id: string };
 type WorkOSSecret = { hint?: string; secret?: string };
 
@@ -35,7 +49,7 @@ export const provision = action({
         description: v.optional(v.string()),
         type: applicationType,
         organizationId: v.id('organizations'),
-        scopes: v.optional(v.array(applicationScope)),
+        permissions: v.optional(v.array(applicationPermission)),
         plugin: v.optional(
             v.object({
                 version: v.optional(v.string()),
@@ -54,7 +68,7 @@ export const provision = action({
         clientSecret: string;
         secretHint: string | undefined;
     }> => {
-        await ctx.runQuery(internal.applications.crud.requireManager, {});
+        await requirePermissionFromAction(ctx, permissionCatalog.org.actor.serviceAccount.manage);
 
         const workos = new WorkOS(process.env.WORKOS_API_KEY);
         const organization = await workos.organizations.getOrganizationByExternalId(args.organizationId);
@@ -83,7 +97,7 @@ export const provision = action({
             workosApplicationId: workosApp.id,
             workosClientId: workosApp.client_id,
             lastSecretHint: secret.hint,
-            scopes: args.scopes,
+            permissions: args.permissions,
             plugin: args.type === 'plugin' ? args.plugin : undefined,
         });
 
@@ -128,5 +142,24 @@ export const rotateSecret = action({
             clientSecret: secret.secret,
             secretHint: secret.hint,
         };
+    },
+});
+
+export const deprovision = action({
+    args: { id: v.id('applications') },
+    handler: async (ctx, args): Promise<void> => {
+        await requirePermissionFromAction(ctx, permissionCatalog.org.actor.serviceAccount.manage);
+
+        const application = await ctx.runQuery(api.applications.crud.getCredentialsTarget, {
+            applicationId: args.id,
+        });
+        if (!application) throw new Error('Application not found');
+
+        // Skip WorkOS deletion for manually-created records (e.g. devices)
+        if (!application.workosApplicationId.startsWith('manual-')) {
+            await workosDelete(`/connect/applications/${application.workosApplicationId}`);
+        }
+
+        await ctx.runMutation(api.applications.crud.permanentDelete, { id: args.id });
     },
 });
