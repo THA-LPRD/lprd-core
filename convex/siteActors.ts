@@ -362,12 +362,12 @@ export const setSiteAvailability = mutation({
     },
 });
 
-export const checkMySiteAccessBySlug = query({
-    args: { siteSlug: v.string() },
+export const checkMySiteAccessByPublicId = query({
+    args: { sitePublicId: v.string() },
     handler: async (ctx, args) => {
         const site = await ctx.db
             .query('sites')
-            .withIndex('by_slug', (q) => q.eq('slug', args.siteSlug))
+            .withIndex('by_publicId', (q) => q.eq('publicId', args.sitePublicId))
             .unique();
         if (!site) return false;
 

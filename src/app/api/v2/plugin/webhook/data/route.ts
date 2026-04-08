@@ -24,16 +24,20 @@ export async function POST(request: Request) {
 
         const token = authorization.accessToken;
         const body = await request.json();
-        const { data, ttl_seconds, site_slug, topic, entry } = body;
+        const { data, ttl_seconds, site_id, topic, entry } = body;
 
-        if (data === undefined || !ttl_seconds || !site_slug || !topic || !entry) {
+        if (data === undefined || !ttl_seconds || !site_id || !topic || !entry) {
             return NextResponse.json(
-                { error: 'data, ttl_seconds, site_slug, topic, and entry are required' },
+                { error: 'data, ttl_seconds, site_id, topic, and entry are required' },
                 { status: 400 },
             );
         }
 
-        const hasAccess = await fetchQuery(api.siteActors.checkMySiteAccessBySlug, { siteSlug: site_slug }, { token });
+        const hasAccess = await fetchQuery(
+            api.siteActors.checkMySiteAccessByPublicId,
+            { sitePublicId: site_id },
+            { token },
+        );
         if (!hasAccess) {
             throw new AuthError('Application is not installed on this site', 403);
         }
@@ -42,7 +46,7 @@ export async function POST(request: Request) {
         const result = await fetchMutation(
             api.applications.plugin.data.storeWebhookDataForApplication,
             {
-                siteSlug: site_slug,
+                sitePublicId: site_id,
                 contentType: 'plugin_data',
                 data,
                 ttlSeconds: ttl_seconds,

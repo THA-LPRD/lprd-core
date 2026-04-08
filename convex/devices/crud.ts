@@ -1,6 +1,7 @@
 import { v } from 'convex/values';
 import { mutation, type MutationCtx, query } from '../_generated/server';
 import type { Id } from '../_generated/dataModel';
+import { generateActorPublicId } from '../lib/publicIds';
 import { deviceDataBinding, deviceStatus } from '../schema';
 import { permissionCatalog } from '../lib/permissions';
 import { requirePermission, resolveAuthorization } from '../lib/authz';
@@ -23,6 +24,7 @@ async function getOrCreateManualPlugin(ctx: MutationCtx) {
 
     const now = Date.now();
     const actorId = await ctx.db.insert('actors', {
+        publicId: await generateActorPublicId(ctx),
         type: 'serviceAccount',
         name: 'Manual Data Service Account',
         status: 'active',

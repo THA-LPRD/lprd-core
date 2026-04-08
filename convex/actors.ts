@@ -5,6 +5,7 @@ import type { Doc, Id } from './_generated/dataModel';
 import { actorRole, actorType, applicationType } from './schema';
 import { permissionCatalog } from './lib/permissions';
 import { requireAuthorization, requireSiteAuthorization, resolveAuthorization } from './lib/authz';
+import { generateActorPublicId } from './lib/publicIds';
 import {
     deletePermissionGrantsForActor,
     hasSubjectPermissionGrantOnTarget,
@@ -145,6 +146,7 @@ export const createFromWebhook = internalMutation({
 
         const now = Date.now();
         const actorId = await ctx.db.insert('actors', {
+            publicId: await generateActorPublicId(ctx),
             type: 'user',
             organizationId: args.organizationId,
             email: args.email,

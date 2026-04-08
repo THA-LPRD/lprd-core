@@ -187,6 +187,7 @@ export const latestJobState = v.object({
 
 export default defineSchema({
     actors: defineTable({
+        publicId: v.string(),
         type: actorType,
         organizationId: v.optional(v.id('organizations')),
         email: v.optional(v.string()),
@@ -198,6 +199,7 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
     })
+        .index('by_publicId', ['publicId'])
         .index('by_email', ['email'])
         .index('by_organization', ['organizationId']),
 
@@ -208,6 +210,7 @@ export default defineSchema({
     }),
 
     sites: defineTable({
+        publicId: v.string(),
         organizationId: v.id('organizations'),
         name: v.string(),
         slug: v.string(),
@@ -215,6 +218,7 @@ export default defineSchema({
         createdAt: v.number(),
         updatedAt: v.number(),
     })
+        .index('by_publicId', ['publicId'])
         .index('by_slug', ['slug'])
         .index('by_organization', ['organizationId']),
 

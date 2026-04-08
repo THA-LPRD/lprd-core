@@ -1,6 +1,7 @@
 import { internalQuery, mutation, query } from '../_generated/server';
 import { permissionCatalog } from '../lib/permissions';
 import { isPluginApplication } from '../lib/applications';
+import { generateActorPublicId } from '../lib/publicIds';
 import { applicationPermission, applicationType, pluginTopic } from '../schema';
 import { requireAuthorization, resolveAuthorization } from '../lib/authz';
 import { v } from 'convex/values';
@@ -116,6 +117,7 @@ export const createApplicationRecord = mutation({
         const now = Date.now();
 
         const actorId = await ctx.db.insert('actors', {
+            publicId: await generateActorPublicId(ctx),
             type: 'serviceAccount',
             organizationId: args.organizationId,
             email: args.actorEmail,

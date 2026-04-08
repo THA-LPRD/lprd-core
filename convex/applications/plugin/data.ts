@@ -139,7 +139,7 @@ export const patchDataForJob = mutation({
 
 export const storeWebhookDataForApplication = mutation({
     args: {
-        siteSlug: v.string(),
+        sitePublicId: v.string(),
         contentType: v.string(),
         data: v.any(),
         ttlSeconds: v.number(),
@@ -149,10 +149,10 @@ export const storeWebhookDataForApplication = mutation({
     handler: async (ctx, args) => {
         const site = await ctx.db
             .query('sites')
-            .withIndex('by_slug', (q) => q.eq('slug', args.siteSlug))
+            .withIndex('by_publicId', (q) => q.eq('publicId', args.sitePublicId))
             .unique();
 
-        if (!site) throw new Error(`Site not found: ${args.siteSlug}`);
+        if (!site) throw new Error(`Site not found: ${args.sitePublicId}`);
 
         const siteAuthorization = await requireAuthorization(ctx, { siteId: site._id });
         const plugin = siteAuthorization.application;

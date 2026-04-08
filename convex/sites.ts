@@ -3,6 +3,7 @@ import type { Id } from './_generated/dataModel';
 import { mutation, query } from './_generated/server';
 import { permissionCatalog } from './lib/permissions';
 import { requirePermission, resolveAuthorization } from './lib/authz';
+import { generateSitePublicId } from './lib/publicIds';
 import { deletePermissionGrantsForTarget } from './lib/permissionGrants';
 import { removeSiteActorPermissionGrants, syncSiteActorPermissionGrants } from './lib/permissionSync';
 
@@ -30,6 +31,7 @@ export const create = mutation({
 
         const now = Date.now();
         const siteId = await ctx.db.insert('sites', {
+            publicId: await generateSitePublicId(ctx),
             organizationId,
             name: args.name,
             slug: args.slug,
