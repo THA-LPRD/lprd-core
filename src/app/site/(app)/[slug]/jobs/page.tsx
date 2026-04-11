@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { usePaginatedQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { useSite } from '@/providers/site-provider';
@@ -121,7 +122,7 @@ function IconAction({
 
 type Job = ReturnType<typeof usePaginatedQuery<typeof api.jobs.templateJobs.listBySite>>['results'][number];
 
-function JobDetailPanel({ job }: { job: Job }) {
+function JobDetailPanel({ job, resourceType, siteSlug }: { job: Job; resourceType: ResourceType; siteSlug: string }) {
     return (
         <div className="overflow-hidden border-t bg-muted/30 px-4 py-3">
             <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
@@ -130,6 +131,18 @@ function JobDetailPanel({ job }: { job: Job }) {
 
                 <dt className="text-muted-foreground">Source</dt>
                 <dd className="min-w-0 text-foreground select-text">{job.source}</dd>
+
+                <dt className="text-muted-foreground">Attempts</dt>
+                <dd className="min-w-0 text-foreground select-text">{job.executionCount}</dd>
+
+                {job.currentExecutionId && (
+                    <>
+                        <dt className="text-muted-foreground">Current Run</dt>
+                        <dd className="min-w-0 font-mono text-foreground select-text break-all">
+                            {job.currentExecutionId}
+                        </dd>
+                    </>
+                )}
 
                 <dt className="text-muted-foreground">Created</dt>
                 <dd className="min-w-0 text-foreground select-text">{new Date(job.createdAt).toLocaleString()}</dd>
@@ -156,6 +169,16 @@ function JobDetailPanel({ job }: { job: Job }) {
                         <dd className="min-w-0 text-destructive select-text wrap-break-word">{job.errorMessage}</dd>
                     </>
                 )}
+
+                <dt className="text-muted-foreground">History</dt>
+                <dd className="min-w-0">
+                    <Link
+                        href={`/site/${siteSlug}/jobs/${resourceType}/${job._id}`}
+                        className="text-foreground underline underline-offset-4"
+                    >
+                        View execution history
+                    </Link>
+                </dd>
             </dl>
         </div>
     );
@@ -385,7 +408,13 @@ export default function JobsPage() {
                                                         </div>
                                                     )}
                                                 </div>
-                                                {isExpanded && <JobDetailPanel job={job} />}
+                                                {isExpanded && (
+                                                    <JobDetailPanel
+                                                        job={job}
+                                                        resourceType={resourceType}
+                                                        siteSlug={site.slug}
+                                                    />
+                                                )}
                                             </div>
                                         );
                                     })}

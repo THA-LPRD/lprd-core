@@ -3,7 +3,7 @@ import { Queue } from 'bullmq';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { config } from '@worker/config';
-import { type JobResourceType, type JobSource, type JobType, makeJobKey, type WorkerJobPayload } from '@/lib/jobs';
+import { type JobResourceType, type JobSource, type JobType, makeWorkKey, type WorkerJobPayload } from '@/lib/jobs';
 
 export const appJobsQueue = new Queue<WorkerJobPayload>(config.jobs.queueName, {
     connection: config.redis,
@@ -13,9 +13,9 @@ export const appJobsQueue = new Queue<WorkerJobPayload>(config.jobs.queueName, {
     },
 });
 
-export async function enqueueWorkerJob(job: WorkerJobPayload, jobId: string) {
+export async function enqueueWorkerJob(job: WorkerJobPayload, workerJobId: string) {
     await appJobsQueue.add(job.type as WorkerJobPayload['type'], job, {
-        jobId,
+        jobId: workerJobId,
         removeOnComplete: true,
         removeOnFail: false,
     });
@@ -30,11 +30,11 @@ export async function recordAndEnqueueJob(input: {
     resourceId: string;
     source: JobSource;
     payload: WorkerJobPayload;
-    dedupeKey?: string;
+    workKey?: string;
 }) {
-    const dedupeKey = input.dedupeKey ?? makeJobKey(input.type, input.resourceId);
+    const workKey = input.workKey ?? makeWorkKey(input.type, input.resourceId);
 
-    const jobId =
+    const result =
         input.resourceType === 'template'
             ? await fetchMutation(
                   api.jobs.templateJobs.createResourceJob,
@@ -44,7 +44,7 @@ export async function recordAndEnqueueJob(input: {
                       type: input.type as 'normalize-images' | 'template-thumbnail',
                       templateId: input.resourceId as Id<'templates'>,
                       source: input.source,
-                      dedupeKey,
+                      workKey,
                       payload: input.payload.payload,
                   },
                   { token: input.token },
@@ -57,7 +57,7 @@ export async function recordAndEnqueueJob(input: {
                         siteId: input.siteId,
                         frameId: input.resourceId as Id<'frames'>,
                         source: input.source,
-                        dedupeKey,
+                        workKey,
                         payload: input.payload.payload,
                     },
                     { token: input.token },
@@ -70,7 +70,7 @@ export async function recordAndEnqueueJob(input: {
                           siteId: input.siteId,
                           deviceId: input.resourceId as Id<'devices'>,
                           source: input.source,
-                          dedupeKey,
+                          workKey,
                           payload: input.payload.payload,
                       },
                       { token: input.token },
@@ -83,7 +83,7 @@ export async function recordAndEnqueueJob(input: {
                             siteId: input.siteId,
                             pluginDataId: input.resourceId as Id<'pluginData'>,
                             source: input.source,
-                            dedupeKey,
+                            workKey,
                             payload: input.payload.payload,
                         },
                         { token: input.token },
@@ -95,12 +95,18 @@ export async function recordAndEnqueueJob(input: {
                             siteId: input.siteId,
                             applicationId: input.resourceId as Id<'applications'>,
                             source: input.source,
-                            dedupeKey,
+                            workKey,
                             payload: input.payload.payload,
                         },
                         { token: input.token },
                     );
 
-    await enqueueWorkerJob({ ...input.payload, jobId }, dedupeKey);
-    return jobId;
+    if (result.shouldEnqueue && result.executionId) {
+        await enqueueWorkerJob(
+            { ...input.payload, jobStateId: result.jobStateId, executionId: result.executionId },
+            result.executionId,
+        );
+    }
+
+    return result.jobStateId;
 }

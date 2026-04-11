@@ -344,7 +344,7 @@ export const setNextRenderForJob = mutation({
         deviceId: v.id('devices'),
         storageId: v.id('_storage'),
         renderedAt: v.number(),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         const device = await ctx.db.get(args.deviceId);

@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
-import { requireAuthorization } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
 import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
@@ -14,17 +14,16 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
         const { jobId } = await context.params;
         const token = authorization.accessToken;
 
-        const job = await fetchQuery(api.jobs.templateJobs.getById, { id: jobId as Id<'jobs'> }, { token });
+        const job = await fetchQuery(api.jobs.templateJobs.getById, { id: jobId as Id<'jobStates'> }, { token });
         if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
         if (job.siteId) {
-            if (!authorization.can(permissionCatalog.org.site.template.manage.job.write)) {
-                throw new AuthError('Forbidden', 403);
-            }
-        } else {
-            if (!authorization.can(permissionCatalog.org.template.manage.upsert.job.write)) {
-                throw new AuthError('Forbidden', 403);
-            }
+            await requirePermission(permissionCatalog.org.site.template.manage.job.write, {
+                request,
+                siteId: job.siteId,
+            });
+        } else if (!authorization.can(permissionCatalog.org.template.manage.upsert.job.write)) {
+            throw new AuthError('Forbidden', 403);
         }
 
         await fetchMutation(api.jobs.templateJobs.start, { id: job._id }, { token });

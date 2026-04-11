@@ -3,24 +3,24 @@ import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
-import { requirePermission } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
 import { appJobsQueue } from '@/lib/jobs/dispatch';
 import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
-export async function POST(_request: Request, context: { params: Promise<{ jobId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.frame.manage.job.write);
+        const authorization = await requireAuthorization({ request });
         const { jobId } = await context.params;
         const token = authorization.accessToken;
 
-        const job = await fetchQuery(api.jobs.frameJobs.getById, { id: jobId as Id<'jobs'> }, { token });
+        const job = await fetchQuery(api.jobs.frameJobs.getById, { id: jobId as Id<'jobStates'> }, { token });
         if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.frame.manage.job.write, { request, siteId: job.siteId });
 
-        await fetchMutation(api.jobs.frameJobs.pause, { id: job._id }, { token });
-
-        const queueJob = await appJobsQueue.getJob(job.dedupeKey);
+        const workerJobId = await fetchMutation(api.jobs.frameJobs.pause, { id: job._id }, { token });
+        const queueJob = await appJobsQueue.getJob(workerJobId);
         if (queueJob) await queueJob.remove();
 
         return NextResponse.json({ ok: true });

@@ -3,34 +3,32 @@ import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
-import { requireAuthorization } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
 import { appJobsQueue } from '@/lib/jobs/dispatch';
 import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
-export async function POST(_request: Request, context: { params: Promise<{ jobId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const authorization = await requireAuthorization();
+        const authorization = await requireAuthorization({ request });
         const { jobId } = await context.params;
         const token = authorization.accessToken;
 
-        const job = await fetchQuery(api.jobs.templateJobs.getById, { id: jobId as Id<'jobs'> }, { token });
+        const job = await fetchQuery(api.jobs.templateJobs.getById, { id: jobId as Id<'jobStates'> }, { token });
         if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
 
         if (job.siteId) {
-            if (!authorization.can(permissionCatalog.org.site.template.manage.job.write)) {
-                throw new AuthError('Forbidden', 403);
-            }
-        } else {
-            if (!authorization.can(permissionCatalog.org.template.manage.upsert.job.write)) {
-                throw new AuthError('Forbidden', 403);
-            }
+            await requirePermission(permissionCatalog.org.site.template.manage.job.write, {
+                request,
+                siteId: job.siteId,
+            });
+        } else if (!authorization.can(permissionCatalog.org.template.manage.upsert.job.write)) {
+            throw new AuthError('Forbidden', 403);
         }
 
-        await fetchMutation(api.jobs.templateJobs.cancel, { id: job._id }, { token });
-
-        const queueJob = await appJobsQueue.getJob(job.dedupeKey);
+        const workerJobId = await fetchMutation(api.jobs.templateJobs.cancel, { id: job._id }, { token });
+        const queueJob = await appJobsQueue.getJob(workerJobId);
         if (queueJob) await queueJob.remove();
 
         return NextResponse.json({ ok: true });

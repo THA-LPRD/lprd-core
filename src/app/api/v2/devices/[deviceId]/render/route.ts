@@ -1,23 +1,27 @@
-import { fetchMutation } from 'convex/nextjs';
+import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { permissionCatalog } from '@/lib/permissions';
 import { AuthError } from '@/lib/auth-errors';
-import { requirePermission } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
+import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request, context: { params: Promise<{ deviceId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.device.manage.artifact.write, {
-            request,
-        });
+        const authorization = await requireAuthorization({ request });
         const token = authorization.accessToken;
         const { deviceId } = await context.params;
         const deviceIdValue = deviceId as Id<'devices'>;
+        const device = await fetchQuery(api.devices.crud.getById, { id: deviceIdValue }, { token });
+        if (!device) return NextResponse.json({ error: 'Device not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.device.manage.artifact.write, {
+            request,
+            siteId: device.siteId,
+        });
         const formData = await request.formData();
-        const jobId = formData.get('jobId') as Id<'jobs'> | null;
+        const jobId = formData.get('jobId') as Id<'jobLogs'> | null;
         const renderedAtValue = formData.get('renderedAt');
         const renderedAt = renderedAtValue ? Number(renderedAtValue) : null;
         const file = formData.get('file');

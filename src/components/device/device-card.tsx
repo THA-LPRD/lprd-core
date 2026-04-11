@@ -37,7 +37,7 @@ export function DeviceCard({ device, siteSlug }: { device: Device; siteSlug: str
                 {/* Device preview area */}
                 <div className="relative aspect-video bg-muted flex items-center justify-center border-b overflow-hidden">
                     {device.currentUrl ? (
-                        <Image objectFit="contain" fill src={device.currentUrl} alt={device.name} />
+                        <Image style={{ objectFit: 'contain' }} fill src={device.currentUrl} alt={device.name} />
                     ) : (
                         <Monitor className="size-12 text-muted-foreground/50" />
                     )}

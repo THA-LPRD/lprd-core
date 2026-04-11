@@ -57,12 +57,37 @@ export type RenderOrThumbnailPayload =
     | { type: 'device-render'; payload: DeviceRenderPayload };
 
 export type WorkerJobPayload =
-    | { jobId?: Id<'jobs'>; type: 'normalize-images'; payload: NormalizeImagesPayload }
-    | { jobId?: Id<'jobs'>; type: 'template-thumbnail'; payload: TemplateThumbnailPayload }
-    | { jobId?: Id<'jobs'>; type: 'frame-thumbnail'; payload: FrameThumbnailPayload }
-    | { jobId?: Id<'jobs'>; type: 'device-render'; payload: DeviceRenderPayload }
-    | { jobId?: Id<'jobs'>; type: 'health-check'; payload: HealthCheckPayload };
+    | {
+          jobStateId?: Id<'jobStates'>;
+          executionId?: Id<'jobLogs'>;
+          type: 'normalize-images';
+          payload: NormalizeImagesPayload;
+      }
+    | {
+          jobStateId?: Id<'jobStates'>;
+          executionId?: Id<'jobLogs'>;
+          type: 'template-thumbnail';
+          payload: TemplateThumbnailPayload;
+      }
+    | {
+          jobStateId?: Id<'jobStates'>;
+          executionId?: Id<'jobLogs'>;
+          type: 'frame-thumbnail';
+          payload: FrameThumbnailPayload;
+      }
+    | {
+          jobStateId?: Id<'jobStates'>;
+          executionId?: Id<'jobLogs'>;
+          type: 'device-render';
+          payload: DeviceRenderPayload;
+      }
+    | {
+          jobStateId?: Id<'jobStates'>;
+          executionId?: Id<'jobLogs'>;
+          type: 'health-check';
+          payload: HealthCheckPayload;
+      };
 
-export function makeJobKey(type: JobType, resourceId: string) {
+export function makeWorkKey(type: JobType, resourceId: string) {
     return `${type}__${resourceId}`;
 }

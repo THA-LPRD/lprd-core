@@ -119,7 +119,7 @@ export const patchDataForJob = mutation({
     args: {
         id: v.id('pluginData'),
         data: v.any(),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         const record = await ctx.db.get(args.id);

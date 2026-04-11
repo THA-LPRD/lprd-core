@@ -29,7 +29,9 @@ async function normalizePluginDataImages(job: Extract<WorkerJobPayload, { type: 
         const normalized = await normalizeData(template.sampleData);
         const formData = new FormData();
         formData.set('sampleData', JSON.stringify(template.sampleData ?? null));
-        formData.set('jobId', job.jobId);
+        if (job.executionId) {
+            formData.set('jobId', job.executionId);
+        }
         for (const image of normalized.uploadedImages) {
             formData.append('uploadUrl', image.externalUrl);
             formData.append('file', image.blob, 'normalized-image');
@@ -47,7 +49,9 @@ async function normalizePluginDataImages(job: Extract<WorkerJobPayload, { type: 
         const normalized = await normalizeData(record.data);
         const formData = new FormData();
         formData.set('data', JSON.stringify(record.data ?? null));
-        formData.set('jobId', job.jobId);
+        if (job.executionId) {
+            formData.set('jobId', job.executionId);
+        }
         for (const image of normalized.uploadedImages) {
             formData.append('uploadUrl', image.externalUrl);
             formData.append('file', image.blob, 'normalized-image');
@@ -122,7 +126,9 @@ async function renderTemplateThumbnail(job: Extract<WorkerJobPayload, { type: 't
     });
     const formData = new FormData();
     formData.set('templateId', payload.templateId);
-    formData.set('jobId', job.jobId);
+    if (job.executionId) {
+        formData.set('jobId', job.executionId);
+    }
     formData.set('file', new Blob([png], { type: 'image/png' }), 'template-thumbnail.png');
     await workerRequestJson<{ ok: true }>(`/api/v2/templates/${payload.templateId}/thumbnail`, {
         method: 'POST',
@@ -140,7 +146,9 @@ async function renderFrameThumbnail(job: Extract<WorkerJobPayload, { type: 'fram
     });
     const formData = new FormData();
     formData.set('frameId', payload.frameId);
-    formData.set('jobId', job.jobId);
+    if (job.executionId) {
+        formData.set('jobId', job.executionId);
+    }
     formData.set('file', new Blob([png], { type: 'image/png' }), 'frame-thumbnail.png');
     await workerRequestJson<{ ok: true }>(`/api/v2/frames/${payload.frameId}/thumbnail`, {
         method: 'POST',
@@ -158,7 +166,9 @@ async function renderDevice(job: Extract<WorkerJobPayload, { type: 'device-rende
     });
     const formData = new FormData();
     formData.set('deviceId', payload.deviceId);
-    formData.set('jobId', job.jobId);
+    if (job.executionId) {
+        formData.set('jobId', job.executionId);
+    }
     formData.set('renderedAt', String(Date.now()));
     formData.set('file', new Blob([png], { type: 'image/png' }), 'device-render.png');
     await workerRequestJson<{ ok: true }>(`/api/v2/devices/${payload.deviceId}/render`, {
@@ -183,7 +193,7 @@ async function runHealthCheck(job: Extract<WorkerJobPayload, { type: 'health-che
             await workerRequestJson<{ ok: true }>(`/api/v2/applications/${payload.applicationId}/health-check`, {
                 method: 'POST',
                 body: JSON.stringify({
-                    jobId: job.jobId,
+                    jobId: job.executionId,
                     status: isHealthy ? 'healthy' : 'unhealthy',
                     responseTimeMs,
                     pluginVersion: body.version,
@@ -196,7 +206,7 @@ async function runHealthCheck(job: Extract<WorkerJobPayload, { type: 'health-che
         await workerRequestJson<{ ok: true }>(`/api/v2/applications/${payload.applicationId}/health-check`, {
             method: 'POST',
             body: JSON.stringify({
-                jobId: job.jobId,
+                jobId: job.executionId,
                 status: 'unhealthy',
                 responseTimeMs,
                 errorMessage: `HTTP ${res.status} ${res.statusText}`,
@@ -206,7 +216,7 @@ async function runHealthCheck(job: Extract<WorkerJobPayload, { type: 'health-che
         await workerRequestJson<{ ok: true }>(`/api/v2/applications/${payload.applicationId}/health-check`, {
             method: 'POST',
             body: JSON.stringify({
-                jobId: job.jobId,
+                jobId: job.executionId,
                 status: 'error',
                 responseTimeMs: Date.now() - start,
                 errorMessage: error instanceof Error ? error.message : String(error),
@@ -216,8 +226,8 @@ async function runHealthCheck(job: Extract<WorkerJobPayload, { type: 'health-che
 }
 
 function getJobStatusPath(data: WorkerJobPayload): string | null {
-    if (!data.jobId) return null;
-    const jobId = data.jobId;
+    if (!data.jobStateId) return null;
+    const jobId = data.jobStateId;
     switch (data.type) {
         case 'normalize-images':
             return data.payload.resourceType === 'template'

@@ -328,7 +328,7 @@ export const patchSampleDataForJob = mutation({
     args: {
         id: v.id('templates'),
         sampleData: v.any(),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         const template = await ctx.db.get(args.id);
@@ -359,7 +359,7 @@ export const storeThumbnailForJob = mutation({
     args: {
         id: v.id('templates'),
         storageId: v.id('_storage'),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         const template = await ctx.db.get(args.id);

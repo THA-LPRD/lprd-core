@@ -220,7 +220,7 @@ export const storeThumbnailForJob = mutation({
     args: {
         id: v.id('frames'),
         storageId: v.id('_storage'),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         const frame = await ctx.db.get(args.id);

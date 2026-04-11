@@ -2,9 +2,9 @@ import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { permissionCatalog } from '@/lib/permissions';
 import { AuthError } from '@/lib/auth-errors';
-import { requireAuthorization } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
+import { permissionCatalog } from '@/lib/permissions';
 import { uploadImagesAndReplaceUrls } from '@/lib/server/imageUpload';
 
 export const runtime = 'nodejs';
@@ -12,13 +12,6 @@ export const runtime = 'nodejs';
 export async function GET(request: Request, context: { params: Promise<{ templateId: string }> }) {
     try {
         const authorization = await requireAuthorization({ request });
-        if (
-            !authorization.can(permissionCatalog.org.template.manage.sampleData.read) &&
-            !authorization.can(permissionCatalog.org.site.template.manage.sampleData.read)
-        ) {
-            throw new AuthError('Forbidden', 403);
-        }
-
         const token = authorization.accessToken;
         const { templateId } = await context.params;
         const template = await fetchQuery(
@@ -26,6 +19,17 @@ export async function GET(request: Request, context: { params: Promise<{ templat
             { id: templateId as Id<'templates'> },
             { token },
         );
+        if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(permissionCatalog.org.site.template.manage.sampleData.read, {
+                request,
+                siteId: template.siteId,
+            });
+        } else if (!authorization.can(permissionCatalog.org.template.manage.sampleData.read)) {
+            throw new AuthError('Forbidden', 403);
+        }
+
         return NextResponse.json(template);
     } catch (error) {
         if (error instanceof AuthError) {
@@ -42,18 +46,23 @@ export async function GET(request: Request, context: { params: Promise<{ templat
 export async function PATCH(request: Request, context: { params: Promise<{ templateId: string }> }) {
     try {
         const authorization = await requireAuthorization({ request });
-        if (
-            !authorization.can(permissionCatalog.org.template.manage.sampleData.write) &&
-            !authorization.can(permissionCatalog.org.site.template.manage.sampleData.write)
-        ) {
-            throw new AuthError('Forbidden', 403);
-        }
-
         const token = authorization.accessToken;
         const { templateId } = await context.params;
         const templateIdValue = templateId as Id<'templates'>;
+        const template = await fetchQuery(api.templates.crud.getById, { id: templateIdValue }, { token });
+        if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(permissionCatalog.org.site.template.manage.sampleData.write, {
+                request,
+                siteId: template.siteId,
+            });
+        } else if (!authorization.can(permissionCatalog.org.template.manage.sampleData.write)) {
+            throw new AuthError('Forbidden', 403);
+        }
+
         let sampleData: unknown;
-        let jobId: Id<'jobs'> | undefined;
+        let jobId: Id<'jobLogs'> | undefined;
 
         const contentType = request.headers.get('content-type') ?? '';
         if (contentType.includes('multipart/form-data')) {
@@ -66,7 +75,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ templ
             sampleData = JSON.parse(sampleDataValue) as unknown;
             const jobIdValue = formData.get('jobId');
             if (typeof jobIdValue === 'string' && jobIdValue) {
-                jobId = jobIdValue as Id<'jobs'>;
+                jobId = jobIdValue as Id<'jobLogs'>;
             }
 
             const uploadUrls = formData.getAll('uploadUrl');
@@ -96,7 +105,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ templ
                 });
             }
         } else {
-            const body = (await request.json()) as { sampleData?: unknown; jobId?: Id<'jobs'> };
+            const body = (await request.json()) as { sampleData?: unknown; jobId?: Id<'jobLogs'> };
             sampleData = body.sampleData;
             jobId = body.jobId;
         }

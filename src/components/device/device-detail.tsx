@@ -117,11 +117,30 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                     <CardContent>
                         <div className="relative aspect-video bg-muted rounded-lg flex items-center justify-center overflow-hidden">
                             {previewTab === 'last' && device.lastUrl ? (
-                                <Image objectFit="contain" fill unoptimized src={device.lastUrl} alt="Last" />
+                                <Image
+                                    style={{ objectFit: 'contain' }}
+                                    fill
+                                    unoptimized
+                                    src={device.lastUrl}
+                                    alt="Last"
+                                />
                             ) : previewTab === 'current' && device.currentUrl ? (
-                                <Image objectFit="contain" fill unoptimized src={device.currentUrl} alt="Current" />
+                                <Image
+                                    style={{ objectFit: 'contain' }}
+                                    fill
+                                    unoptimized
+                                    priority
+                                    src={device.currentUrl}
+                                    alt="Current"
+                                />
                             ) : previewTab === 'queued' && device.nextUrl ? (
-                                <Image objectFit="contain" fill unoptimized src={device.nextUrl} alt="Queued" />
+                                <Image
+                                    style={{ objectFit: 'contain' }}
+                                    fill
+                                    unoptimized
+                                    src={device.nextUrl}
+                                    alt="Queued"
+                                />
                             ) : (
                                 <ImageIcon className="size-16 text-muted-foreground/50" />
                             )}
@@ -138,7 +157,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                         <div className="grid gap-4 sm:grid-cols-2">
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Device ID</p>
-                                <p className="font-mono text-sm">{device._id}</p>
+                                <p className="font-mono text-sm truncate">{device._id}</p>
                             </div>
 
                             <div>

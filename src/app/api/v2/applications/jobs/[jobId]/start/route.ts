@@ -17,7 +17,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
         const { jobId } = await context.params;
         await fetchMutation(
             api.jobs.applicationJobs.start,
-            { id: jobId as Id<'jobs'> },
+            { id: jobId as Id<'jobStates'> },
             { token: authorization.accessToken },
         );
         return NextResponse.json({ ok: true });

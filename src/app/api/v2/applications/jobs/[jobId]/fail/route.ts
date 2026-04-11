@@ -21,7 +21,7 @@ export async function POST(request: Request, context: { params: Promise<{ jobId:
         }
         await fetchMutation(
             api.jobs.applicationJobs.fail,
-            { id: jobId as Id<'jobs'>, errorMessage: body.errorMessage },
+            { id: jobId as Id<'jobStates'>, errorMessage: body.errorMessage },
             { token: authorization.accessToken },
         );
         return NextResponse.json({ ok: true });

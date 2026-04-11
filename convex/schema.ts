@@ -182,7 +182,9 @@ export const latestJobState = v.object({
     status: jobStatus,
     updatedAt: v.number(),
     errorMessage: v.optional(v.string()),
-    jobId: v.optional(v.id('jobs')),
+    jobId: v.optional(v.id('jobLogs')),
+    jobStateId: v.optional(v.id('jobStates')),
+    executionId: v.optional(v.id('jobLogs')),
 });
 
 export default defineSchema({
@@ -407,7 +409,33 @@ export default defineSchema({
         updatedAt: v.number(),
     }).index('by_site', ['siteId']),
 
-    jobs: defineTable({
+    jobStates: defineTable({
+        siteId: v.optional(v.id('sites')),
+        actorId: v.id('actors'),
+        type: jobType,
+        resourceType: jobResourceType,
+        resourceId: v.string(),
+        source: jobSource,
+        workKey: v.string(),
+        status: jobStatus,
+        executionCount: v.number(),
+        errorMessage: v.optional(v.string()),
+        currentExecutionId: v.optional(v.id('jobLogs')),
+        latestExecutionId: v.optional(v.id('jobLogs')),
+        latestFinishedExecutionId: v.optional(v.id('jobLogs')),
+        latestSuccessfulExecutionId: v.optional(v.id('jobLogs')),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+        queuedAt: v.optional(v.number()),
+        startedAt: v.optional(v.number()),
+        finishedAt: v.optional(v.number()),
+    })
+        .index('by_site', ['siteId'])
+        .index('by_workKey', ['workKey'])
+        .index('by_resource', ['resourceType', 'resourceId'])
+        .index('by_site_and_resourceType_and_updatedAt', ['siteId', 'resourceType', 'updatedAt']),
+
+    jobLogs: defineTable({
         siteId: v.optional(v.id('sites')),
         actorId: v.id('actors'),
         type: jobType,
@@ -415,7 +443,11 @@ export default defineSchema({
         resourceId: v.string(),
         source: jobSource,
         status: jobStatus,
-        dedupeKey: v.string(),
+        workKey: v.optional(v.string()),
+        jobStateId: v.optional(v.id('jobStates')),
+        workerJobId: v.optional(v.string()),
+        executionNumber: v.optional(v.number()),
+        retryOfJobId: v.optional(v.id('jobLogs')),
         attempts: v.number(),
         errorMessage: v.optional(v.string()),
         payload: v.any(),
@@ -426,7 +458,8 @@ export default defineSchema({
         .index('by_site', ['siteId'])
         .index('by_site_and_createdAt', ['siteId', 'createdAt'])
         .index('by_site_and_resourceType_and_createdAt', ['siteId', 'resourceType', 'createdAt'])
-        .index('by_dedupeKey', ['dedupeKey'])
+        .index('by_workKey_and_createdAt', ['workKey', 'createdAt'])
+        .index('by_jobState_and_createdAt', ['jobStateId', 'createdAt'])
         .index('by_resource', ['resourceType', 'resourceId'])
         .index('by_status', ['status']),
 });

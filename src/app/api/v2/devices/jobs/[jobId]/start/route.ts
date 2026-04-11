@@ -1,22 +1,22 @@
-import { fetchMutation } from 'convex/nextjs';
+import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
-import { requirePermission } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
 import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.device.manage.job.write, { request });
+        const authorization = await requireAuthorization({ request });
         const { jobId } = await context.params;
-        await fetchMutation(
-            api.jobs.deviceJobs.start,
-            { id: jobId as Id<'jobs'> },
-            { token: authorization.accessToken },
-        );
+        const token = authorization.accessToken;
+        const job = await fetchQuery(api.jobs.deviceJobs.getById, { id: jobId as Id<'jobStates'> }, { token });
+        if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.device.manage.job.write, { request, siteId: job.siteId });
+        await fetchMutation(api.jobs.deviceJobs.start, { id: jobId as Id<'jobStates'> }, { token });
         return NextResponse.json({ ok: true });
     } catch (error) {
         if (error instanceof AuthError) {

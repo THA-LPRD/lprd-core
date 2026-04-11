@@ -1,38 +1,40 @@
-import { fetchQuery } from 'convex/nextjs';
+import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
-import { requirePermission } from '@/lib/authz';
-import { recordAndEnqueueJob } from '@/lib/jobs/dispatch';
-import type { JobResourceType, JobSource, JobType, WorkerJobPayload } from '@/lib/jobs/types';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
+import { appJobsQueue } from '@/lib/jobs/dispatch';
+import type { WorkerJobPayload } from '@/lib/jobs/types';
 import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
-export async function POST(_request: Request, context: { params: Promise<{ jobId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ jobId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.frame.manage.job.write);
+        const authorization = await requireAuthorization({ request });
         const { jobId } = await context.params;
         const token = authorization.accessToken;
 
-        const job = await fetchQuery(api.jobs.frameJobs.getById, { id: jobId as Id<'jobs'> }, { token });
+        const job = await fetchQuery(api.jobs.frameJobs.getById, { id: jobId as Id<'jobStates'> }, { token });
         if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.frame.manage.job.write, { request, siteId: job.siteId });
         if (job.status !== 'failed') {
             return NextResponse.json({ error: 'Only failed jobs can be retried' }, { status: 409 });
         }
 
-        await recordAndEnqueueJob({
-            token,
-            actorId: job.actorId,
-            siteId: job.siteId ?? undefined,
-            type: job.type as JobType,
-            resourceType: job.resourceType as JobResourceType,
-            resourceId: job.resourceId,
-            source: job.source as JobSource,
-            payload: { type: job.type as WorkerJobPayload['type'], payload: job.payload } as WorkerJobPayload,
-            dedupeKey: `${job.dedupeKey}__retry__${Date.now()}`,
-        });
+        const queuedJob = await fetchMutation(api.jobs.frameJobs.retry, { id: job._id }, { token });
+
+        await appJobsQueue.add(
+            queuedJob.type,
+            {
+                type: queuedJob.type as WorkerJobPayload['type'],
+                jobStateId: queuedJob.jobStateId,
+                executionId: queuedJob.executionId,
+                payload: queuedJob.payload,
+            } as WorkerJobPayload,
+            { jobId: queuedJob.workerJobId, removeOnComplete: true, removeOnFail: false },
+        );
 
         return NextResponse.json({ ok: true });
     } catch (error) {

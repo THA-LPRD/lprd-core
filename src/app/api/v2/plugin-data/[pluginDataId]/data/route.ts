@@ -2,16 +2,16 @@ import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { permissionCatalog } from '@/lib/permissions';
 import { AuthError } from '@/lib/auth-errors';
-import { requirePermission } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
+import { permissionCatalog } from '@/lib/permissions';
 import { uploadImagesAndReplaceUrls } from '@/lib/server/imageUpload';
 
 export const runtime = 'nodejs';
 
 export async function GET(request: Request, context: { params: Promise<{ pluginDataId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.pluginData.view, { request });
+        const authorization = await requireAuthorization({ request });
         const token = authorization.accessToken;
         const { pluginDataId } = await context.params;
         const record = await fetchQuery(
@@ -19,6 +19,8 @@ export async function GET(request: Request, context: { params: Promise<{ pluginD
             { id: pluginDataId as Id<'pluginData'> },
             { token },
         );
+        if (!record) return NextResponse.json({ error: 'Plugin data not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.pluginData.view, { request, siteId: record.siteId });
         return NextResponse.json(record);
     } catch (error) {
         if (error instanceof AuthError) {
@@ -34,12 +36,19 @@ export async function GET(request: Request, context: { params: Promise<{ pluginD
 
 export async function PATCH(request: Request, context: { params: Promise<{ pluginDataId: string }> }) {
     try {
-        const authorization = await requirePermission(permissionCatalog.org.site.pluginData.manage.self, { request });
+        const authorization = await requireAuthorization({ request });
         const token = authorization.accessToken;
         const { pluginDataId } = await context.params;
         const pluginDataIdValue = pluginDataId as Id<'pluginData'>;
+        const record = await fetchQuery(
+            api.applications.plugin.data.getByIdForJob,
+            { id: pluginDataIdValue },
+            { token },
+        );
+        if (!record) return NextResponse.json({ error: 'Plugin data not found' }, { status: 404 });
+        await requirePermission(permissionCatalog.org.site.pluginData.manage.self, { request, siteId: record.siteId });
         let data: unknown;
-        let jobId: Id<'jobs'> | undefined;
+        let jobId: Id<'jobLogs'> | undefined;
 
         const contentType = request.headers.get('content-type') ?? '';
         if (contentType.includes('multipart/form-data')) {
@@ -52,7 +61,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ plugi
             data = JSON.parse(dataValue) as unknown;
             const jobIdValue = formData.get('jobId');
             if (typeof jobIdValue === 'string' && jobIdValue) {
-                jobId = jobIdValue as Id<'jobs'>;
+                jobId = jobIdValue as Id<'jobLogs'>;
             }
 
             const uploadUrls = formData.getAll('uploadUrl');
@@ -86,7 +95,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ plugi
                 });
             }
         } else {
-            const body = (await request.json()) as { data?: unknown; jobId?: Id<'jobs'> };
+            const body = (await request.json()) as { data?: unknown; jobId?: Id<'jobLogs'> };
             data = body.data;
             jobId = body.jobId;
         }

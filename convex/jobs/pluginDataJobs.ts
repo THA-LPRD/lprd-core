@@ -1,34 +1,66 @@
-import { type GenericMutationCtx, paginationOptsValidator } from 'convex/server';
+import { paginationOptsValidator } from 'convex/server';
 import { v } from 'convex/values';
-import type { DataModel, Id } from '../_generated/dataModel';
-import { mutation, query } from '../_generated/server';
-import { jobSource } from '../schema';
-import { permissionCatalog } from '../lib/permissions';
+import type { Id } from '../_generated/dataModel';
+import { mutation, type MutationCtx, query } from '../_generated/server';
 import { requirePermission, resolveAuthorization } from '../lib/authz';
+import { permissionCatalog } from '../lib/permissions';
+import { jobSource } from '../schema';
 import type { LatestJobState } from './types';
+import { buildLatestJobState, buildQueuedJobResult, serializeJobState } from './jobStateMappers';
 
 export async function updatePluginDataLatestJobState(
-    ctx: GenericMutationCtx<DataModel>,
+    ctx: MutationCtx,
     pluginDataId: Id<'pluginData'>,
     latestJob: LatestJobState,
 ) {
     const pluginData = await ctx.db.get(pluginDataId);
-    if (pluginData) await ctx.db.patch(pluginData._id, { latestJob });
+    if (pluginData) {
+        await ctx.db.patch(pluginData._id, { latestJob });
+    }
 }
 
 export async function markPluginDataJobSucceeded(
-    ctx: GenericMutationCtx<DataModel>,
-    jobId: Id<'jobs'>,
+    ctx: MutationCtx,
+    executionId: Id<'jobLogs'>,
     pluginDataId: Id<'pluginData'>,
 ) {
-    const job = await ctx.db.get(jobId);
-    if (!job) throw new Error('Job not found');
-    if (job.resourceType !== 'pluginData' || job.resourceId !== pluginDataId) {
+    const execution = await ctx.db.get(executionId);
+    if (!execution) throw new Error('Job not found');
+    if (execution.resourceType !== 'pluginData' || execution.resourceId !== pluginDataId) {
         throw new Error('Job does not match plugin data');
     }
+
     const now = Date.now();
-    await ctx.db.patch(job._id, { status: 'succeeded', finishedAt: now, errorMessage: undefined });
-    await updatePluginDataLatestJobState(ctx, pluginDataId, { status: 'succeeded', updatedAt: now, jobId: job._id });
+    await ctx.db.patch(execution._id, {
+        status: 'succeeded',
+        finishedAt: now,
+        errorMessage: undefined,
+    });
+
+    if (!execution.jobStateId) return;
+    const state = await ctx.db.get(execution.jobStateId);
+    if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') return;
+
+    await ctx.db.patch(state._id, {
+        status: 'succeeded',
+        updatedAt: now,
+        finishedAt: now,
+        errorMessage: undefined,
+        latestExecutionId: execution._id,
+        latestFinishedExecutionId: execution._id,
+        latestSuccessfulExecutionId: execution._id,
+    });
+
+    await updatePluginDataLatestJobState(
+        ctx,
+        pluginDataId,
+        buildLatestJobState({
+            status: 'succeeded',
+            updatedAt: now,
+            jobStateId: state._id,
+            executionId: execution._id,
+        }),
+    );
 }
 
 export const createResourceJob = mutation({
@@ -37,164 +69,467 @@ export const createResourceJob = mutation({
         siteId: v.optional(v.id('sites')),
         pluginDataId: v.id('pluginData'),
         source: jobSource,
-        dedupeKey: v.string(),
+        workKey: v.string(),
         payload: v.any(),
     },
     handler: async (ctx, args) => {
         const pluginData = await ctx.db.get(args.pluginDataId);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (args.siteId && args.siteId !== pluginData.siteId)
+        if (args.siteId && args.siteId !== pluginData.siteId) {
             throw new Error('Job site does not match plugin data site');
+        }
+
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.enqueue, {
             siteId: pluginData.siteId,
         });
-        const existing = await ctx.db
-            .query('jobs')
-            .withIndex('by_dedupeKey', (q) => q.eq('dedupeKey', args.dedupeKey))
+
+        const existingState = await ctx.db
+            .query('jobStates')
+            .withIndex('by_workKey', (q) => q.eq('workKey', args.workKey))
             .unique();
-        if (existing && (existing.status === 'pending' || existing.status === 'running')) return existing._id;
+
+        if (
+            existingState &&
+            (existingState.resourceType !== 'pluginData' || existingState.type !== 'normalize-images')
+        ) {
+            throw new Error('Job work key already belongs to another resource');
+        }
+
+        if (existingState && ['pending', 'running', 'paused'].includes(existingState.status)) {
+            return {
+                jobStateId: existingState._id,
+                executionId: existingState.currentExecutionId,
+                shouldEnqueue: false,
+            };
+        }
+
         const now = Date.now();
-        const jobId = await ctx.db.insert('jobs', {
-            actorId: args.actorId,
+        const jobStateId =
+            existingState?._id ??
+            (await ctx.db.insert('jobStates', {
+                siteId: pluginData.siteId,
+                actorId: args.actorId,
+                type: 'normalize-images',
+                resourceType: 'pluginData',
+                resourceId: args.pluginDataId,
+                source: args.source,
+                workKey: args.workKey,
+                status: 'pending',
+                executionCount: 0,
+                createdAt: now,
+                updatedAt: now,
+                queuedAt: now,
+            }));
+
+        const nextExecutionNumber = (existingState?.executionCount ?? 0) + 1;
+        const executionId = await ctx.db.insert('jobLogs', {
             siteId: pluginData.siteId,
+            actorId: args.actorId,
             type: 'normalize-images',
             resourceType: 'pluginData',
             resourceId: args.pluginDataId,
             source: args.source,
-            dedupeKey: args.dedupeKey,
-            payload: args.payload,
             status: 'pending',
-            attempts: existing ? existing.attempts + 1 : 1,
+            workKey: args.workKey,
+            jobStateId,
+            workerJobId: undefined,
+            executionNumber: nextExecutionNumber,
+            retryOfJobId: undefined,
+            attempts: nextExecutionNumber,
+            errorMessage: undefined,
+            payload: args.payload,
             createdAt: now,
+            startedAt: undefined,
+            finishedAt: undefined,
         });
-        await updatePluginDataLatestJobState(ctx, args.pluginDataId, { status: 'pending', updatedAt: now, jobId });
-        return jobId;
+
+        await ctx.db.patch(executionId, { workerJobId: executionId });
+        await ctx.db.patch(jobStateId, {
+            siteId: pluginData.siteId,
+            actorId: args.actorId,
+            type: 'normalize-images',
+            resourceType: 'pluginData',
+            resourceId: args.pluginDataId,
+            source: args.source,
+            workKey: args.workKey,
+            status: 'pending',
+            executionCount: nextExecutionNumber,
+            errorMessage: undefined,
+            currentExecutionId: executionId,
+            latestExecutionId: executionId,
+            updatedAt: now,
+            queuedAt: now,
+            startedAt: undefined,
+            finishedAt: undefined,
+        });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            args.pluginDataId,
+            buildLatestJobState({
+                status: 'pending',
+                updatedAt: now,
+                jobStateId,
+                executionId,
+            }),
+        );
+
+        return {
+            jobStateId,
+            executionId,
+            shouldEnqueue: true,
+        };
     },
 });
 
 export const start = mutation({
-    args: { id: v.id('jobs') },
+    args: { id: v.id('jobStates') },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData') throw new Error('Job not found');
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (job.siteId && job.siteId !== pluginData.siteId) throw new Error('Job site does not match plugin data site');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
             siteId: pluginData.siteId,
         });
+        if (state.status !== 'pending' || execution.status !== 'pending') {
+            throw new Error('Only pending jobs can be started');
+        }
+
         const now = Date.now();
-        await ctx.db.patch(job._id, { status: 'running', startedAt: now, errorMessage: undefined });
-        await updatePluginDataLatestJobState(ctx, pluginData._id, {
+        await ctx.db.patch(execution._id, {
+            status: 'running',
+            startedAt: now,
+            finishedAt: undefined,
+            errorMessage: undefined,
+        });
+        await ctx.db.patch(state._id, {
             status: 'running',
             updatedAt: now,
-            jobId: job._id,
+            startedAt: now,
+            finishedAt: undefined,
+            errorMessage: undefined,
+            latestExecutionId: execution._id,
         });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'running',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: execution._id,
+            }),
+        );
     },
 });
 
 export const fail = mutation({
-    args: { id: v.id('jobs'), errorMessage: v.string() },
+    args: { id: v.id('jobStates'), errorMessage: v.string() },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData') throw new Error('Job not found');
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (job.siteId && job.siteId !== pluginData.siteId) throw new Error('Job site does not match plugin data site');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
             siteId: pluginData.siteId,
         });
         const now = Date.now();
-        await ctx.db.patch(job._id, { status: 'failed', finishedAt: now, errorMessage: args.errorMessage });
-        await updatePluginDataLatestJobState(ctx, pluginData._id, {
+
+        await ctx.db.patch(execution._id, {
+            status: 'failed',
+            finishedAt: now,
+            errorMessage: args.errorMessage,
+        });
+        await ctx.db.patch(state._id, {
             status: 'failed',
             updatedAt: now,
+            finishedAt: now,
             errorMessage: args.errorMessage,
-            jobId: job._id,
+            latestExecutionId: execution._id,
+            latestFinishedExecutionId: execution._id,
         });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'failed',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: execution._id,
+                errorMessage: args.errorMessage,
+            }),
+        );
     },
 });
 
 export const cancel = mutation({
-    args: { id: v.id('jobs') },
+    args: { id: v.id('jobStates') },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData' || job.status !== 'pending') throw new Error('Job not found');
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (job.siteId && job.siteId !== pluginData.siteId) throw new Error('Job site does not match plugin data site');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
             siteId: pluginData.siteId,
         });
+        if (state.status !== 'pending' || execution.status !== 'pending') {
+            throw new Error('Only pending jobs can be cancelled');
+        }
+
         const now = Date.now();
-        await ctx.db.patch(job._id, { status: 'cancelled', finishedAt: now, errorMessage: undefined });
-        await updatePluginDataLatestJobState(ctx, pluginData._id, {
+        await ctx.db.patch(execution._id, {
+            status: 'cancelled',
+            finishedAt: now,
+            errorMessage: undefined,
+        });
+        await ctx.db.patch(state._id, {
             status: 'cancelled',
             updatedAt: now,
-            jobId: job._id,
+            finishedAt: now,
+            errorMessage: undefined,
+            latestExecutionId: execution._id,
+            latestFinishedExecutionId: execution._id,
         });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'cancelled',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: execution._id,
+            }),
+        );
+
+        return execution.workerJobId ?? execution._id;
     },
 });
 
 export const pause = mutation({
-    args: { id: v.id('jobs') },
+    args: { id: v.id('jobStates') },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData' || job.status !== 'pending') throw new Error('Job not found');
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (job.siteId && job.siteId !== pluginData.siteId) throw new Error('Job site does not match plugin data site');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
             siteId: pluginData.siteId,
         });
+        if (state.status !== 'pending' || execution.status !== 'pending') {
+            throw new Error('Only pending jobs can be paused');
+        }
+
         const now = Date.now();
-        await ctx.db.patch(job._id, { status: 'paused', finishedAt: undefined, errorMessage: undefined });
-        await updatePluginDataLatestJobState(ctx, pluginData._id, { status: 'paused', updatedAt: now, jobId: job._id });
+        await ctx.db.patch(execution._id, {
+            status: 'paused',
+            finishedAt: undefined,
+            errorMessage: undefined,
+        });
+        await ctx.db.patch(state._id, {
+            status: 'paused',
+            updatedAt: now,
+            finishedAt: undefined,
+            errorMessage: undefined,
+            latestExecutionId: execution._id,
+        });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'paused',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: execution._id,
+            }),
+        );
+
+        return execution.workerJobId ?? execution._id;
     },
 });
 
 export const resume = mutation({
-    args: { id: v.id('jobs') },
+    args: { id: v.id('jobStates') },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData' || job.status !== 'paused') throw new Error('Job not found');
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) throw new Error('Plugin data not found');
-        if (job.siteId && job.siteId !== pluginData.siteId) throw new Error('Job site does not match plugin data site');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
         await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
             siteId: pluginData.siteId,
         });
+        if (state.status !== 'paused' || execution.status !== 'paused') {
+            throw new Error('Only paused jobs can be resumed');
+        }
+
         const now = Date.now();
-        await ctx.db.patch(job._id, {
+        await ctx.db.patch(execution._id, {
             status: 'pending',
             startedAt: undefined,
             finishedAt: undefined,
             errorMessage: undefined,
         });
-        await updatePluginDataLatestJobState(ctx, pluginData._id, {
+        await ctx.db.patch(state._id, {
             status: 'pending',
             updatedAt: now,
-            jobId: job._id,
+            queuedAt: now,
+            startedAt: undefined,
+            finishedAt: undefined,
+            errorMessage: undefined,
+            latestExecutionId: execution._id,
+        });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'pending',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: execution._id,
+            }),
+        );
+
+        return buildQueuedJobResult(state, {
+            ...execution,
+            status: 'pending',
+            workerJobId: execution.workerJobId ?? execution._id,
         });
     },
 });
 
-export const getById = query({
-    args: { id: v.id('jobs') },
+export const retry = mutation({
+    args: { id: v.id('jobStates') },
     handler: async (ctx, args) => {
-        const job = await ctx.db.get(args.id);
-        if (!job || job.resourceType !== 'pluginData') return null;
-        const pluginData = await ctx.db.get(job.resourceId as Id<'pluginData'>);
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            throw new Error('Job not found');
+        }
+        const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
+        if (!execution) throw new Error('Job execution not found');
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
+        if (!pluginData) throw new Error('Plugin data not found');
+        if (state.siteId && state.siteId !== pluginData.siteId) {
+            throw new Error('Job site does not match plugin data site');
+        }
+        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.write, {
+            siteId: pluginData.siteId,
+        });
+        if (state.status !== 'failed' || execution.status !== 'failed') {
+            throw new Error('Only failed jobs can be retried');
+        }
+
+        const now = Date.now();
+        const nextExecutionNumber = state.executionCount + 1;
+        const nextExecutionId = await ctx.db.insert('jobLogs', {
+            siteId: state.siteId,
+            actorId: state.actorId,
+            type: state.type,
+            resourceType: state.resourceType,
+            resourceId: state.resourceId,
+            source: state.source,
+            status: 'pending',
+            workKey: state.workKey,
+            jobStateId: state._id,
+            workerJobId: undefined,
+            executionNumber: nextExecutionNumber,
+            retryOfJobId: execution._id,
+            attempts: nextExecutionNumber,
+            errorMessage: undefined,
+            payload: execution.payload,
+            createdAt: now,
+            startedAt: undefined,
+            finishedAt: undefined,
+        });
+
+        await ctx.db.patch(nextExecutionId, { workerJobId: nextExecutionId });
+        await ctx.db.patch(state._id, {
+            status: 'pending',
+            executionCount: nextExecutionNumber,
+            errorMessage: undefined,
+            currentExecutionId: nextExecutionId,
+            latestExecutionId: nextExecutionId,
+            updatedAt: now,
+            queuedAt: now,
+            startedAt: undefined,
+            finishedAt: undefined,
+        });
+
+        await updatePluginDataLatestJobState(
+            ctx,
+            pluginData._id,
+            buildLatestJobState({
+                status: 'pending',
+                updatedAt: now,
+                jobStateId: state._id,
+                executionId: nextExecutionId,
+            }),
+        );
+
+        const nextExecution = await ctx.db.get(nextExecutionId);
+        if (!nextExecution) throw new Error('Retried job execution not found');
+        return buildQueuedJobResult(state, nextExecution);
+    },
+});
+
+export const getById = query({
+    args: { id: v.id('jobStates') },
+    handler: async (ctx, args) => {
+        const state = await ctx.db.get(args.id);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') return null;
+
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
         if (!pluginData) return null;
+
         try {
-            if (job.siteId && job.siteId !== pluginData.siteId) return null;
+            if (state.siteId && state.siteId !== pluginData.siteId) return null;
             await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.read, {
                 siteId: pluginData.siteId,
             });
         } catch {
             return null;
         }
-        return job;
+
+        return await serializeJobState(ctx, state);
     },
 });
 
@@ -205,11 +540,46 @@ export const listBySite = query({
         if (!authorization?.can(permissionCatalog.org.site.pluginData.manage.job.read)) {
             return { page: [], isDone: true, continueCursor: '' };
         }
-        return ctx.db
-            .query('jobs')
-            .withIndex('by_site_and_resourceType_and_createdAt', (q) =>
+
+        const result = await ctx.db
+            .query('jobStates')
+            .withIndex('by_site_and_resourceType_and_updatedAt', (q) =>
                 q.eq('siteId', args.siteId).eq('resourceType', 'pluginData'),
             )
+            .order('desc')
+            .paginate(args.paginationOpts);
+
+        return {
+            ...result,
+            page: await Promise.all(result.page.map((state) => serializeJobState(ctx, state))),
+        };
+    },
+});
+
+export const listExecutions = query({
+    args: { jobStateId: v.id('jobStates'), paginationOpts: paginationOptsValidator },
+    handler: async (ctx, args) => {
+        const state = await ctx.db.get(args.jobStateId);
+        if (!state || state.resourceType !== 'pluginData' || state.type !== 'normalize-images') {
+            return { page: [], isDone: true, continueCursor: '' };
+        }
+
+        const pluginData = await ctx.db.get(state.resourceId as Id<'pluginData'>);
+        if (!pluginData) {
+            return { page: [], isDone: true, continueCursor: '' };
+        }
+
+        try {
+            await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.job.read, {
+                siteId: pluginData.siteId,
+            });
+        } catch {
+            return { page: [], isDone: true, continueCursor: '' };
+        }
+
+        return await ctx.db
+            .query('jobLogs')
+            .withIndex('by_jobState_and_createdAt', (q) => q.eq('jobStateId', args.jobStateId))
             .order('desc')
             .paginate(args.paginationOpts);
     },

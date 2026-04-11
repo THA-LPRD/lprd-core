@@ -78,7 +78,7 @@ export const recordHealthCheck = mutation({
         responseTimeMs: v.optional(v.number()),
         pluginVersion: v.optional(v.string()),
         errorMessage: v.optional(v.string()),
-        jobId: v.optional(v.id('jobs')),
+        jobId: v.optional(v.id('jobLogs')),
     },
     handler: async (ctx, args) => {
         await requirePermission(ctx, permissionCatalog.org.actor.serviceAccount.healthCheck.write.self);

@@ -8,57 +8,62 @@
  * @module
  */
 
-import type * as actors from '../actors.js';
-import type * as applications_crud from '../applications/crud.js';
-import type * as applications_plugin_data from '../applications/plugin/data.js';
-import type * as applications_plugin_health from '../applications/plugin/health.js';
-import type * as applications_plugin_registration from '../applications/plugin/registration.js';
-import type * as applications_plugin_sites from '../applications/plugin/sites.js';
-import type * as applications_provision from '../applications/provision.js';
-import type * as authorization from '../authorization.js';
-import type * as devices_accessLogs from '../devices/accessLogs.js';
-import type * as devices_crud from '../devices/crud.js';
-import type * as devices_render from '../devices/render.js';
-import type * as devices_v1 from '../devices/v1.js';
-import type * as frames from '../frames.js';
-import type * as http from '../http.js';
-import type * as jobs_applicationJobs from '../jobs/applicationJobs.js';
-import type * as jobs_deviceJobs from '../jobs/deviceJobs.js';
-import type * as jobs_frameJobs from '../jobs/frameJobs.js';
-import type * as jobs_pluginDataJobs from '../jobs/pluginDataJobs.js';
-import type * as jobs_templateJobs from '../jobs/templateJobs.js';
-import type * as jobs_types from '../jobs/types.js';
-import type * as lib_applications from '../lib/applications.js';
-import type * as lib_authz from '../lib/authz.js';
-import type * as lib_deviceLogs from '../lib/deviceLogs.js';
-import type * as lib_permissionGrants from '../lib/permissionGrants.js';
-import type * as lib_permissionSync from '../lib/permissionSync.js';
-import type * as lib_permissions_catalog from '../lib/permissions/catalog.js';
-import type * as lib_permissions_index from '../lib/permissions/index.js';
-import type * as lib_permissions_matcher from '../lib/permissions/matcher.js';
-import type * as lib_permissions_presets_actorRole from '../lib/permissions/presets/actorRole.js';
-import type * as lib_permissions_presets_serviceAccount from '../lib/permissions/presets/serviceAccount.js';
-import type * as lib_permissions_presets_siteActorRole from '../lib/permissions/presets/siteActorRole.js';
-import type * as lib_permissions_targets from '../lib/permissions/targets.js';
-import type * as lib_publicIds from '../lib/publicIds.js';
-import type * as lib_storage from '../lib/storage.js';
-import type * as lib_template from '../lib/template.js';
-import type * as lib_template_data from '../lib/template_data.js';
-import type * as organizations from '../organizations.js';
-import type * as siteActors from '../siteActors.js';
-import type * as sites from '../sites.js';
-import type * as templates_crud from '../templates/crud.js';
-import type * as templates_global from '../templates/global.js';
-import type * as workos_helpers from '../workos/helpers.js';
-import type * as workos_orgCreated from '../workos/orgCreated.js';
-import type * as workos_orgDeleted from '../workos/orgDeleted.js';
-import type * as workos_orgUpdated from '../workos/orgUpdated.js';
-import type * as workos_userCreated from '../workos/userCreated.js';
-import type * as workos_userDeleted from '../workos/userDeleted.js';
-import type * as workos_userUpdated from '../workos/userUpdated.js';
-import type * as workos_utils from '../workos/utils.js';
+import type * as actors from "../actors.js";
+import type * as applications_crud from "../applications/crud.js";
+import type * as applications_plugin_data from "../applications/plugin/data.js";
+import type * as applications_plugin_health from "../applications/plugin/health.js";
+import type * as applications_plugin_registration from "../applications/plugin/registration.js";
+import type * as applications_plugin_sites from "../applications/plugin/sites.js";
+import type * as applications_provision from "../applications/provision.js";
+import type * as authorization from "../authorization.js";
+import type * as devices_accessLogs from "../devices/accessLogs.js";
+import type * as devices_crud from "../devices/crud.js";
+import type * as devices_render from "../devices/render.js";
+import type * as devices_v1 from "../devices/v1.js";
+import type * as frames from "../frames.js";
+import type * as http from "../http.js";
+import type * as jobs_applicationJobs from "../jobs/applicationJobs.js";
+import type * as jobs_deviceJobs from "../jobs/deviceJobs.js";
+import type * as jobs_frameJobs from "../jobs/frameJobs.js";
+import type * as jobs_jobStateMappers from "../jobs/jobStateMappers.js";
+import type * as jobs_pluginDataJobs from "../jobs/pluginDataJobs.js";
+import type * as jobs_templateJobs from "../jobs/templateJobs.js";
+import type * as jobs_types from "../jobs/types.js";
+import type * as lib_applications from "../lib/applications.js";
+import type * as lib_authz from "../lib/authz.js";
+import type * as lib_deviceLogs from "../lib/deviceLogs.js";
+import type * as lib_permissionGrants from "../lib/permissionGrants.js";
+import type * as lib_permissionSync from "../lib/permissionSync.js";
+import type * as lib_permissions_catalog from "../lib/permissions/catalog.js";
+import type * as lib_permissions_index from "../lib/permissions/index.js";
+import type * as lib_permissions_matcher from "../lib/permissions/matcher.js";
+import type * as lib_permissions_presets_actorRole from "../lib/permissions/presets/actorRole.js";
+import type * as lib_permissions_presets_serviceAccount from "../lib/permissions/presets/serviceAccount.js";
+import type * as lib_permissions_presets_siteActorRole from "../lib/permissions/presets/siteActorRole.js";
+import type * as lib_permissions_targets from "../lib/permissions/targets.js";
+import type * as lib_publicIds from "../lib/publicIds.js";
+import type * as lib_storage from "../lib/storage.js";
+import type * as lib_template from "../lib/template.js";
+import type * as lib_template_data from "../lib/template_data.js";
+import type * as organizations from "../organizations.js";
+import type * as siteActors from "../siteActors.js";
+import type * as sites from "../sites.js";
+import type * as templates_crud from "../templates/crud.js";
+import type * as templates_global from "../templates/global.js";
+import type * as workos_helpers from "../workos/helpers.js";
+import type * as workos_orgCreated from "../workos/orgCreated.js";
+import type * as workos_orgDeleted from "../workos/orgDeleted.js";
+import type * as workos_orgUpdated from "../workos/orgUpdated.js";
+import type * as workos_userCreated from "../workos/userCreated.js";
+import type * as workos_userDeleted from "../workos/userDeleted.js";
+import type * as workos_userUpdated from "../workos/userUpdated.js";
+import type * as workos_utils from "../workos/utils.js";
 
-import type { ApiFromModules, FilterApi, FunctionReference, } from 'convex/server';
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   actors: typeof actors;
@@ -78,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "jobs/applicationJobs": typeof jobs_applicationJobs;
   "jobs/deviceJobs": typeof jobs_deviceJobs;
   "jobs/frameJobs": typeof jobs_frameJobs;
+  "jobs/jobStateMappers": typeof jobs_jobStateMappers;
   "jobs/pluginDataJobs": typeof jobs_pluginDataJobs;
   "jobs/templateJobs": typeof jobs_templateJobs;
   "jobs/types": typeof jobs_types;

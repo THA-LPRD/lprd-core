@@ -1,28 +1,33 @@
-import { fetchMutation } from 'convex/nextjs';
+import { fetchMutation, fetchQuery } from 'convex/nextjs';
 import { NextResponse } from 'next/server';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { permissionCatalog } from '@/lib/permissions';
 import { AuthError } from '@/lib/auth-errors';
-import { requireAuthorization } from '@/lib/authz';
+import { requireAuthorization, requirePermission } from '@/lib/authz';
+import { permissionCatalog } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request, context: { params: Promise<{ templateId: string }> }) {
     try {
         const authorization = await requireAuthorization({ request });
-        if (
-            !authorization.can(permissionCatalog.org.template.manage.thumbnail.write) &&
-            !authorization.can(permissionCatalog.org.site.template.manage.thumbnail.write)
-        ) {
-            throw new AuthError('Forbidden', 403);
-        }
-
         const token = authorization.accessToken;
         const { templateId } = await context.params;
         const templateIdValue = templateId as Id<'templates'>;
+        const template = await fetchQuery(api.templates.crud.getById, { id: templateIdValue }, { token });
+        if (!template) return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+
+        if (template.scope === 'site' && template.siteId) {
+            await requirePermission(permissionCatalog.org.site.template.manage.thumbnail.write, {
+                request,
+                siteId: template.siteId,
+            });
+        } else if (!authorization.can(permissionCatalog.org.template.manage.thumbnail.write)) {
+            throw new AuthError('Forbidden', 403);
+        }
+
         const formData = await request.formData();
-        const jobId = formData.get('jobId') as Id<'jobs'> | null;
+        const jobId = formData.get('jobId') as Id<'jobLogs'> | null;
         const file = formData.get('file');
         if (!jobId || !(file instanceof File)) {
             return NextResponse.json({ error: 'jobId and file are required' }, { status: 400 });

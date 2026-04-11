@@ -1,7 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import { config } from '@worker/config';
 import { enqueueWorkerJob } from '@/lib/jobs/dispatch';
-import { makeJobKey } from '@/lib/jobs';
+import { makeWorkKey } from '@/lib/jobs';
 import { workerRequestJson } from '@worker/app-client';
 
 const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
@@ -40,7 +40,7 @@ export async function startScheduler() {
                             baseUrl: plugin.baseUrl,
                         },
                     },
-                    makeJobKey('health-check', plugin.applicationId),
+                    makeWorkKey('health-check', plugin.applicationId),
                 );
             }
         },

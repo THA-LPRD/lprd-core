@@ -138,7 +138,7 @@ export async function enqueueDeviceConfigureJobs(input: {
                 resourceType: 'pluginData',
                 resourceId: pluginDataId,
                 source: 'deviceConfigure',
-                dedupeKey: `normalize-images__${pluginDataId}`,
+                workKey: `normalize-images__${pluginDataId}`,
                 payload: {
                     type: 'normalize-images',
                     payload: {

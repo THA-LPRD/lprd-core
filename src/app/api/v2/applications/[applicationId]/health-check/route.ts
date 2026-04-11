@@ -19,7 +19,7 @@ export async function POST(request: Request, context: { params: Promise<{ applic
         const token = authorization.accessToken;
         const { applicationId } = await context.params;
         const body = (await request.json()) as {
-            jobId?: Id<'jobs'>;
+            jobId?: Id<'jobLogs'>;
             status?: 'healthy' | 'unhealthy' | 'error';
             responseTimeMs?: number;
             pluginVersion?: string;

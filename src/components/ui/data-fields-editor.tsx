@@ -89,7 +89,7 @@ export function DataFieldsEditor({
                         {imgUrl && (
                             <div className="relative h-8 items-center rounded border">
                                 <Image
-                                    objectFit="contain"
+                                    style={{ objectFit: 'contain' }}
                                     fill
                                     src={imgUrl}
                                     alt="user provided image"
