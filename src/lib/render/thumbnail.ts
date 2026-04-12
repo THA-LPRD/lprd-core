@@ -16,11 +16,14 @@ async function getBrowser(): Promise<Browser> {
 export interface ScreenshotOptions {
     /** URL path to navigate to (e.g. `/site/slug/devices/render/id`) */
     renderPath: string;
-    width: number;
-    height: number;
     origin: string;
+    /** Initial viewport used only to load and measure the render target. */
+    width?: number;
+    height?: number;
     /** CSS selector to wait for before screenshotting. Defaults to `[data-rendered]`. */
     waitForSelector?: string;
+    /** CSS selector to screenshot instead of the full page. */
+    screenshotSelector?: string;
 }
 
 /**
@@ -29,12 +32,13 @@ export interface ScreenshotOptions {
  * Single rendering function for all screenshot needs (devices, frames, templates).
  */
 export async function generateScreenshot(options: ScreenshotOptions): Promise<ArrayBuffer> {
-    const { renderPath, width, height, origin, waitForSelector = '[data-rendered]' } = options;
+    const { renderPath, width, height, origin, waitForSelector = '[data-rendered]', screenshotSelector } = options;
     const serviceToken = await getInternalAccessToken();
 
     const b = await getBrowser();
+    const viewport = width && height ? { width, height } : undefined;
     const context = await b.newContext({
-        viewport: { width, height },
+        ...(viewport ? { viewport } : {}),
         extraHTTPHeaders: {
             authorization: `Bearer ${serviceToken}`,
         },
@@ -55,6 +59,25 @@ export async function generateScreenshot(options: ScreenshotOptions): Promise<Ar
             await page.waitForSelector(waitForSelector, { timeout: 10000 });
         } catch {
             throw new Error(`Render marker '${waitForSelector}' not found on ${renderPath}: ${await page.content()}`);
+        }
+
+        if (screenshotSelector) {
+            const target = await page.waitForSelector(screenshotSelector, { timeout: 10000 });
+            const box = await target.evaluate((el) => {
+                const rect = el.getBoundingClientRect();
+                return {
+                    width: Math.ceil(Math.max(rect.width, el.scrollWidth)),
+                    height: Math.ceil(Math.max(rect.height, el.scrollHeight)),
+                };
+            });
+
+            if (box.width <= 0 || box.height <= 0) {
+                throw new Error(`Screenshot target '${screenshotSelector}' has no renderable size on ${renderPath}`);
+            }
+
+            await page.setViewportSize({ width: box.width, height: box.height });
+            const png = await target.screenshot({ type: 'png' });
+            return Uint8Array.from(png).buffer;
         }
 
         const png = await page.screenshot({ type: 'png' });

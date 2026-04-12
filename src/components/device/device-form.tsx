@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +12,8 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { X } from 'lucide-react';
+import { TagsInput, TagsInputInput, TagsInputItem, TagsInputList } from '@/components/ui/tags-input';
+import { canAddTag, normalizeTags } from '@/lib/tags';
 
 type DeviceFormData = {
     name: string;
@@ -34,7 +34,6 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
     const [name, setName] = React.useState(initialData?.name ?? '');
     const [description, setDescription] = React.useState(initialData?.description ?? '');
     const [tags, setTags] = React.useState<string[]>(initialData?.tags ?? []);
-    const [tagInput, setTagInput] = React.useState('');
     const [status, setStatus] = React.useState<'pending' | 'active'>(initialData?.status ?? 'pending');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -45,28 +44,8 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
             setDescription(initialData?.description ?? '');
             setTags(initialData?.tags ?? []);
             setStatus(initialData?.status ?? 'pending');
-            setTagInput('');
         }
     }, [open, initialData]);
-
-    const handleAddTag = () => {
-        const trimmed = tagInput.trim().toLowerCase();
-        if (trimmed && !tags.includes(trimmed)) {
-            setTags([...tags, trimmed]);
-            setTagInput('');
-        }
-    };
-
-    const handleRemoveTag = (tag: string) => {
-        setTags(tags.filter((t) => t !== tag));
-    };
-
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            handleAddTag();
-        }
-    };
 
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -123,34 +102,25 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
 
                         <div className="grid gap-2">
                             <Label htmlFor="tags">Tags</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    id="tags"
-                                    value={tagInput}
-                                    onChange={(e) => setTagInput(e.target.value)}
-                                    onKeyDown={handleKeyDown}
-                                    placeholder="Add tag..."
-                                />
-                                <Button type="button" variant="secondary" onClick={handleAddTag}>
-                                    Add
-                                </Button>
-                            </div>
-                            {tags.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-2">
-                                    {tags.map((tag) => (
-                                        <Badge key={tag} variant="secondary" className="gap-1 p-2.5">
-                                            <span className={`-mt-1`}>{tag}</span>
-                                            <Button
-                                                variant="ghost"
-                                                onClick={() => handleRemoveTag(tag)}
-                                                className="hover:bg-muted px-0"
-                                            >
-                                                <X className="size-3" />
-                                            </Button>
-                                        </Badge>
-                                    ))}
-                                </div>
-                            )}
+                            <TagsInput
+                                value={tags}
+                                onValueChange={(value) => setTags(normalizeTags(value))}
+                                onValidate={(value) => canAddTag(value, tags)}
+                                blurBehavior="add"
+                                addOnPaste
+                            >
+                                {({ value }) => (
+                                    <TagsInputList>
+                                        {value.map((tag) => (
+                                            <TagsInputItem key={tag} value={tag}>
+                                                {tag}
+                                            </TagsInputItem>
+                                        ))}
+                                        <TagsInputInput id="tags" placeholder={value.length === 0 ? 'Add tag…' : ''} />
+                                    </TagsInputList>
+                                )}
+                            </TagsInput>
+                            <p className="text-xs text-muted-foreground">Enter to add · Backspace to remove last</p>
                         </div>
 
                         {mode === 'edit' && (

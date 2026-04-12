@@ -33,7 +33,7 @@ export function FrameAssignmentCard({
                         onFrameChange(val === '__none__' ? null : (val as Id<'frames'>));
                     }}
                 >
-                    <SelectTrigger className="w-1/2">
+                    <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a frame">
                             <span className="truncate block">{selectedFrame ? selectedFrame.name : 'No frame'}</span>
                         </SelectValue>

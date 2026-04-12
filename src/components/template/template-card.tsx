@@ -17,6 +17,7 @@ export type Template = {
     name: string;
     description?: string;
     variants: TemplateVariant[];
+    preferredVariantIndex: number;
     thumbnailUrl: string | null;
     latestJob?: {
         status: 'pending' | 'paused' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -34,6 +35,11 @@ function variantLabel(v: TemplateVariant): string {
     return 'FG';
 }
 
+function variantAspectRatio(v: TemplateVariant | undefined): number {
+    if (v?.type === 'content' && v.w > 0 && v.h > 0) return v.w / v.h;
+    return 10 / 6;
+}
+
 export function TemplateCard({
     template,
     onEdit,
@@ -46,25 +52,35 @@ export function TemplateCard({
     onDuplicate: () => void;
 }) {
     const isOrganizationScoped = template.scope === 'organization';
+    const preferredVariant = template.variants[template.preferredVariantIndex] ?? template.variants[0];
+    const thumbnailAspectRatio = variantAspectRatio(preferredVariant);
 
     return (
         <Card className="hover:bg-accent/50 transition-colors overflow-hidden group">
             {/* Thumbnail area */}
-            <div className="border-b bg-muted mx-3 rounded-md">
-                <div className="relative aspect-video mx-auto">
-                    {template.thumbnailUrl ? (
-                        <Image
-                            src={template.thumbnailUrl}
-                            alt={template.name}
-                            fill
-                            className="object-contain"
-                            unoptimized
-                        />
-                    ) : (
-                        <div className="flex items-center justify-center w-full h-full">
-                            <LayoutTemplate className="size-12 text-muted-foreground/50" />
-                        </div>
-                    )}
+            <div className="border-b bg-muted mx-3 rounded-md overflow-hidden">
+                <div className="flex h-40 items-center justify-center">
+                    <div
+                        className="relative w-full"
+                        style={{
+                            aspectRatio: String(thumbnailAspectRatio),
+                            maxWidth: `${thumbnailAspectRatio * 10}rem`,
+                        }}
+                    >
+                        {template.thumbnailUrl ? (
+                            <Image
+                                src={template.thumbnailUrl}
+                                alt={template.name}
+                                fill
+                                className="object-contain"
+                                unoptimized
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center w-full h-full">
+                                <LayoutTemplate className="size-12 text-muted-foreground/50" />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

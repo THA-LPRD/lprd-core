@@ -6,7 +6,16 @@ import { usePaginatedQuery, useQuery } from 'convex/react';
 import { useParams } from 'next/navigation';
 import { api } from '@convex/api';
 import type { Id } from '@convex/dataModel';
-import { Button } from '@/components/ui/button';
+import { TableCell, TableHead, TableRow } from '@/components/ui/table';
+import {
+    DataTable,
+    DataTableBody,
+    DataTableChevronHead,
+    DataTableDetail,
+    DataTableHeader,
+    DataTableRow,
+} from '@/components/ui/data-table';
+import { RelativeTime } from '@/components/ui/relative-time';
 import { cn } from '@/lib/utils';
 
 const resourceTypes = ['template', 'frame', 'device', 'pluginData'] as const;
@@ -57,6 +66,155 @@ function JobDuration({ startedAt, finishedAt }: { startedAt?: number | null; fin
     return <span className="font-mono text-xs text-muted-foreground">{label}</span>;
 }
 
+type Execution = ReturnType<typeof usePaginatedQuery<typeof api.jobs.templateJobs.listExecutions>>['results'][number];
+
+function ExecutionDetailPanel({ execution }: { execution: Execution }) {
+    return (
+        <div className="px-4 py-3">
+            <dl className="grid grid-cols-[7rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
+                <dt className="text-muted-foreground">Execution ID</dt>
+                <dd className="min-w-0 font-mono text-foreground select-text break-all">{execution._id}</dd>
+
+                {execution.workerJobId && execution.workerJobId !== execution._id && (
+                    <>
+                        <dt className="text-muted-foreground">Worker Job ID</dt>
+                        <dd className="min-w-0 font-mono text-foreground select-text break-all">
+                            {execution.workerJobId}
+                        </dd>
+                    </>
+                )}
+
+                <dt className="text-muted-foreground">Source</dt>
+                <dd className="min-w-0 text-foreground select-text">{execution.source}</dd>
+
+                <dt className="text-muted-foreground">Work Key</dt>
+                <dd className="min-w-0 font-mono text-foreground select-text break-all">{execution.workKey}</dd>
+
+                {execution.retryOfJobId && (
+                    <>
+                        <dt className="text-muted-foreground">Retry of</dt>
+                        <dd className="min-w-0 font-mono text-foreground select-text break-all">
+                            {execution.retryOfJobId}
+                        </dd>
+                    </>
+                )}
+
+                <dt className="text-muted-foreground">Created</dt>
+                <dd className="min-w-0 text-foreground select-text">
+                    {new Date(execution.createdAt).toLocaleString()}
+                </dd>
+
+                {execution.startedAt && (
+                    <>
+                        <dt className="text-muted-foreground">Started</dt>
+                        <dd className="min-w-0 text-foreground select-text">
+                            {new Date(execution.startedAt).toLocaleString()}
+                        </dd>
+                    </>
+                )}
+
+                {execution.finishedAt && (
+                    <>
+                        <dt className="text-muted-foreground">Finished</dt>
+                        <dd className="min-w-0 text-foreground select-text">
+                            {new Date(execution.finishedAt).toLocaleString()}
+                        </dd>
+                    </>
+                )}
+
+                {execution.errorMessage && (
+                    <>
+                        <dt className="text-muted-foreground">Error</dt>
+                        <dd className="min-w-0 text-destructive select-text wrap-break-word">
+                            {execution.errorMessage}
+                        </dd>
+                    </>
+                )}
+
+                {execution.payload !== undefined && execution.payload !== null && (
+                    <>
+                        <dt className="text-muted-foreground">Payload</dt>
+                        <dd className="min-w-0">
+                            <pre className="whitespace-pre-wrap break-all rounded bg-muted px-2 py-1.5 font-mono text-xs text-foreground select-text">
+                                {JSON.stringify(execution.payload, null, 2)}
+                            </pre>
+                        </dd>
+                    </>
+                )}
+            </dl>
+        </div>
+    );
+}
+
+type Job = NonNullable<ReturnType<typeof useQuery<typeof api.jobs.templateJobs.getById>>>;
+
+function JobSummaryCard({ job }: { job: Job }) {
+    return (
+        <div className="rounded-lg border bg-muted/30 px-4 py-3">
+            <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
+                <dt className="text-muted-foreground">Status</dt>
+                <dd className="min-w-0">
+                    <StatusIndicator status={job.status} />
+                </dd>
+
+                <dt className="text-muted-foreground">Resource</dt>
+                <dd className="min-w-0 text-foreground select-text">
+                    {job.resourceName ?? job.resourceType}
+                    <span className="ml-1.5 font-mono text-muted-foreground/60" title={job.resourceId}>
+                        {job.resourceId.slice(0, 8)}…
+                    </span>
+                </dd>
+
+                <dt className="text-muted-foreground">Attempts</dt>
+                <dd className="min-w-0 text-foreground">{job.executionCount}</dd>
+
+                <dt className="text-muted-foreground">Source</dt>
+                <dd className="min-w-0 text-foreground select-text">{job.source}</dd>
+
+                <dt className="text-muted-foreground">Work Key</dt>
+                <dd className="min-w-0 font-mono text-foreground select-text break-all">{job.workKey}</dd>
+
+                {job.currentExecutionId && (
+                    <>
+                        <dt className="text-muted-foreground">Current Run</dt>
+                        <dd className="min-w-0 font-mono text-foreground select-text break-all">
+                            {job.currentExecutionId}
+                        </dd>
+                    </>
+                )}
+
+                <dt className="text-muted-foreground">Created</dt>
+                <dd className="min-w-0 text-foreground select-text">{new Date(job.createdAt).toLocaleString()}</dd>
+
+                {job.startedAt && (
+                    <>
+                        <dt className="text-muted-foreground">Started</dt>
+                        <dd className="min-w-0 text-foreground select-text">
+                            {new Date(job.startedAt).toLocaleString()}
+                        </dd>
+                    </>
+                )}
+
+                {job.finishedAt && (
+                    <>
+                        <dt className="text-muted-foreground">Finished</dt>
+                        <dd className="min-w-0 text-foreground select-text">
+                            {new Date(job.finishedAt).toLocaleString()}
+                        </dd>
+                    </>
+                )}
+
+                {job.errorMessage && (
+                    <>
+                        <dt className="text-muted-foreground">Error</dt>
+                        <dd className="min-w-0 text-destructive select-text wrap-break-word">{job.errorMessage}</dd>
+                    </>
+                )}
+            </dl>
+        </div>
+    );
+}
+
 export default function JobHistoryPage() {
     const params = useParams<{ slug: string; resourceType: ResourceType; jobId: string }>();
     const isValidResourceType = resourceTypes.includes(params.resourceType as ResourceType);
@@ -69,9 +227,7 @@ export default function JobHistoryPage() {
               ? api.jobs.frameJobs.getById
               : resourceType === 'device'
                 ? api.jobs.deviceJobs.getById
-                : resourceType === 'pluginData'
-                  ? api.jobs.pluginDataJobs.getById
-                  : api.jobs.templateJobs.getById;
+                : api.jobs.pluginDataJobs.getById;
 
     const executionsQuery =
         resourceType === 'template'
@@ -80,9 +236,7 @@ export default function JobHistoryPage() {
               ? api.jobs.frameJobs.listExecutions
               : resourceType === 'device'
                 ? api.jobs.deviceJobs.listExecutions
-                : resourceType === 'pluginData'
-                  ? api.jobs.pluginDataJobs.listExecutions
-                  : api.jobs.templateJobs.listExecutions;
+                : api.jobs.pluginDataJobs.listExecutions;
 
     const job = useQuery(jobQuery as typeof api.jobs.templateJobs.getById, { id: params.jobId as Id<'jobStates'> });
 
@@ -105,69 +259,79 @@ export default function JobHistoryPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <Link href={`/site/${params.slug}/jobs`} className="text-sm text-muted-foreground underline">
-                        Back to jobs
-                    </Link>
-                    <h1 className="mt-2 text-xl font-semibold tracking-tight">Job history</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        {job.type} for {job.resourceType} <span className="font-mono">{job.resourceId}</span>
-                    </p>
-                </div>
-                <div className="rounded-lg border bg-muted/30 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                        <StatusIndicator status={job.status} />
-                        <span className="text-xs text-muted-foreground">{job.executionCount} attempts</span>
-                    </div>
-                </div>
+        <div className="flex flex-col min-h-full gap-6 p-6">
+            <div>
+                <Link href={`/site/${params.slug}/jobs`} className="text-sm text-muted-foreground underline">
+                    Back to jobs
+                </Link>
+                <h1 className="mt-2 text-xl font-semibold tracking-tight">Job history</h1>
+                <p className="mt-0.5 flex items-center gap-1.5 text-sm">
+                    <span className="font-medium">{job.resourceName ?? job.resourceType}</span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                        {job.type}
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground/40" title={job.resourceId}>
+                        {job.resourceId.slice(0, 8)}…
+                    </span>
+                </p>
             </div>
 
-            <div className="rounded-lg border">
-                <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-2 text-[0.8125rem] font-medium text-muted-foreground">
-                    <span className="w-24 shrink-0">Status</span>
-                    <span className="w-16 shrink-0">Attempt</span>
-                    <span className="w-40 shrink-0">Created</span>
-                    <span className="w-20 shrink-0">Duration</span>
-                    <span className="min-w-0 flex-1">Error</span>
-                </div>
-                <div className="divide-y">
-                    {results.map((execution) => (
-                        <div key={execution._id} className="flex items-center gap-3 px-4 py-3">
-                            <div className="w-24 shrink-0">
-                                <StatusIndicator status={execution.status} />
-                            </div>
-                            <div className="w-16 shrink-0 font-mono text-xs text-muted-foreground">
-                                #{execution.executionNumber ?? execution.attempts}
-                            </div>
-                            <div className="w-40 shrink-0 text-xs text-muted-foreground">
-                                {new Date(execution.createdAt).toLocaleString()}
-                            </div>
-                            <div className="w-20 shrink-0">
-                                <JobDuration startedAt={execution.startedAt} finishedAt={execution.finishedAt} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                {execution.errorMessage ? (
-                                    <span className="text-xs text-destructive">{execution.errorMessage}</span>
-                                ) : (
-                                    <span className="text-xs text-muted-foreground">—</span>
-                                )}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                {results.length === 0 && status !== 'LoadingFirstPage' && (
-                    <div className="px-4 py-8 text-sm text-muted-foreground">No executions recorded yet.</div>
-                )}
-                {status === 'CanLoadMore' && (
-                    <div className="flex justify-center border-t p-3">
-                        <Button variant="ghost" size="sm" onClick={() => loadMore(25)}>
-                            Load more
-                        </Button>
-                    </div>
-                )}
-            </div>
+            <JobSummaryCard job={job} />
+
+            <DataTable
+                rows={results}
+                getRowKey={(r) => r._id}
+                paginationStatus={status}
+                onLoadMore={() => loadMore(25)}
+                emptyTitle="No executions yet"
+                emptyDescription="Execution history will appear here once the job runs."
+            >
+                <DataTableHeader>
+                    <TableRow>
+                        <DataTableChevronHead />
+                        <TableHead className="w-24">Status</TableHead>
+                        <TableHead className="w-36">Attempt</TableHead>
+                        <TableHead className="w-[21rem]">Source</TableHead>
+                        <TableHead className="w-24">Created</TableHead>
+                        <TableHead className="w-20">Duration</TableHead>
+                        <TableHead>Error</TableHead>
+                    </TableRow>
+                </DataTableHeader>
+                <DataTableBody>
+                    <DataTableRow>
+                        {(execution: Execution) => (
+                            <>
+                                <TableCell className="w-24">
+                                    <StatusIndicator status={execution.status} />
+                                </TableCell>
+                                <TableCell className="w-36 font-mono text-xs text-muted-foreground">
+                                    #{execution.executionNumber ?? execution.attempts}
+                                </TableCell>
+                                <TableCell className="w-[21rem] text-xs text-muted-foreground">
+                                    {execution.source}
+                                </TableCell>
+                                <TableCell className="w-24">
+                                    <RelativeTime timestamp={execution.createdAt} />
+                                </TableCell>
+                                <TableCell className="w-20">
+                                    <JobDuration startedAt={execution.startedAt} finishedAt={execution.finishedAt} />
+                                </TableCell>
+                                <TableCell>
+                                    {execution.errorMessage ? (
+                                        <span className="text-xs text-destructive">{execution.errorMessage}</span>
+                                    ) : (
+                                        <span className="text-xs text-muted-foreground">—</span>
+                                    )}
+                                </TableCell>
+                            </>
+                        )}
+                    </DataTableRow>
+                    <DataTableDetail>
+                        {(execution: Execution) => <ExecutionDetailPanel execution={execution} />}
+                    </DataTableDetail>
+                </DataTableBody>
+            </DataTable>
         </div>
     );
 }

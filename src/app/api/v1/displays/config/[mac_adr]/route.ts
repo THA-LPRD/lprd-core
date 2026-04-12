@@ -26,7 +26,7 @@ convex.setAdminAuth(process.env.CONVEX_DEPLOY_KEY!);
  *
  * Returns: { file_path, valid_for }
  *   - file_path: proxy URL to fetch the current image (/api/v1/displays/image/:deviceId)
- *   - valid_for: minimum TTL in seconds across bound plugin data (-1 if none)
+ *   - valid_for: app-resolved sleep interval in seconds
  */
 export async function GET(request: Request, { params }: { params: Promise<{ mac_adr: string }> }) {
     const { mac_adr } = await params;
@@ -68,16 +68,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
         const hasImage = result.storageId != null;
         const filePath = hasImage ? `/api/v1/displays/image/${device._id}` : null;
 
-        // Get min TTL and binding data snapshot in parallel
-        const [minTTL, bindingData] = await Promise.all([
-            convex.query(internal.devices.v1.getMinTtl, {
+        // Resolve app-owned wake policy and binding data snapshot in parallel.
+        const [wakePlan, bindingData] = await Promise.all([
+            convex.query(internal.devices.v1.getWakePlan, {
                 deviceId: device._id,
             }),
             convex.query(internal.devices.v1.getBindingData, {
                 deviceId: device._id,
             }),
         ]);
-        const validFor = Math.max(minTTL, 3600); // Default to 1h if no bindings or data
+
+        if (!wakePlan) {
+            console.error(`Wake plan not found for device ${device._id}`);
+            return NextResponse.json({ error: 'Device not found' }, { status: 404 });
+        }
 
         // Log the config fetch (with snapshot if image is changing)
         await convex.mutation(internal.devices.accessLogs.logWithSnapshot, {
@@ -89,7 +93,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
             bindingData: result.hasNext ? bindingData : undefined,
         });
 
-        return NextResponse.json({ file_path: filePath, valid_for: validFor });
+        return NextResponse.json({
+            file_path: filePath,
+            valid_for: wakePlan.validForSeconds,
+            valid_for_reason: wakePlan.reason,
+        });
     } catch (error) {
         console.error('Config display error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

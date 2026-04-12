@@ -5,6 +5,7 @@ import { ShadowLayer } from '@/components/render/shadow-layer';
 import { RenderPageShell } from '@/components/render/render-page-shell';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
 import { resolveForRender } from '@/lib/template-data';
+import { useRenderReadiness } from '@/components/render/use-render-readiness';
 
 const CANVAS_W = GRID_COLS * DEFAULT_CELL_SIZE;
 const CANVAS_H = GRID_ROWS * DEFAULT_CELL_SIZE;
@@ -24,6 +25,14 @@ export function DeviceRenderClient({
     };
 }) {
     const { frame, templates, bindingData } = bundle;
+    const layerKeys = [
+        ...(frame.background && templates[frame.background.templateId] ? ['background'] : []),
+        ...frame.widgets
+            .filter((widget) => widget.templateId && templates[widget.templateId])
+            .map((widget) => `widget:${widget.id}`),
+        ...(frame.foreground && templates[frame.foreground.templateId] ? ['foreground'] : []),
+    ];
+    const { rendered, markLayerRendered } = useRenderReadiness(layerKeys);
 
     const getWidgetData = React.useCallback(
         (widgetId: string, sampleData?: unknown): Record<string, unknown> => {
@@ -37,8 +46,9 @@ export function DeviceRenderClient({
     );
 
     return (
-        <RenderPageShell rendered>
+        <RenderPageShell rendered={rendered}>
             <div
+                data-render-target
                 style={{
                     position: 'relative',
                     width: CANVAS_W,
@@ -59,6 +69,7 @@ export function DeviceRenderClient({
                                 height={GRID_ROWS}
                                 extraHostCSS="overflow: hidden;"
                                 style={{ position: 'absolute', inset: 0, zIndex: 0 }}
+                                onRendered={() => markLayerRendered('background')}
                                 errorFallback={null}
                             />
                         );
@@ -91,6 +102,7 @@ export function DeviceRenderClient({
                                 zIndex: 1,
                                 overflow: 'hidden',
                             }}
+                            onRendered={() => markLayerRendered(`widget:${widget.id}`)}
                             errorFallback={null}
                         />
                     );
@@ -108,6 +120,7 @@ export function DeviceRenderClient({
                                   height={GRID_ROWS}
                                   extraHostCSS="overflow: hidden;"
                                   style={{ position: 'absolute', inset: 0, zIndex: 20, pointerEvents: 'none' }}
+                                  onRendered={() => markLayerRendered('foreground')}
                                   errorFallback={null}
                               />
                           );

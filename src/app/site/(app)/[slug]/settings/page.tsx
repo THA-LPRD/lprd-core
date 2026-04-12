@@ -8,8 +8,7 @@ import { api } from '@convex/api';
 import { MemberTable } from '@/components/site/member-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Field, FieldLabel } from '@/components/ui/field';
 import { AccessDenied } from '@/components/ui/not-found';
 import {
     Dialog,
@@ -19,48 +18,71 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Save, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useSite } from '@/providers/site-provider';
 import { SitePluginInstallations } from '@/components/application/plugin/site-installations';
+import { DeviceWakePolicyForm } from '@/components/device/device-wake-policy-form';
+import { toast } from 'sonner';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+type ActiveTab = 'general' | 'wake-policy' | 'members' | 'plugins';
 
 export default function SiteSettingsPage() {
     const router = useRouter();
-
     const { site, actor, members, permissions } = useSite();
 
-    // Form state
+    const [activeTab, setActiveTab] = React.useState<ActiveTab>('general');
+
+    // General tab state
     const [siteName, setSiteName] = React.useState(site.name);
-    const [isSaving, setIsSaving] = React.useState(false);
+
+    // Wake policy tab state
+    const [deviceWakePolicy, setDeviceWakePolicy] = React.useState(site.deviceWakePolicy);
+
+    // Saving states
+    const [isSavingGeneral, setIsSavingGeneral] = React.useState(false);
+    const [isSavingWakePolicy, setIsSavingWakePolicy] = React.useState(false);
+
+    // Delete dialog
     const [showDeleteDialog, setShowDeleteDialog] = React.useState(false);
     const [deleteConfirm, setDeleteConfirm] = React.useState('');
     const [isDeleting, setIsDeleting] = React.useState(false);
 
-    // Mutations
     const updateSite = useMutation(api.sites.update);
     const deleteSite = useMutation(api.sites.remove);
 
-    // Sync site name when it changes externally
     React.useEffect(() => {
         setSiteName(site.name);
-    }, [site.name]);
+        setDeviceWakePolicy(site.deviceWakePolicy);
+    }, [site.name, site.deviceWakePolicy]);
 
-    const handleSaveSettings = async () => {
+    const hasGeneralChanges = siteName !== site.name;
+    const hasWakePolicyChanges = JSON.stringify(site.deviceWakePolicy) !== JSON.stringify(deviceWakePolicy);
+
+    const handleSaveGeneral = async () => {
         if (!siteName.trim()) return;
-
-        setIsSaving(true);
+        setIsSavingGeneral(true);
         try {
-            await updateSite({
-                id: site._id,
-                name: siteName.trim(),
-            });
+            await updateSite({ id: site._id, name: siteName.trim(), deviceWakePolicy: site.deviceWakePolicy });
+            toast.success('Settings saved');
         } finally {
-            setIsSaving(false);
+            setIsSavingGeneral(false);
+        }
+    };
+
+    const handleSaveWakePolicy = async () => {
+        setIsSavingWakePolicy(true);
+        try {
+            await updateSite({ id: site._id, name: site.name, deviceWakePolicy });
+            toast.success('Wake policy saved');
+        } finally {
+            setIsSavingWakePolicy(false);
         }
     };
 
     const handleDeleteSite = async () => {
         if (deleteConfirm !== site.name) return;
-
         setIsDeleting(true);
         try {
             await deleteSite({ id: site._id });
@@ -74,114 +96,117 @@ export default function SiteSettingsPage() {
         return <AccessDenied />;
     }
 
+    const tabs: { id: ActiveTab; label: string }[] = [
+        { id: 'general', label: 'General' },
+        { id: 'wake-policy', label: 'Wake policy' },
+        { id: 'members', label: 'Members' },
+        ...(permissions.org.site.actor.manage ? [{ id: 'plugins' as ActiveTab, label: 'Plugins' }] : []),
+    ];
+
+    const isSaving = isSavingGeneral || isSavingWakePolicy;
+    const hasSaveableTab = activeTab === 'general' || activeTab === 'wake-policy';
+    const hasChanges = activeTab === 'general' ? hasGeneralChanges : hasWakePolicyChanges;
+    const handleSave = activeTab === 'general' ? handleSaveGeneral : handleSaveWakePolicy;
+
     return (
-        <div className="p-6 max-w-4xl">
-            <div className="mb-8">
-                <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-                <p className="text-muted-foreground">Manage site settings and members</p>
+        <Tabs
+            value={activeTab}
+            onValueChange={(value) => setActiveTab(value as ActiveTab)}
+            className="h-full min-h-0 gap-0"
+        >
+            {/* Sticky header */}
+            <div className="shrink-0 bg-background border-b">
+                <div className="px-6 pt-4 pb-0">
+                    <p className="text-sm font-semibold">Settings</p>
+                    <p className="text-xs text-muted-foreground">Manage site settings and members</p>
+                </div>
+
+                <TabsList variant="line" className="mt-3 h-auto w-full justify-start gap-6 px-6 py-0">
+                    {tabs.map((tab) => (
+                        <TabsTrigger
+                            key={tab.id}
+                            value={tab.id}
+                            className="h-auto flex-none rounded-none px-0 pb-3 pt-0 after:bottom-[-1px] data-active:font-medium"
+                        >
+                            {tab.label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
             </div>
 
-            <div className="space-y-6">
-                {/* General Settings */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>General</CardTitle>
-                        <CardDescription>Basic site information</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid gap-2">
-                            <Label htmlFor="site-name">Site Name</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    id="site-name"
-                                    value={siteName}
-                                    onChange={(e) => setSiteName(e.target.value)}
-                                    className="max-w-md"
-                                />
-                                <Button
-                                    onClick={handleSaveSettings}
-                                    disabled={isSaving || siteName === site.name || !siteName.trim()}
-                                >
-                                    <Save className="size-4 mr-2" />
-                                    {isSaving ? 'Saving...' : 'Save'}
-                                </Button>
-                            </div>
-                        </div>
+            {/* Scrollable content */}
+            <ScrollArea className="flex-1">
+                <TabsContent value="general" className="max-w-lg space-y-5 px-6 py-6">
+                    <Field>
+                        <FieldLabel htmlFor="site-name">Site name</FieldLabel>
+                        <Input id="site-name" value={siteName} onChange={(e) => setSiteName(e.target.value)} />
+                    </Field>
 
-                        <div className="grid gap-2">
-                            <Label>Slug</Label>
-                            <p className="text-sm text-muted-foreground">{site.slug}</p>
-                        </div>
-                    </CardContent>
-                </Card>
+                    <Field>
+                        <FieldLabel>Slug</FieldLabel>
+                        <p className="text-sm text-muted-foreground">{site.slug}</p>
+                    </Field>
 
-                {/* Members */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Members</CardTitle>
-                        <CardDescription>People who have access to this site</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <MemberTable
-                            members={members}
-                            siteId={site._id}
-                            currentActorId={actor._id as Id<'actors'>}
-                            canManage={permissions.org.site.actor.manage}
-                        />
-                    </CardContent>
-                </Card>
-
-                {/* Plugins */}
-                {permissions.org.site.actor.manage && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Plugins</CardTitle>
-                            <CardDescription>Install or remove plugins for this site</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <SitePluginInstallations siteId={site._id} />
-                        </CardContent>
-                    </Card>
-                )}
-
-                {/* Danger Zone */}
-                <Card className="border-destructive/50">
-                    <CardHeader>
-                        <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                        <CardDescription>Irreversible actions that affect the entire site</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center justify-between p-4 border border-destructive/50 rounded-lg">
-                            <div>
-                                <p className="font-medium">Delete Site</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Permanently delete this site and all its data
-                                </p>
-                            </div>
-                            <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                                <Trash2 className="size-4 mr-2" />
-                                Delete Site
+                    {permissions.org.site.manage && (
+                        <div className="border-t pt-5 mt-2">
+                            <p className="text-sm font-medium text-destructive">Delete site</p>
+                            <p className="text-sm text-muted-foreground mt-1 mb-3">
+                                Permanently deletes this site, all devices, and removes all members.
+                            </p>
+                            <Button variant="destructive" size="sm" onClick={() => setShowDeleteDialog(true)}>
+                                <Trash2 className="size-3.5 mr-1.5" />
+                                Delete site
                             </Button>
                         </div>
-                    </CardContent>
-                </Card>
-            </div>
+                    )}
+                </TabsContent>
 
-            {/* Delete Confirmation Dialog */}
+                <TabsContent value="wake-policy" className="max-w-2xl px-6 py-6">
+                    <DeviceWakePolicyForm value={deviceWakePolicy} onChange={setDeviceWakePolicy} />
+                </TabsContent>
+
+                <TabsContent value="members" className="px-6 min-h-full py-6">
+                    <MemberTable
+                        members={members}
+                        siteId={site._id}
+                        currentActorId={actor._id as Id<'actors'>}
+                        canManage={permissions.org.site.actor.manage}
+                    />
+                </TabsContent>
+
+                {permissions.org.site.actor.manage && (
+                    <TabsContent value="plugins" className="px-6 py-6">
+                        <SitePluginInstallations siteId={site._id} />
+                    </TabsContent>
+                )}
+            </ScrollArea>
+
+            {/* Sticky footer — only for tabs with saveable state */}
+            {hasSaveableTab && (
+                <div className="shrink-0 border-t bg-background px-6 py-3 flex justify-end">
+                    <Button
+                        size="sm"
+                        onClick={handleSave}
+                        disabled={isSaving || !hasChanges || (activeTab === 'general' && !siteName.trim())}
+                    >
+                        {isSaving ? 'Saving…' : 'Save'}
+                    </Button>
+                </div>
+            )}
+
             <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Delete Site</DialogTitle>
+                        <DialogTitle>Delete site</DialogTitle>
                         <DialogDescription>
-                            This action cannot be undone. This will permanently delete the site
-                            <strong> {site.name}</strong>, all devices, and remove all members.
+                            This will permanently delete <strong>{site.name}</strong>, all devices, and remove all
+                            members.
                         </DialogDescription>
                     </DialogHeader>
-
                     <div className="py-4">
-                        <Label htmlFor="confirm-delete">
+                        <FieldLabel htmlFor="confirm-delete">
                             Type <strong>{site.name}</strong> to confirm
-                        </Label>
+                        </FieldLabel>
                         <Input
                             id="confirm-delete"
                             value={deleteConfirm}
@@ -190,7 +215,6 @@ export default function SiteSettingsPage() {
                             className="mt-2"
                         />
                     </div>
-
                     <DialogFooter>
                         <Button
                             variant="outline"
@@ -206,11 +230,11 @@ export default function SiteSettingsPage() {
                             onClick={handleDeleteSite}
                             disabled={isDeleting || deleteConfirm !== site.name}
                         >
-                            {isDeleting ? 'Deleting...' : 'Delete Site'}
+                            {isDeleting ? 'Deleting…' : 'Delete site'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-        </div>
+        </Tabs>
     );
 }

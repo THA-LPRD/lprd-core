@@ -26,9 +26,9 @@ export async function POST(request: Request) {
         const body = await request.json();
         const { data, ttl_seconds, site_id, topic, entry } = body;
 
-        if (data === undefined || !ttl_seconds || !site_id || !topic || !entry) {
+        if (data === undefined || typeof ttl_seconds !== 'number' || ttl_seconds < 0 || !site_id || !topic || !entry) {
             return NextResponse.json(
-                { error: 'data, ttl_seconds, site_id, topic, and entry are required' },
+                { error: 'data, non-negative ttl_seconds, site_id, topic, and entry are required' },
                 { status: 400 },
             );
         }

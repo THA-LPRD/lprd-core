@@ -32,6 +32,7 @@ import type * as jobs_types from "../jobs/types.js";
 import type * as lib_applications from "../lib/applications.js";
 import type * as lib_authz from "../lib/authz.js";
 import type * as lib_deviceLogs from "../lib/deviceLogs.js";
+import type * as lib_deviceWakePolicy from "../lib/deviceWakePolicy.js";
 import type * as lib_permissionGrants from "../lib/permissionGrants.js";
 import type * as lib_permissionSync from "../lib/permissionSync.js";
 import type * as lib_permissions_catalog from "../lib/permissions/catalog.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   "lib/applications": typeof lib_applications;
   "lib/authz": typeof lib_authz;
   "lib/deviceLogs": typeof lib_deviceLogs;
+  "lib/deviceWakePolicy": typeof lib_deviceWakePolicy;
   "lib/permissionGrants": typeof lib_permissionGrants;
   "lib/permissionSync": typeof lib_permissionSync;
   "lib/permissions/catalog": typeof lib_permissions_catalog;

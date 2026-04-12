@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { ShadowLayer } from '@/components/render/shadow-layer';
 import { RenderPageShell } from '@/components/render/render-page-shell';
 import { DEFAULT_CELL_SIZE, GRID_COLS, GRID_ROWS } from '@/lib/render/constants';
@@ -27,16 +28,23 @@ export function TemplateRenderClient({
     const { widthCells, heightCells } = preferred
         ? getVariantDimensions(preferred)
         : { widthCells: GRID_COLS, heightCells: GRID_ROWS };
+    const width = widthCells * DEFAULT_CELL_SIZE;
+    const height = heightCells * DEFAULT_CELL_SIZE;
+    const [rendered, setRendered] = React.useState(false);
+    const markRendered = React.useCallback(() => setRendered(true), []);
 
     return (
-        <RenderPageShell rendered>
-            <ShadowLayer
-                html={bundle.templateHtml}
-                sampleData={sampleData}
-                width={widthCells}
-                height={heightCells}
-                style={{ width: widthCells * DEFAULT_CELL_SIZE, height: heightCells * DEFAULT_CELL_SIZE }}
-            />
+        <RenderPageShell rendered={rendered}>
+            <div data-render-target style={{ width, height }}>
+                <ShadowLayer
+                    html={bundle.templateHtml}
+                    sampleData={sampleData}
+                    width={widthCells}
+                    height={heightCells}
+                    style={{ width, height }}
+                    onRendered={markRendered}
+                />
+            </div>
         </RenderPageShell>
     );
 }

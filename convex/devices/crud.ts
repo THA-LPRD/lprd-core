@@ -2,7 +2,7 @@ import { v } from 'convex/values';
 import { mutation, type MutationCtx, query } from '../_generated/server';
 import type { Id } from '../_generated/dataModel';
 import { generateActorPublicId } from '../lib/publicIds';
-import { deviceDataBinding, deviceStatus } from '../schema';
+import { deviceDataBinding, deviceStatus, deviceWakePolicy } from '../schema';
 import { permissionCatalog } from '../lib/permissions';
 import { requirePermission, resolveAuthorization } from '../lib/authz';
 import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
@@ -169,7 +169,9 @@ export const update = mutation({
         status: v.optional(deviceStatus),
         frameId: v.optional(v.id('frames')),
         dataBindings: v.optional(v.array(deviceDataBinding)),
+        wakePolicy: v.optional(deviceWakePolicy),
         clearFrame: v.optional(v.boolean()),
+        clearWakePolicy: v.optional(v.boolean()),
     },
     handler: async (ctx, args) => {
         const device = await ctx.db.get(args.id);
@@ -177,7 +179,7 @@ export const update = mutation({
 
         await requirePermission(ctx, permissionCatalog.org.site.device.manage.self, { siteId: device.siteId });
 
-        const { id, clearFrame, ...rest } = args;
+        const { id, clearFrame, clearWakePolicy, ...rest } = args;
         void id;
 
         const patch: Record<string, unknown> = { ...rest, updatedAt: Date.now() };
@@ -191,6 +193,10 @@ export const update = mutation({
             if (manualPluginId) {
                 await deleteManualDataForDevice(ctx, manualPluginId, device.siteId, device._id);
             }
+        }
+
+        if (clearWakePolicy) {
+            patch.wakePolicy = undefined;
         }
 
         await ctx.db.patch(device._id, patch);

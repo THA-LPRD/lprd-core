@@ -65,7 +65,7 @@ export function DeviceActivityChart({ deviceId }: { deviceId: Id<'devices'> }) {
     }
 
     const chartConfig = {
-        total: { label: 'Requests', color: 'hsl(var(--chart-1))' },
+        total: { label: 'Requests', color: 'var(--chart-1)' },
     };
 
     return (

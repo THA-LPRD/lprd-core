@@ -17,6 +17,7 @@ type UpdateDeviceBody = {
     status?: 'pending' | 'active';
     frameId?: Id<'frames'> | null;
     dataBindings?: FunctionArgs<typeof api.devices.crud.update>['dataBindings'];
+    wakePolicy?: FunctionArgs<typeof api.devices.crud.update>['wakePolicy'] | null;
     manualEntries?: FunctionArgs<typeof api.devices.crud.saveManualData>['entries'];
     siteSlug?: string;
 };
@@ -41,7 +42,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ siteI
                 status: body.status,
                 frameId: body.frameId ?? undefined,
                 dataBindings: body.frameId ? body.dataBindings : undefined,
+                wakePolicy: body.wakePolicy ?? undefined,
                 clearFrame: body.frameId === null,
+                clearWakePolicy: body.wakePolicy === null,
             },
             { token },
         );

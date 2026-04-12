@@ -1,4 +1,5 @@
 import type { Id } from '@convex/dataModel';
+import type { DeviceWakePolicy } from '@/lib/deviceWakePolicy';
 
 export type Binding = {
     widgetId: string;
@@ -25,6 +26,7 @@ export type DeviceData = {
     };
     frameId?: Id<'frames'>;
     dataBindings?: Binding[];
+    wakePolicy?: DeviceWakePolicy;
     createdAt: number;
     updatedAt: number;
 };

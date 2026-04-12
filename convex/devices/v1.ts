@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { internalMutation, internalQuery } from '../_generated/server';
+import { type DeviceDataFreshness, resolveDeviceWakePlan } from '../lib/deviceWakePolicy';
 
 // ---------------------------------------------------------------------------
 // Internal functions for the v1 device API (called from Next.js API routes)
@@ -85,38 +86,69 @@ export const getStorageUrl = internalQuery({
 });
 
 /**
- * Get the minimum remaining TTL (in seconds) across all plugin data bindings for a device.
- * Computed as the closest expiresAt minus the current time.
- * Returns -1 if no bindings or no data.
+ * Resolve the final device wake plan from plugin data freshness and app-owned policy.
  */
-export const getMinTtl = internalQuery({
+export const getWakePlan = internalQuery({
     args: { deviceId: v.id('devices') },
     handler: async (ctx, args) => {
         const device = await ctx.db.get(args.deviceId);
-        if (!device?.dataBindings?.length) return -1;
+        if (!device) return null;
 
         const now = Date.now();
-        let minRemainingSeconds = Infinity;
+        const site = await ctx.db.get(device.siteId);
+        if (!site) return null;
 
-        for (const binding of device.dataBindings) {
-            const record = await ctx.db
-                .query('pluginData')
-                .withIndex('by_application_site_topic_entry', (q) =>
-                    q
-                        .eq('applicationId', binding.applicationId)
-                        .eq('siteId', device.siteId)
-                        .eq('topic', binding.topic)
-                        .eq('entry', binding.entry),
-                )
-                .unique();
+        let freshness: DeviceDataFreshness = { kind: 'unbound' };
 
-            if (record) {
-                const remainingSeconds = Math.max(0, Math.floor((record.expiresAt - now) / 1000));
-                minRemainingSeconds = Math.min(minRemainingSeconds, remainingSeconds);
+        if (device.dataBindings?.length) {
+            let minRemainingSeconds = Infinity;
+            let hasMissingData = false;
+            let hasStaleData = false;
+
+            for (const binding of device.dataBindings) {
+                const record = await ctx.db
+                    .query('pluginData')
+                    .withIndex('by_application_site_topic_entry', (q) =>
+                        q
+                            .eq('applicationId', binding.applicationId)
+                            .eq('siteId', device.siteId)
+                            .eq('topic', binding.topic)
+                            .eq('entry', binding.entry),
+                    )
+                    .unique();
+
+                if (!record) {
+                    hasMissingData = true;
+                    continue;
+                }
+
+                if (record.expiresAt <= 0) continue;
+
+                const remainingSeconds = Math.floor((record.expiresAt - now) / 1000);
+                if (remainingSeconds <= 0) {
+                    hasStaleData = true;
+                } else {
+                    minRemainingSeconds = Math.min(minRemainingSeconds, remainingSeconds);
+                }
+            }
+
+            if (hasMissingData) {
+                freshness = { kind: 'missing' };
+            } else if (hasStaleData) {
+                freshness = { kind: 'stale' };
+            } else {
+                freshness = {
+                    kind: 'fresh',
+                    secondsUntilExpiry: minRemainingSeconds === Infinity ? null : minRemainingSeconds,
+                };
             }
         }
 
-        return minRemainingSeconds === Infinity ? -1 : minRemainingSeconds;
+        return resolveDeviceWakePlan({
+            policy: device.wakePolicy ?? site.deviceWakePolicy,
+            freshness,
+            nowMs: now,
+        });
     },
 });
 

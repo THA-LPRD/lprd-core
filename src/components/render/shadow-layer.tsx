@@ -47,7 +47,6 @@ export function ShadowLayer({
             const rendered = renderAndSanitize(html, resolvedData, cellSize, width, height);
             shadowRef.current.innerHTML = baseStyles + rendered;
             resolveIconsInRoot(shadowRef.current);
-            onRendered?.();
         } catch (error) {
             if (errorFallback === null) {
                 shadowRef.current.innerHTML = '';
@@ -59,6 +58,8 @@ export function ShadowLayer({
                     baseStyles +
                     `<div style="color: #ef4444; font-family: monospace; padding: 8px; font-size: 12px;">Template error: ${message}</div>`;
             }
+        } finally {
+            onRendered?.();
         }
     }, [html, sampleData, cellSize, width, height, extraHostCSS, errorFallback, onRendered]);
 

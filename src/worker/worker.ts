@@ -6,6 +6,7 @@ import { getWorkerAccessToken, workerRequestJson } from '@worker/app-client';
 import { config } from '@worker/config';
 import { extractImageUrls } from '@/lib/template-data';
 import { generateScreenshot } from '@/lib/render/thumbnail';
+import { RENDER_TARGET_SELECTOR } from '@/lib/render/constants';
 
 async function withTimeout<T>(run: () => Promise<T>, timeoutMs: number): Promise<T> {
     let timeoutHandle: ReturnType<typeof setTimeout>;
@@ -120,9 +121,8 @@ async function renderTemplateThumbnail(job: Extract<WorkerJobPayload, { type: 't
     const payload = job.payload;
     const png = await generateScreenshot({
         renderPath: `/site/${payload.siteSlug}/templates/render/${payload.templateId}`,
-        width: 800,
-        height: 480,
         origin: config.app.baseUrl,
+        screenshotSelector: RENDER_TARGET_SELECTOR,
     });
     const formData = new FormData();
     formData.set('templateId', payload.templateId);
@@ -140,9 +140,8 @@ async function renderFrameThumbnail(job: Extract<WorkerJobPayload, { type: 'fram
     const payload = job.payload;
     const png = await generateScreenshot({
         renderPath: `/site/${payload.siteSlug}/frames/render/${payload.frameId}`,
-        width: 800,
-        height: 480,
         origin: config.app.baseUrl,
+        screenshotSelector: RENDER_TARGET_SELECTOR,
     });
     const formData = new FormData();
     formData.set('frameId', payload.frameId);
@@ -160,9 +159,8 @@ async function renderDevice(job: Extract<WorkerJobPayload, { type: 'device-rende
     const payload = job.payload;
     const png = await generateScreenshot({
         renderPath: `/site/${payload.siteSlug}/devices/render/${payload.deviceId}`,
-        width: 800,
-        height: 480,
         origin: config.app.baseUrl,
+        screenshotSelector: RENDER_TARGET_SELECTOR,
     });
     const formData = new FormData();
     formData.set('deviceId', payload.deviceId);

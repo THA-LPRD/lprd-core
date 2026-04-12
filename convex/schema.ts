@@ -155,6 +155,22 @@ export const deviceDataBinding = v.object({
     entry: v.string(),
 });
 
+export const deviceOffHoursWindow = v.object({
+    days: v.array(v.number()),
+    startMinute: v.number(),
+    endMinute: v.number(),
+});
+
+export const deviceWakePolicy = v.object({
+    staleDataRetrySeconds: v.number(),
+    missingDataRetrySeconds: v.number(),
+    unboundRefreshSeconds: v.number(),
+    maxFreshDataSleepSeconds: v.number(),
+    offHoursEnabled: v.boolean(),
+    offHoursTimezone: v.string(),
+    offHoursWindows: v.array(deviceOffHoursWindow),
+});
+
 // Device render reference
 export const deviceRender = v.object({
     storageId: v.id('_storage'),
@@ -217,6 +233,7 @@ export default defineSchema({
         name: v.string(),
         slug: v.string(),
         logoUrl: v.optional(v.string()),
+        deviceWakePolicy,
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -245,6 +262,7 @@ export default defineSchema({
         lastSeen: v.optional(v.number()),
         frameId: v.optional(v.id('frames')),
         dataBindings: v.optional(v.array(deviceDataBinding)),
+        wakePolicy: v.optional(deviceWakePolicy),
         last: v.optional(deviceRender),
         current: v.optional(deviceRender),
         next: v.optional(deviceRender),

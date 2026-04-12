@@ -6,9 +6,20 @@ import { usePaginatedQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { useSite } from '@/providers/site-provider';
 import { toast } from 'sonner';
-import { Ban, ChevronDown, ChevronRight, Pause, Play, RotateCcw } from 'lucide-react';
+import { Ban, Pause, Play, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TableCell, TableHead, TableRow } from '@/components/ui/table';
+import {
+    DataTable,
+    DataTableBody,
+    DataTableChevronHead,
+    DataTableDetail,
+    DataTableHeader,
+    DataTableRow,
+} from '@/components/ui/data-table';
+import { RelativeTime } from '@/components/ui/relative-time';
 import { cn } from '@/lib/utils';
 
 const resourceTypes = [
@@ -51,25 +62,6 @@ function StatusIndicator({ status }: { status: string }) {
             </span>
             <span className={cn('text-xs font-medium', cfg.text)}>{cfg.label}</span>
         </div>
-    );
-}
-
-function RelativeTime({ timestamp }: { timestamp: number }) {
-    const [now] = React.useState(() => Date.now());
-    const diff = now - timestamp;
-    let label: string;
-    if (diff < 60_000) label = 'just now';
-    else if (diff < 3_600_000) label = `${Math.floor(diff / 60_000)}m ago`;
-    else if (diff < 86_400_000) label = `${Math.floor(diff / 3_600_000)}h ago`;
-    else label = `${Math.floor(diff / 86_400_000)}d ago`;
-
-    return (
-        <span
-            title={new Date(timestamp).toLocaleString()}
-            className="cursor-default text-xs text-muted-foreground tabular-nums"
-        >
-            {label}
-        </span>
     );
 }
 
@@ -124,7 +116,7 @@ type Job = ReturnType<typeof usePaginatedQuery<typeof api.jobs.templateJobs.list
 
 function JobDetailPanel({ job, resourceType, siteSlug }: { job: Job; resourceType: ResourceType; siteSlug: string }) {
     return (
-        <div className="overflow-hidden border-t bg-muted/30 px-4 py-3">
+        <div className="px-4 py-3">
             <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-1.5 text-xs">
                 <dt className="text-muted-foreground">Resource ID</dt>
                 <dd className="min-w-0 font-mono text-foreground select-text break-all">{job.resourceId}</dd>
@@ -163,7 +155,7 @@ function JobDetailPanel({ job, resourceType, siteSlug }: { job: Job; resourceTyp
                         </dd>
                     </>
                 )}
-                {job.status !== 'cancelled' && job.errorMessage && (
+                {job.errorMessage && (
                     <>
                         <dt className="text-muted-foreground">Error</dt>
                         <dd className="min-w-0 text-destructive select-text wrap-break-word">{job.errorMessage}</dd>
@@ -187,6 +179,8 @@ function JobDetailPanel({ job, resourceType, siteSlug }: { job: Job; resourceTyp
 export default function JobsPage() {
     const { site, permissions } = useSite();
     const [resourceType, setResourceType] = React.useState<ResourceType>('template');
+    const [jobActionId, setJobActionId] = React.useState<string | null>(null);
+
     const jobsQuery =
         resourceType === 'template'
             ? api.jobs.templateJobs.listBySite
@@ -195,13 +189,12 @@ export default function JobsPage() {
               : resourceType === 'device'
                 ? api.jobs.deviceJobs.listBySite
                 : api.jobs.pluginDataJobs.listBySite;
+
     const { results, status, loadMore } = usePaginatedQuery(
         jobsQuery as typeof api.jobs.templateJobs.listBySite,
         { siteId: site._id },
         { initialNumItems: 25 },
     );
-    const [jobActionId, setJobActionId] = React.useState<string | null>(null);
-    const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
     const resourceJobBasePath: Record<ResourceType, string> = {
         template: '/api/v2/templates/jobs',
@@ -240,9 +233,7 @@ export default function JobsPage() {
         pluginData: permissions.org.site.pluginData.job.write,
     };
 
-    const toggleExpanded = (id: string) => setExpandedId((prev) => (prev === id ? null : id));
-
-    const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+    const canManage = canManageJobs[resourceType];
 
     return (
         <div className="flex flex-col gap-6 p-6">
@@ -251,186 +242,143 @@ export default function JobsPage() {
                 <p className="mt-0.5 text-sm text-muted-foreground">Background work for {site.name}</p>
             </div>
 
-            <div className="flex flex-col gap-3">
-                <div className="inline-flex self-start rounded-lg border bg-muted/40 p-1 gap-px">
-                    {resourceTypes.map((option) => (
-                        <button
-                            key={option.value}
-                            type="button"
-                            onClick={() => setResourceType(option.value)}
-                            className={cn(
-                                'rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-150',
-                                resourceType === option.value
-                                    ? 'bg-background text-foreground shadow-sm'
-                                    : 'text-muted-foreground hover:text-foreground',
-                            )}
-                        >
-                            {option.label}
-                        </button>
-                    ))}
-                </div>
+            <div className="flex flex-col min-h-full gap-3">
+                <Tabs value={resourceType} onValueChange={(v) => setResourceType(v as ResourceType)}>
+                    <TabsList>
+                        {resourceTypes.map((option) => (
+                            <TabsTrigger key={option.value} value={option.value}>
+                                {option.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
 
-                <div className="rounded-lg border">
-                    <div className="max-h-[calc(100vh-14rem)] overflow-y-auto">
-                        {results.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-16 text-center">
-                                {status === 'LoadingFirstPage' ? (
-                                    <p className="text-sm text-muted-foreground">Loading…</p>
-                                ) : (
-                                    <>
-                                        <p className="text-sm font-medium">No jobs yet</p>
-                                        <p className="mt-1 text-xs text-muted-foreground">
-                                            Jobs will appear here when background work is triggered.
-                                        </p>
-                                    </>
-                                )}
-                            </div>
-                        ) : (
-                            <div>
-                                <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-background px-4 py-2 text-[0.8125rem] font-medium text-muted-foreground">
-                                    <span className="w-3.5 shrink-0" />
-                                    <span className="w-24 shrink-0">Status</span>
-                                    <span className="w-40 shrink-0">Type</span>
-                                    <span className="w-72 shrink-0">Resource</span>
-                                    <span className="w-18 shrink-0">Created</span>
-                                    <span className="w-20 shrink-0">Duration</span>
-                                    <span className="min-w-0 flex-1">Error</span>
-                                    {canManageJobs[resourceType] && (
-                                        <span className="w-16 shrink-0 text-right">Actions</span>
-                                    )}
-                                </div>
-                                <div className="divide-y">
-                                    {results.map((job) => {
-                                        const isExpanded = expandedId === job._id;
-                                        return (
-                                            <div key={job._id}>
-                                                <div
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => toggleExpanded(job._id)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter' || e.key === ' ') {
-                                                            e.preventDefault();
-                                                            toggleExpanded(job._id);
-                                                        }
-                                                    }}
-                                                    className="flex cursor-pointer items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
-                                                >
-                                                    <span className="shrink-0 text-muted-foreground/50">
-                                                        {isExpanded ? (
-                                                            <ChevronDown className="size-3.5" />
-                                                        ) : (
-                                                            <ChevronRight className="size-3.5" />
-                                                        )}
-                                                    </span>
-                                                    <div className="w-24 shrink-0">
-                                                        <StatusIndicator status={job.status} />
-                                                    </div>
-                                                    <div className="w-40 shrink-0">
-                                                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                                                            {job.type}
-                                                        </span>
-                                                    </div>
-                                                    <div className="w-72 shrink-0 min-w-0">
-                                                        <div className="text-xs font-medium">{job.resourceType}</div>
-                                                        <div className="truncate font-mono text-xs text-muted-foreground">
-                                                            {job.resourceId}
-                                                        </div>
-                                                    </div>
-                                                    <div className="w-18 shrink-0">
-                                                        <RelativeTime timestamp={job.createdAt} />
-                                                    </div>
-                                                    <div className="w-20 shrink-0">
-                                                        <JobDuration
-                                                            startedAt={job.startedAt}
-                                                            finishedAt={job.finishedAt}
-                                                        />
-                                                    </div>
-                                                    <div className="min-w-0 flex-1 truncate">
-                                                        {job.status !== 'cancelled' && job.errorMessage ? (
-                                                            <span className="text-xs text-destructive">
-                                                                {job.errorMessage}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">—</span>
-                                                        )}
-                                                    </div>
-                                                    {canManageJobs[resourceType] && (
-                                                        <div
-                                                            className="flex w-16 shrink-0 items-center justify-end gap-0.5"
-                                                            onClick={stopPropagation}
-                                                        >
-                                                            {job.status === 'pending' && (
-                                                                <>
-                                                                    <IconAction
-                                                                        icon={Pause}
-                                                                        label="Pause"
-                                                                        disabled={jobActionId === job._id}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            void handleJobAction(job._id, 'pause');
-                                                                        }}
-                                                                    />
-                                                                    <IconAction
-                                                                        icon={Ban}
-                                                                        label="Cancel"
-                                                                        disabled={jobActionId === job._id}
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            void handleJobAction(job._id, 'cancel');
-                                                                        }}
-                                                                        destructive
-                                                                    />
-                                                                </>
-                                                            )}
-                                                            {job.status === 'paused' && (
-                                                                <IconAction
-                                                                    icon={Play}
-                                                                    label="Resume"
-                                                                    disabled={jobActionId === job._id}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        void handleJobAction(job._id, 'resume');
-                                                                    }}
-                                                                />
-                                                            )}
-                                                            {job.status === 'failed' && (
-                                                                <IconAction
-                                                                    icon={RotateCcw}
-                                                                    label="Retry"
-                                                                    disabled={jobActionId === job._id}
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        void handleJobAction(job._id, 'retry');
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    )}
+                <DataTable
+                    key={resourceType}
+                    rows={results}
+                    getRowKey={(r) => r._id}
+                    paginationStatus={status}
+                    onLoadMore={() => loadMore(25)}
+                    emptyTitle="No jobs yet"
+                    emptyDescription="Jobs will appear here when background work is triggered."
+                >
+                    <DataTableHeader>
+                        <TableRow>
+                            <DataTableChevronHead />
+                            <TableHead className="w-24">Status</TableHead>
+                            <TableHead className="w-36">Type</TableHead>
+                            <TableHead className="w-56">Resource</TableHead>
+                            <TableHead className="w-28">Source</TableHead>
+                            <TableHead className="w-24">Created</TableHead>
+                            <TableHead className="w-20">Duration</TableHead>
+                            <TableHead>Error</TableHead>
+                            {canManage && <TableHead className="w-16 text-right">Actions</TableHead>}
+                        </TableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
+                        <DataTableRow>
+                            {(job: Job) => (
+                                <>
+                                    <TableCell className="w-24">
+                                        <StatusIndicator status={job.status} />
+                                    </TableCell>
+                                    <TableCell className="w-36">
+                                        <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                                            {job.type}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="w-56 min-w-0">
+                                        {job.resourceName ? (
+                                            <>
+                                                <div className="truncate text-xs font-medium">{job.resourceName}</div>
+                                                <div className="truncate font-mono text-xs text-muted-foreground/60">
+                                                    {job.resourceId.slice(0, 8)}…
                                                 </div>
-                                                {isExpanded && (
-                                                    <JobDetailPanel
-                                                        job={job}
-                                                        resourceType={resourceType}
-                                                        siteSlug={site.slug}
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="text-xs text-muted-foreground">{job.resourceType}</div>
+                                                <div className="truncate font-mono text-xs text-muted-foreground/60">
+                                                    {job.resourceId.slice(0, 8)}…
+                                                </div>
+                                            </>
+                                        )}
+                                    </TableCell>
+                                    <TableCell className="w-28 text-xs text-muted-foreground">{job.source}</TableCell>
+                                    <TableCell className="w-24">
+                                        <RelativeTime timestamp={job.createdAt} />
+                                    </TableCell>
+                                    <TableCell className="w-20">
+                                        <JobDuration startedAt={job.startedAt} finishedAt={job.finishedAt} />
+                                    </TableCell>
+                                    <TableCell>
+                                        {job.status !== 'cancelled' && job.errorMessage ? (
+                                            <span className="text-xs text-destructive">{job.errorMessage}</span>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">—</span>
+                                        )}
+                                    </TableCell>
+                                    {canManage && (
+                                        <TableCell className="w-16" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex items-center justify-end gap-0.5">
+                                                {job.status === 'pending' && (
+                                                    <>
+                                                        <IconAction
+                                                            icon={Pause}
+                                                            label="Pause"
+                                                            disabled={jobActionId === job._id}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                void handleJobAction(job._id, 'pause');
+                                                            }}
+                                                        />
+                                                        <IconAction
+                                                            icon={Ban}
+                                                            label="Cancel"
+                                                            disabled={jobActionId === job._id}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                void handleJobAction(job._id, 'cancel');
+                                                            }}
+                                                            destructive
+                                                        />
+                                                    </>
+                                                )}
+                                                {job.status === 'paused' && (
+                                                    <IconAction
+                                                        icon={Play}
+                                                        label="Resume"
+                                                        disabled={jobActionId === job._id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            void handleJobAction(job._id, 'resume');
+                                                        }}
+                                                    />
+                                                )}
+                                                {job.status === 'failed' && (
+                                                    <IconAction
+                                                        icon={RotateCcw}
+                                                        label="Retry"
+                                                        disabled={jobActionId === job._id}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            void handleJobAction(job._id, 'retry');
+                                                        }}
                                                     />
                                                 )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {status === 'CanLoadMore' && (
-                            <div className="flex justify-center border-t p-3">
-                                <Button variant="ghost" size="sm" onClick={() => loadMore(25)}>
-                                    Load more
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                        </TableCell>
+                                    )}
+                                </>
+                            )}
+                        </DataTableRow>
+                        <DataTableDetail>
+                            {(job: Job) => (
+                                <JobDetailPanel job={job} resourceType={resourceType} siteSlug={site.slug} />
+                            )}
+                        </DataTableDetail>
+                    </DataTableBody>
+                </DataTable>
             </div>
         </div>
     );

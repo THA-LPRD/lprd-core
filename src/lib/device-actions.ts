@@ -5,9 +5,10 @@ import { requestJson } from '@/lib/api-client';
 
 type DeviceUpdateInput = Omit<
     FunctionArgs<typeof api.devices.crud.update>,
-    'id' | 'frameId' | 'dataBindings' | 'clearFrame'
+    'id' | 'frameId' | 'dataBindings' | 'wakePolicy' | 'clearFrame' | 'clearWakePolicy'
 > & {
     dataBindings?: FunctionArgs<typeof api.devices.crud.update>['dataBindings'];
+    wakePolicy?: FunctionArgs<typeof api.devices.crud.update>['wakePolicy'] | null;
 };
 type ManualEntries = FunctionArgs<typeof api.devices.crud.saveManualData>['entries'];
 
@@ -49,6 +50,7 @@ export async function configureSiteDevice(
                 status: input.status,
                 frameId: input.frameId,
                 dataBindings: input.dataBindings,
+                wakePolicy: input.wakePolicy,
                 siteSlug: input.siteSlug,
                 manualEntries: input.manualEntries,
             }),

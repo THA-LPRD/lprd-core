@@ -5,6 +5,33 @@ import type { LatestJobState } from './types';
 type JobState = Doc<'jobStates'>;
 type JobLog = Doc<'jobLogs'>;
 
+async function resolveResourceName(ctx: QueryCtx, resourceType: string, resourceId: string): Promise<string | null> {
+    switch (resourceType) {
+        case 'template': {
+            const doc = await ctx.db.get(resourceId as Id<'templates'>);
+            return doc?.name ?? null;
+        }
+        case 'frame': {
+            const doc = await ctx.db.get(resourceId as Id<'frames'>);
+            return doc?.name ?? null;
+        }
+        case 'device': {
+            const doc = await ctx.db.get(resourceId as Id<'devices'>);
+            return doc?.name ?? null;
+        }
+        case 'pluginData': {
+            const doc = await ctx.db.get(resourceId as Id<'pluginData'>);
+            return doc ? `${doc.topic}/${doc.entry}` : null;
+        }
+        case 'application': {
+            const doc = await ctx.db.get(resourceId as Id<'applications'>);
+            return doc?.name ?? null;
+        }
+        default:
+            return null;
+    }
+}
+
 export function buildLatestJobState(input: {
     status: LatestJobState['status'];
     updatedAt: number;
@@ -32,6 +59,7 @@ async function getDisplayExecution(ctx: QueryCtx, state: JobState) {
 
 export async function serializeJobState(ctx: QueryCtx, state: JobState) {
     const execution = await getDisplayExecution(ctx, state);
+    const resourceName = await resolveResourceName(ctx, state.resourceType, state.resourceId);
     return {
         _id: state._id,
         actorId: state.actorId,
@@ -39,6 +67,7 @@ export async function serializeJobState(ctx: QueryCtx, state: JobState) {
         type: state.type,
         resourceType: state.resourceType,
         resourceId: state.resourceId,
+        resourceName,
         source: execution?.source ?? state.source,
         status: state.status,
         createdAt: execution?.createdAt ?? state.createdAt,

@@ -7,6 +7,7 @@ import { api } from '@convex/api';
 import { TemplateGrid } from '@/components/template/template-grid';
 import { TemplateForm } from '@/components/template/template-form';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSite } from '@/providers/site-provider';
 import { Plus } from 'lucide-react';
@@ -62,46 +63,54 @@ export default function TemplatesPage() {
 
     if (templates === undefined) {
         return (
-            <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <Skeleton className="h-8 w-32 mb-2" />
-                        <Skeleton className="h-4 w-48" />
+            <ScrollArea className="min-h-0 flex-1">
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <Skeleton className="h-8 w-32 mb-2" />
+                            <Skeleton className="h-4 w-48" />
+                        </div>
+                        <Skeleton className="h-10 w-36" />
                     </div>
-                    <Skeleton className="h-10 w-36" />
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {[1, 2, 3, 4].map((i) => (
+                            <Skeleton key={i} className="aspect-[4/3] rounded-lg" />
+                        ))}
+                    </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <Skeleton key={i} className="aspect-[4/3] rounded-lg" />
-                    ))}
-                </div>
-            </div>
+            </ScrollArea>
         );
     }
 
     return (
-        <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
-                    <p className="text-muted-foreground">Manage display templates in {site.name}</p>
+        <ScrollArea className="min-h-0 flex-1">
+            <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h1 className="text-2xl font-bold tracking-tight">Templates</h1>
+                        <p className="text-muted-foreground">Manage display templates in {site.name}</p>
+                    </div>
+                    {permissions.org.site.template.manage && (
+                        <Button onClick={() => setShowCreateForm(true)}>
+                            <Plus className="size-4 mr-2" />
+                            New Template
+                        </Button>
+                    )}
                 </div>
-                {permissions.org.site.template.manage && (
-                    <Button onClick={() => setShowCreateForm(true)}>
-                        <Plus className="size-4 mr-2" />
-                        New Template
-                    </Button>
-                )}
+
+                <TemplateGrid
+                    templates={templates}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                    onDuplicate={handleDuplicate}
+                />
+
+                <TemplateForm
+                    open={showCreateForm}
+                    onOpenChangeAction={setShowCreateForm}
+                    onSubmitAction={handleCreate}
+                />
             </div>
-
-            <TemplateGrid
-                templates={templates}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onDuplicate={handleDuplicate}
-            />
-
-            <TemplateForm open={showCreateForm} onOpenChangeAction={setShowCreateForm} onSubmitAction={handleCreate} />
-        </div>
+        </ScrollArea>
     );
 }

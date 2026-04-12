@@ -39,7 +39,7 @@ export const LOG_STATUS_VARIANTS: Record<DeviceLogStatus, 'default' | 'secondary
 
 /** Chart fill color (CSS variable) for each log type. */
 export const LOG_TYPE_CHART_COLOR: Record<DeviceLogType, string> = {
-    existence_check: 'hsl(var(--chart-3))',
-    config_fetch: 'hsl(var(--chart-1))',
-    image_fetch: 'hsl(var(--chart-2))',
+    existence_check: 'var(--chart-3)',
+    config_fetch: 'var(--chart-1)',
+    image_fetch: 'var(--chart-2)',
 };

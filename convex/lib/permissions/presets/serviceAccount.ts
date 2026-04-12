@@ -49,6 +49,7 @@ export function getServiceAccountDefaultPermissions(applicationType: Application
         return [
             permissionCatalog.org.site.pluginData.manage.self,
             permissionCatalog.org.site.pluginData.manage.job.enqueue,
+            permissionCatalog.org.site.device.manage.job.enqueue,
             permissionCatalog.org.template.manage.upsert.self,
             permissionCatalog.org.template.manage.upsert.job.enqueue,
         ];

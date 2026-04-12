@@ -6,6 +6,8 @@ import { requirePermission, resolveAuthorization } from './lib/authz';
 import { generateSitePublicId } from './lib/publicIds';
 import { deletePermissionGrantsForTarget } from './lib/permissionGrants';
 import { removeSiteActorPermissionGrants, syncSiteActorPermissionGrants } from './lib/permissionSync';
+import { createDefaultDeviceWakePolicy } from './lib/deviceWakePolicy';
+import { deviceWakePolicy } from './schema';
 
 /**
  * Create a new site.
@@ -36,6 +38,7 @@ export const create = mutation({
             name: args.name,
             slug: args.slug,
             logoUrl: args.logoUrl,
+            deviceWakePolicy: createDefaultDeviceWakePolicy(),
             createdAt: now,
             updatedAt: now,
         });
@@ -131,6 +134,7 @@ export const update = mutation({
         id: v.id('sites'),
         name: v.optional(v.string()),
         logoUrl: v.optional(v.string()),
+        deviceWakePolicy: v.optional(deviceWakePolicy),
     },
     handler: async (ctx, args) => {
         await requirePermission(ctx, permissionCatalog.org.site.manage, { siteId: args.id });

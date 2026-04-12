@@ -38,6 +38,7 @@ function getProvisionPermissions(input: {
     if (!input.pluginDataWrite) {
         permissions.delete(permissionCatalog.org.site.pluginData.manage.self);
         permissions.delete(permissionCatalog.org.site.pluginData.manage.job.enqueue);
+        permissions.delete(permissionCatalog.org.site.device.manage.job.enqueue);
     }
 
     if (!input.organizationTemplateUpsert) {
