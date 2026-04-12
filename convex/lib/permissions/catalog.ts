@@ -52,9 +52,8 @@ export const permissionValues = [
     'org.site.device.manage.artifact.write',
     'org.site.pluginData.view',
     'org.site.pluginData.manage',
-    'org.site.pluginData.manage.job.read',
-    'org.site.pluginData.manage.job.write',
-    'org.site.pluginData.manage.job.enqueue',
+    'org.site.asset.view',
+    'org.site.asset.manage',
 ] as const;
 
 export type Permission = (typeof permissionValues)[number];
@@ -147,12 +146,11 @@ export const permissionCatalog = {
                 view: 'org.site.pluginData.view',
                 manage: {
                     self: 'org.site.pluginData.manage',
-                    job: {
-                        read: 'org.site.pluginData.manage.job.read',
-                        write: 'org.site.pluginData.manage.job.write',
-                        enqueue: 'org.site.pluginData.manage.job.enqueue',
-                    },
                 },
+            },
+            asset: {
+                view: 'org.site.asset.view',
+                manage: 'org.site.asset.manage',
             },
         },
         template: {

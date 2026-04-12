@@ -39,16 +39,13 @@ export function getServiceAccountDefaultPermissions(applicationType: Application
             permissionCatalog.org.site.device.view,
             permissionCatalog.org.site.pluginData.view,
             permissionCatalog.org.site.pluginData.manage.self,
-            permissionCatalog.org.site.pluginData.manage.job.read,
-            permissionCatalog.org.site.pluginData.manage.job.write,
-            permissionCatalog.org.site.pluginData.manage.job.enqueue,
+            permissionCatalog.org.site.asset.view,
         ];
     }
 
     if (applicationType === 'plugin') {
         return [
             permissionCatalog.org.site.pluginData.manage.self,
-            permissionCatalog.org.site.pluginData.manage.job.enqueue,
             permissionCatalog.org.site.device.manage.job.enqueue,
             permissionCatalog.org.template.manage.upsert.self,
             permissionCatalog.org.template.manage.upsert.job.enqueue,

@@ -18,7 +18,7 @@ import {
 import { RelativeTime } from '@/components/ui/relative-time';
 import { cn } from '@/lib/utils';
 
-const resourceTypes = ['template', 'frame', 'device', 'pluginData'] as const;
+const resourceTypes = ['template', 'frame', 'device'] as const;
 type ResourceType = (typeof resourceTypes)[number];
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; text: string; pulse: boolean }> = {
@@ -225,18 +225,14 @@ export default function JobHistoryPage() {
             ? api.jobs.templateJobs.getById
             : resourceType === 'frame'
               ? api.jobs.frameJobs.getById
-              : resourceType === 'device'
-                ? api.jobs.deviceJobs.getById
-                : api.jobs.pluginDataJobs.getById;
+              : api.jobs.deviceJobs.getById;
 
     const executionsQuery =
         resourceType === 'template'
             ? api.jobs.templateJobs.listExecutions
             : resourceType === 'frame'
               ? api.jobs.frameJobs.listExecutions
-              : resourceType === 'device'
-                ? api.jobs.deviceJobs.listExecutions
-                : api.jobs.pluginDataJobs.listExecutions;
+              : api.jobs.deviceJobs.listExecutions;
 
     const job = useQuery(jobQuery as typeof api.jobs.templateJobs.getById, { id: params.jobId as Id<'jobStates'> });
 

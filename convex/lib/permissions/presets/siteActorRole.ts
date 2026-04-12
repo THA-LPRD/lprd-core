@@ -16,6 +16,8 @@ export function getSiteActorDefaultPermissions(role: SiteActorRole): Permission[
             permissionCatalog.org.site.pluginData.view,
             permissionCatalog.org.site.pluginData.manage.self,
             permissionCatalog.org.site.actor.manage,
+            permissionCatalog.org.site.asset.view,
+            permissionCatalog.org.site.asset.manage,
         ];
     }
 
@@ -24,6 +26,7 @@ export function getSiteActorDefaultPermissions(role: SiteActorRole): Permission[
         permissionCatalog.org.site.template.view,
         permissionCatalog.org.site.frame.view,
         permissionCatalog.org.site.device.view,
+        permissionCatalog.org.site.asset.view,
     ];
 }
 

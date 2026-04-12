@@ -26,7 +26,6 @@ const resourceTypes = [
     { value: 'template', label: 'Templates' },
     { value: 'frame', label: 'Frames' },
     { value: 'device', label: 'Devices' },
-    { value: 'pluginData', label: 'Plugin Data' },
 ] as const;
 
 type ResourceType = (typeof resourceTypes)[number]['value'];
@@ -186,9 +185,7 @@ export default function JobsPage() {
             ? api.jobs.templateJobs.listBySite
             : resourceType === 'frame'
               ? api.jobs.frameJobs.listBySite
-              : resourceType === 'device'
-                ? api.jobs.deviceJobs.listBySite
-                : api.jobs.pluginDataJobs.listBySite;
+              : api.jobs.deviceJobs.listBySite;
 
     const { results, status, loadMore } = usePaginatedQuery(
         jobsQuery as typeof api.jobs.templateJobs.listBySite,
@@ -200,7 +197,6 @@ export default function JobsPage() {
         template: '/api/v2/templates/jobs',
         frame: '/api/v2/frames/jobs',
         device: '/api/v2/devices/jobs',
-        pluginData: '/api/v2/plugin-data/jobs',
     };
 
     const handleJobAction = async (jobId: string, action: 'cancel' | 'pause' | 'resume' | 'retry') => {
@@ -230,7 +226,6 @@ export default function JobsPage() {
         template: permissions.org.site.template.job.write,
         frame: permissions.org.site.frame.job.write,
         device: permissions.org.site.device.job.write,
-        pluginData: permissions.org.site.pluginData.job.write,
     };
 
     const canManage = canManageJobs[resourceType];

@@ -50,7 +50,6 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
             templateId,
             siteId: siteId as Id<'sites'>,
             siteSlug: body.siteSlug,
-            sampleData: STARTER_SAMPLE_DATA,
             source: 'templateCreate',
         });
 

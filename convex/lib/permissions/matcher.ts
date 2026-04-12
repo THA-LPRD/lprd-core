@@ -45,7 +45,10 @@ export interface Permissions {
             pluginData: {
                 read: boolean;
                 write: boolean;
-                job: { write: boolean };
+            };
+            asset: {
+                view: boolean;
+                manage: boolean;
             };
         };
         template: {
@@ -118,12 +121,10 @@ function summarizePermissions(grantedPermissions: Permission[]): Permissions {
                 pluginData: {
                     read: hasPermission(grantedPermissions, permissionCatalog.org.site.pluginData.view),
                     write: hasPermission(grantedPermissions, permissionCatalog.org.site.pluginData.manage.self),
-                    job: {
-                        write: hasPermission(
-                            grantedPermissions,
-                            permissionCatalog.org.site.pluginData.manage.job.write,
-                        ),
-                    },
+                },
+                asset: {
+                    view: hasPermission(grantedPermissions, permissionCatalog.org.site.asset.view),
+                    manage: hasPermission(grantedPermissions, permissionCatalog.org.site.asset.manage),
                 },
             },
             template: {

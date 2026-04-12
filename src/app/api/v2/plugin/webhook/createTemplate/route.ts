@@ -5,7 +5,6 @@ import { AuthError } from '@/lib/auth-errors';
 import { requirePermission } from '@/lib/authz';
 import { recordAndEnqueueJob } from '@/lib/jobs/dispatch';
 import { permissionCatalog } from '@/lib/permissions';
-import { containsImgFuncs } from '@/lib/template-data';
 
 /**
  * POST /api/v2/plugin/webhook/createTemplate
@@ -45,53 +44,22 @@ export async function POST(request: Request) {
             { token },
         );
 
-        if (result.needsNormalization || containsImgFuncs(sample_data)) {
-            await recordAndEnqueueJob({
-                token,
-                actorId: authorization.actor._id,
-                type: 'normalize-images',
-                resourceType: 'template',
-                resourceId: result.id,
-                source: 'pluginTemplateUpsert',
-                payload: {
-                    type: 'normalize-images',
-                    payload: {
-                        resourceType: 'template',
-                        resourceId: result.id,
-                        actorId: authorization.actor._id,
-                        siteId: undefined,
-                        source: 'pluginTemplateUpsert',
-                        nextJobs: [
-                            {
-                                type: 'template-thumbnail',
-                                payload: {
-                                    templateId: result.id,
-                                    siteId: undefined,
-                                    siteSlug: '_internal',
-                                },
-                            },
-                        ],
-                    },
-                },
-            });
-        } else {
-            await recordAndEnqueueJob({
-                token,
-                actorId: authorization.actor._id,
+        await recordAndEnqueueJob({
+            token,
+            actorId: authorization.actor._id,
+            type: 'template-thumbnail',
+            resourceType: 'template',
+            resourceId: result.id,
+            source: 'pluginTemplateUpsert',
+            payload: {
                 type: 'template-thumbnail',
-                resourceType: 'template',
-                resourceId: result.id,
-                source: 'pluginTemplateUpsert',
                 payload: {
-                    type: 'template-thumbnail',
-                    payload: {
-                        templateId: result.id,
-                        siteId: undefined,
-                        siteSlug: '_internal',
-                    },
+                    templateId: result.id,
+                    siteId: undefined,
+                    siteSlug: '_internal',
                 },
-            });
-        }
+            },
+        });
 
         const status = result.created ? 201 : 200;
         return NextResponse.json({ id: result.id }, { status });

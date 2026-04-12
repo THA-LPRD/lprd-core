@@ -86,7 +86,6 @@ export const jobStatus = v.union(
 
 // Background job type
 export const jobType = v.union(
-    v.literal('normalize-images'),
     v.literal('template-thumbnail'),
     v.literal('frame-thumbnail'),
     v.literal('device-render'),
@@ -204,6 +203,17 @@ export const latestJobState = v.object({
 });
 
 export default defineSchema({
+    siteAssets: defineTable({
+        siteId: v.id('sites'),
+        storageId: v.id('_storage'),
+        filename: v.string(),
+        contentType: v.string(),
+        uploadedBy: v.id('actors'),
+        createdAt: v.number(),
+    })
+        .index('by_site', ['siteId'])
+        .index('by_storage', ['storageId']),
+
     actors: defineTable({
         publicId: v.string(),
         type: actorType,

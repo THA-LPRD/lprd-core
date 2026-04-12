@@ -27,6 +27,8 @@ export function getActorRoleDefaultPermissions(role: ActorRole, actorType: Actor
             permissionCatalog.org.site.pluginData.view,
             permissionCatalog.org.site.pluginData.manage.self,
             permissionCatalog.org.site.actor.manage,
+            permissionCatalog.org.site.asset.view,
+            permissionCatalog.org.site.asset.manage,
         ];
     }
 

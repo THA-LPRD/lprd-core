@@ -5,8 +5,9 @@ import { generateActorPublicId } from '../lib/publicIds';
 import { deviceDataBinding, deviceStatus, deviceWakePolicy } from '../schema';
 import { permissionCatalog } from '../lib/permissions';
 import { requirePermission, resolveAuthorization } from '../lib/authz';
-import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
+import { isImgFunc } from '../lib/template_data';
 import { generateUploadUrl } from '../lib/storage';
+import { internal } from '../_generated/api';
 import { markDeviceJobSucceeded } from '../jobs/deviceJobs';
 
 const MANUAL_APPLICATION_NAME = '__manual__';
@@ -62,7 +63,6 @@ async function deleteManualDataForDevice(
 
     for (const record of records) {
         if (record.entry.startsWith(prefix)) {
-            await deleteImageBlobs(ctx, record.data);
             await ctx.db.delete(record._id);
         }
     }
@@ -236,6 +236,34 @@ export const remove = mutation({
 });
 
 /**
+ * Walk a data tree and verify every img(storageId) belongs to the given site.
+ * Throws if any storageId is not found in siteAssets for that site.
+ */
+async function validateImgStorageIds(ctx: MutationCtx, data: unknown, siteId: Id<'sites'>): Promise<void> {
+    if (typeof data === 'string') {
+        const storageId = isImgFunc(data);
+        if (storageId) {
+            const belongs = await ctx.runQuery(internal.siteAssets.checkStorageIdBelongsToSite, {
+                storageId: storageId as Id<'_storage'>,
+                siteId,
+            });
+            if (!belongs) throw new Error(`Image asset does not belong to this site: ${storageId}`);
+        }
+        return;
+    }
+    if (Array.isArray(data)) {
+        for (const item of data) await validateImgStorageIds(ctx, item, siteId);
+        return;
+    }
+    if (typeof data === 'object' && data !== null) {
+        for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+            if (key === '_imageBlobs') continue;
+            await validateImgStorageIds(ctx, val, siteId);
+        }
+    }
+}
+
+/**
  * Save manual data for device widgets.
  * Creates/updates pluginData entries and manages bindings.
  * Requires `org.site.device.manage`.
@@ -258,7 +286,6 @@ export const saveManualData = mutation({
 
         const pluginId = await getOrCreateManualPlugin(ctx);
         const now = Date.now();
-        const normalizationRecordIds: Id<'pluginData'>[] = [];
 
         // Store each entry
         const savedWidgetIds = new Set<string>();
@@ -280,23 +307,19 @@ export const saveManualData = mutation({
                 .unique();
 
             if (!hasData) {
-                // Delete if no data
-                if (existing) {
-                    await deleteImageBlobs(ctx, existing.data);
-                    await ctx.db.delete(existing._id);
-                }
+                if (existing) await ctx.db.delete(existing._id);
                 continue;
             }
 
+            // Validate all img(storageId) values belong to this site
+            await validateImgStorageIds(ctx, data, device.siteId);
+
             savedWidgetIds.add(widgetId);
 
-            let recordId: Id<'pluginData'>;
             if (existing) {
-                await deleteImageBlobs(ctx, existing.data);
                 await ctx.db.patch(existing._id, { data, receivedAt: now });
-                recordId = existing._id;
             } else {
-                recordId = await ctx.db.insert('pluginData', {
+                await ctx.db.insert('pluginData', {
                     applicationId: pluginId,
                     siteId: device.siteId,
                     topic: 'manual',
@@ -307,11 +330,6 @@ export const saveManualData = mutation({
                     expiresAt: 0,
                     receivedAt: now,
                 });
-            }
-
-            // Schedule image processing if data has img() markers
-            if (containsImgFuncs(data)) {
-                normalizationRecordIds.push(recordId);
             }
         }
 
@@ -340,8 +358,6 @@ export const saveManualData = mutation({
             dataBindings: newBindings,
             updatedAt: now,
         });
-
-        return { normalizationRecordIds };
     },
 });
 

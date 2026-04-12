@@ -1,7 +1,4 @@
 import type { Id } from '@convex/dataModel';
-import { fetchQuery } from 'convex/nextjs';
-import { api } from '@convex/api';
-import { containsImgFuncs } from '@/lib/template-data';
 import type { JobSource } from '@/lib/jobs';
 import { recordAndEnqueueJob } from '@/lib/jobs/dispatch';
 
@@ -20,40 +17,25 @@ export async function enqueueTemplateJobs(input: {
     templateId: Id<'templates'>;
     siteId: Id<'sites'>;
     siteSlug: string;
-    sampleData: unknown;
     source: Extract<JobSource, 'templateSave' | 'templateCreate' | 'templateDuplicate'>;
 }): Promise<EnqueueResult> {
-    const nextJob = {
-        type: 'template-thumbnail' as const,
-        payload: {
-            templateId: input.templateId,
-            siteId: input.siteId,
-            siteSlug: input.siteSlug,
-        },
-    };
-
     try {
         await recordAndEnqueueJob({
             token: input.token,
             actorId: input.actorId,
             siteId: input.siteId,
-            type: containsImgFuncs(input.sampleData) ? 'normalize-images' : 'template-thumbnail',
+            type: 'template-thumbnail',
             resourceType: 'template',
             resourceId: input.templateId,
             source: input.source,
-            payload: containsImgFuncs(input.sampleData)
-                ? {
-                      type: 'normalize-images',
-                      payload: {
-                          resourceType: 'template',
-                          resourceId: input.templateId,
-                          actorId: input.actorId,
-                          siteId: input.siteId,
-                          source: input.source,
-                          nextJobs: [nextJob],
-                      },
-                  }
-                : nextJob,
+            payload: {
+                type: 'template-thumbnail',
+                payload: {
+                    templateId: input.templateId,
+                    siteId: input.siteId,
+                    siteSlug: input.siteSlug,
+                },
+            },
         });
         return { warning: null };
     } catch (error) {
@@ -98,70 +80,27 @@ export async function enqueueDeviceConfigureJobs(input: {
     deviceId: Id<'devices'>;
     siteId: Id<'sites'>;
     siteSlug: string;
-    normalizationRecordIds: Id<'pluginData'>[];
 }): Promise<EnqueueResult> {
-    const nextJob = {
-        type: 'device-render' as const,
-        payload: {
-            deviceId: input.deviceId,
+    try {
+        await recordAndEnqueueJob({
+            token: input.token,
+            actorId: input.actorId,
             siteId: input.siteId,
-            siteSlug: input.siteSlug,
-        },
-    };
-
-    if (input.normalizationRecordIds.length === 0) {
-        try {
-            await recordAndEnqueueJob({
-                token: input.token,
-                actorId: input.actorId,
-                siteId: input.siteId,
+            type: 'device-render',
+            resourceType: 'device',
+            resourceId: input.deviceId,
+            source: 'deviceConfigure',
+            payload: {
                 type: 'device-render',
-                resourceType: 'device',
-                resourceId: input.deviceId,
-                source: 'deviceConfigure',
-                payload: nextJob,
-            });
-            return { warning: null };
-        } catch (error) {
-            return { warning: toWarning('Device render job failed to start', error) };
-        }
-    }
-
-    const warnings: string[] = [];
-    for (const pluginDataId of input.normalizationRecordIds) {
-        try {
-            await recordAndEnqueueJob({
-                token: input.token,
-                actorId: input.actorId,
-                siteId: input.siteId,
-                type: 'normalize-images',
-                resourceType: 'pluginData',
-                resourceId: pluginDataId,
-                source: 'deviceConfigure',
-                workKey: `normalize-images__${pluginDataId}`,
                 payload: {
-                    type: 'normalize-images',
-                    payload: {
-                        resourceType: 'pluginData',
-                        resourceId: pluginDataId,
-                        actorId: input.actorId,
-                        siteId: input.siteId,
-                        source: 'deviceConfigure',
-                        nextJobs: [nextJob],
-                    },
+                    deviceId: input.deviceId,
+                    siteId: input.siteId,
+                    siteSlug: input.siteSlug,
                 },
-            });
-        } catch (error) {
-            warnings.push(toWarning(`Normalization job for ${pluginDataId} failed to start`, error));
-        }
+            },
+        });
+        return { warning: null };
+    } catch (error) {
+        return { warning: toWarning('Device render job failed to start', error) };
     }
-
-    return {
-        warning: warnings.length > 0 ? warnings.join('\n') : null,
-    };
-}
-
-export async function getTemplateSampleDataForDuplicate(input: { token: string; templateId: Id<'templates'> }) {
-    const template = await fetchQuery(api.templates.crud.getById, { id: input.templateId }, { token: input.token });
-    return template?.sampleData;
 }

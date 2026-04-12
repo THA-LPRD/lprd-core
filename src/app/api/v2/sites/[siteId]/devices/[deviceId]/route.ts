@@ -52,7 +52,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ siteI
         let enqueueWarning: string | null = null;
 
         if (body.frameId && body.siteSlug) {
-            const manualSave = await fetchMutation(
+            await fetchMutation(
                 api.devices.crud.saveManualData,
                 {
                     deviceId: deviceId as Id<'devices'>,
@@ -67,7 +67,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ siteI
                 deviceId: deviceId as Id<'devices'>,
                 siteId: siteId as Id<'sites'>,
                 siteSlug: body.siteSlug,
-                normalizationRecordIds: manualSave.normalizationRecordIds,
             });
             enqueueWarning = enqueueResult.warning;
         }

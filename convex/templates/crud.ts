@@ -241,68 +241,6 @@ export const getRenderBundle = query({
     },
 });
 
-export const getByIdForJob = query({
-    args: { id: v.id('templates') },
-    handler: async (ctx, args) => {
-        const template = await ctx.db.get(args.id);
-        if (!template) return null;
-
-        if (template.scope === 'site' && template.siteId) {
-            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.read, {
-                siteId: template.siteId,
-            });
-        } else {
-            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.read, {
-                organizationId: template.organizationId ?? undefined,
-            });
-        }
-
-        return template;
-    },
-});
-
-export const createSampleDataUploadUrl = mutation({
-    args: { id: v.id('templates') },
-    handler: async (ctx, args) => {
-        const template = await ctx.db.get(args.id);
-        if (!template) throw new Error('Template not found');
-
-        if (template.scope === 'site' && template.siteId) {
-            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
-                siteId: template.siteId,
-            });
-        } else {
-            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
-                organizationId: template.organizationId ?? undefined,
-            });
-        }
-
-        return generateUploadUrl(ctx);
-    },
-});
-
-export const getSampleDataStoredFileUrl = query({
-    args: {
-        id: v.id('templates'),
-        storageId: v.id('_storage'),
-    },
-    handler: async (ctx, args) => {
-        const template = await ctx.db.get(args.id);
-        if (!template) throw new Error('Template not found');
-
-        if (template.scope === 'site' && template.siteId) {
-            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
-                siteId: template.siteId,
-            });
-        } else {
-            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
-                organizationId: template.organizationId ?? undefined,
-            });
-        }
-
-        return ctx.storage.getUrl(args.storageId);
-    },
-});
 
 export const createThumbnailUploadUrl = mutation({
     args: { id: v.id('templates') },
@@ -324,36 +262,6 @@ export const createThumbnailUploadUrl = mutation({
     },
 });
 
-export const patchSampleDataForJob = mutation({
-    args: {
-        id: v.id('templates'),
-        sampleData: v.any(),
-        jobId: v.optional(v.id('jobLogs')),
-    },
-    handler: async (ctx, args) => {
-        const template = await ctx.db.get(args.id);
-        if (!template) throw new Error('Template not found');
-
-        if (template.scope === 'site' && template.siteId) {
-            await requirePermission(ctx, permissionCatalog.org.site.template.manage.sampleData.write, {
-                siteId: template.siteId,
-            });
-        } else {
-            await requirePermission(ctx, permissionCatalog.org.template.manage.sampleData.write, {
-                organizationId: template.organizationId ?? undefined,
-            });
-        }
-
-        await ctx.db.patch(args.id, {
-            sampleData: args.sampleData,
-            updatedAt: Date.now(),
-        });
-
-        if (args.jobId) {
-            await markTemplateJobSucceeded(ctx, args.jobId, args.id);
-        }
-    },
-});
 
 export const storeThumbnailForJob = mutation({
     args: {

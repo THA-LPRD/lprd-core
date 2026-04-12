@@ -1,8 +1,10 @@
 import { v } from 'convex/values';
+import type { Id } from '../_generated/dataModel';
 import { query } from '../_generated/server';
 import { fetchTemplateMap } from '../lib/storage';
 import { permissionCatalog } from '../lib/permissions';
 import { resolveAuthorization } from '../lib/authz';
+import { resolveImgStorageIds } from '../siteAssets';
 
 /**
  * Get everything needed to render a device in one query.
@@ -53,7 +55,9 @@ export const getRenderBundle = query({
 
                 if (!record) continue;
 
-                const data = record.data as Record<string, unknown>;
+                const data = (await resolveImgStorageIds(record.data, (id) =>
+                    ctx.storage.getUrl(id as Id<'_storage'>),
+                )) as Record<string, unknown>;
 
                 if (!bindingData[binding.widgetId]) {
                     bindingData[binding.widgetId] = {};

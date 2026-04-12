@@ -9,7 +9,7 @@ import { permissionCatalog } from '@/lib/permissions';
 /**
  * POST /api/v2/plugin/webhook/data
  * Receives data pushed by a plugin, stores it in Convex,
- * then queues any normalization/render work for the worker.
+ * then queues render work for affected devices.
  * Authenticated via Bearer JWT token.
  */
 export async function POST(request: Request) {
@@ -76,43 +76,20 @@ export async function POST(request: Request) {
             },
         }));
 
-        if (result.needsNormalization) {
-            await recordAndEnqueueJob({
-                token,
-                actorId: authorization.actor._id,
-                siteId: result.siteId,
-                type: 'normalize-images',
-                resourceType: 'pluginData',
-                resourceId: result.pluginDataId,
-                source: 'pluginPush',
-                payload: {
-                    type: 'normalize-images',
-                    payload: {
-                        resourceType: 'pluginData',
-                        resourceId: result.pluginDataId,
-                        actorId: authorization.actor._id,
-                        siteId: result.siteId,
-                        source: 'pluginPush',
-                        nextJobs,
-                    },
-                },
-            });
-        } else {
-            await Promise.all(
-                nextJobs.map((job) =>
-                    recordAndEnqueueJob({
-                        token,
-                        actorId: authorization.actor._id,
-                        siteId: result.siteId,
-                        type: job.type,
-                        resourceType: 'device',
-                        resourceId: job.payload.deviceId,
-                        source: 'pluginPush',
-                        payload: job,
-                    }),
-                ),
-            );
-        }
+        await Promise.all(
+            nextJobs.map((job) =>
+                recordAndEnqueueJob({
+                    token,
+                    actorId: authorization.actor._id,
+                    siteId: result.siteId,
+                    type: job.type,
+                    resourceType: 'device',
+                    resourceId: job.payload.deviceId,
+                    source: 'pluginPush',
+                    payload: job,
+                }),
+            ),
+        );
 
         return new Response(null, { status: 202 });
     } catch (error) {

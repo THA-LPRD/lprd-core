@@ -5,7 +5,7 @@ import type { Id } from '@convex/dataModel';
 import { AuthError } from '@/lib/auth-errors';
 import { requirePermission } from '@/lib/authz';
 import { permissionCatalog } from '@/lib/permissions';
-import { enqueueTemplateJobs, getTemplateSampleDataForDuplicate } from '@/lib/resource-jobs';
+import { enqueueTemplateJobs } from '@/lib/resource-jobs';
 
 export const runtime = 'nodejs';
 
@@ -27,11 +27,6 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
             return NextResponse.json({ error: 'siteSlug is required' }, { status: 400 });
         }
 
-        const sourceSampleData = await getTemplateSampleDataForDuplicate({
-            token,
-            templateId: templateId as Id<'templates'>,
-        });
-
         const duplicatedTemplateId = await fetchMutation(
             api.templates.crud.duplicate,
             { id: templateId as Id<'templates'>, siteId: siteId as Id<'sites'> },
@@ -44,7 +39,6 @@ export async function POST(request: Request, context: { params: Promise<{ siteId
             templateId: duplicatedTemplateId,
             siteId: siteId as Id<'sites'>,
             siteSlug: body.siteSlug,
-            sampleData: sourceSampleData,
             source: 'templateDuplicate',
         });
 

@@ -2,7 +2,6 @@ import { v } from 'convex/values';
 import { mutation } from '../_generated/server';
 import { templateVariant } from '../schema';
 import { permissionCatalog } from '../lib/permissions';
-import { containsImgFuncs, deleteImageBlobs } from '../lib/template_data';
 import { requirePermission } from '../lib/authz';
 
 export const upsertGlobalForApplication = mutation({
@@ -32,10 +31,6 @@ export const upsertGlobalForApplication = mutation({
         const now = Date.now();
 
         if (existing) {
-            if (args.sampleData !== undefined) {
-                await deleteImageBlobs(ctx, existing.sampleData);
-            }
-
             await ctx.db.patch(existing._id, {
                 description: args.description,
                 templateHtml: args.templateHtml,
@@ -46,7 +41,7 @@ export const upsertGlobalForApplication = mutation({
                 updatedAt: now,
             });
 
-            return { id: existing._id, created: false, needsNormalization: containsImgFuncs(args.sampleData) };
+            return { id: existing._id, created: false };
         }
 
         const id = await ctx.db.insert('templates', {
@@ -64,6 +59,6 @@ export const upsertGlobalForApplication = mutation({
             updatedAt: now,
         });
 
-        return { id, created: true, needsNormalization: containsImgFuncs(args.sampleData) };
+        return { id, created: true };
     },
 });

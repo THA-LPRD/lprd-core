@@ -49,7 +49,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ siteI
             templateId: templateId as Id<'templates'>,
             siteId: siteId as Id<'sites'>,
             siteSlug: body.siteSlug,
-            sampleData: body.sampleData,
             source: 'templateSave',
         });
 

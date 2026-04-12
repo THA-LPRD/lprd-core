@@ -8,7 +8,7 @@ import { jobSource } from '../schema';
 import type { LatestJobState } from './types';
 import { buildLatestJobState, buildQueuedJobResult, serializeJobState } from './jobStateMappers';
 
-const templateJobType = v.union(v.literal('normalize-images'), v.literal('template-thumbnail'));
+const templateJobType = v.literal('template-thumbnail');
 
 export async function updateTemplateLatestJobState(
     ctx: MutationCtx,
@@ -42,7 +42,7 @@ export async function markTemplateJobSucceeded(
     if (!execution.jobStateId) return;
     const state = await ctx.db.get(execution.jobStateId);
     if (!state || state.resourceType !== 'template') return;
-    if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') return;
+    if (state.type !== 'template-thumbnail') return;
 
     await ctx.db.patch(state._id, {
         status: 'succeeded',
@@ -104,7 +104,7 @@ export const createResourceJob = mutation({
         if (existingState && existingState.resourceType !== 'template') {
             throw new Error('Job work key already belongs to another resource');
         }
-        if (existingState && existingState.type !== 'normalize-images' && existingState.type !== 'template-thumbnail') {
+        if (existingState && existingState.type !== 'template-thumbnail') {
             throw new Error(`Job type '${existingState.type}' is not valid for templates`);
         }
 
@@ -201,7 +201,7 @@ export const start = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -262,7 +262,7 @@ export const fail = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -320,7 +320,7 @@ export const cancel = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -382,7 +382,7 @@ export const pause = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -443,7 +443,7 @@ export const resume = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -511,7 +511,7 @@ export const retry = mutation({
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             throw new Error(`Job type '${state.type}' is not valid for templates`);
         }
         const execution = state.currentExecutionId ? await ctx.db.get(state.currentExecutionId) : null;
@@ -595,7 +595,7 @@ export const getById = query({
     handler: async (ctx, args) => {
         const state = await ctx.db.get(args.id);
         if (!state || state.resourceType !== 'template') return null;
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') return null;
+        if (state.type !== 'template-thumbnail') return null;
 
         const template = await ctx.db.get(state.resourceId as Id<'templates'>);
         if (!template) return null;
@@ -650,7 +650,7 @@ export const listExecutions = query({
         if (!state || state.resourceType !== 'template') {
             return { page: [], isDone: true, continueCursor: '' };
         }
-        if (state.type !== 'normalize-images' && state.type !== 'template-thumbnail') {
+        if (state.type !== 'template-thumbnail') {
             return { page: [], isDone: true, continueCursor: '' };
         }
 

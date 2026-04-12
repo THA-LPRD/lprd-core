@@ -1,11 +1,8 @@
 import { v } from 'convex/values';
 import { mutation, query } from '../../_generated/server';
 import { getSiteActor } from '../../actors';
-import { markPluginDataJobSucceeded } from '../../jobs/pluginDataJobs';
 import { permissionCatalog } from '../../lib/permissions';
-import { requireAuthorization, requirePermission, resolveAuthorization } from '../../lib/authz';
-import { containsImgFuncs, deleteImageBlobs } from '../../lib/template_data';
-import { generateUploadUrl } from '../../lib/storage';
+import { requireAuthorization, resolveAuthorization } from '../../lib/authz';
 
 /**
  * List active plugins that have topics and are enabled for the given site.
@@ -79,63 +76,6 @@ export const listEntries = query({
     },
 });
 
-export const getByIdForJob = query({
-    args: { id: v.id('pluginData') },
-    handler: async (ctx, args) => {
-        const record = await ctx.db.get(args.id);
-        if (!record) return null;
-
-        await requirePermission(ctx, permissionCatalog.org.site.pluginData.view, { siteId: record.siteId });
-        return record;
-    },
-});
-
-export const createDataUploadUrl = mutation({
-    args: { id: v.id('pluginData') },
-    handler: async (ctx, args) => {
-        const record = await ctx.db.get(args.id);
-        if (!record) throw new Error('Plugin data not found');
-
-        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
-        return generateUploadUrl(ctx);
-    },
-});
-
-export const getStoredDataFileUrl = query({
-    args: {
-        id: v.id('pluginData'),
-        storageId: v.id('_storage'),
-    },
-    handler: async (ctx, args) => {
-        const record = await ctx.db.get(args.id);
-        if (!record) throw new Error('Plugin data not found');
-
-        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
-        return ctx.storage.getUrl(args.storageId);
-    },
-});
-
-export const patchDataForJob = mutation({
-    args: {
-        id: v.id('pluginData'),
-        data: v.any(),
-        jobId: v.optional(v.id('jobLogs')),
-    },
-    handler: async (ctx, args) => {
-        const record = await ctx.db.get(args.id);
-        if (!record) throw new Error('Plugin data not found');
-
-        await requirePermission(ctx, permissionCatalog.org.site.pluginData.manage.self, { siteId: record.siteId });
-        await ctx.db.patch(args.id, {
-            data: args.data,
-            receivedAt: Date.now(),
-        });
-
-        if (args.jobId) {
-            await markPluginDataJobSucceeded(ctx, args.jobId, args.id);
-        }
-    },
-});
 
 export const storeWebhookDataForApplication = mutation({
     args: {
@@ -173,7 +113,6 @@ export const storeWebhookDataForApplication = mutation({
 
         let id;
         if (existing) {
-            await deleteImageBlobs(ctx, existing.data);
             await ctx.db.patch(existing._id, {
                 contentType: args.contentType,
                 data: args.data,
@@ -201,7 +140,6 @@ export const storeWebhookDataForApplication = mutation({
             pluginId: plugin._id,
             siteId: site._id,
             siteSlug: site.slug,
-            needsNormalization: containsImgFuncs(args.data),
         };
     },
 });

@@ -2,7 +2,7 @@ import type { Id } from '@convex/dataModel';
 
 export type JobStatus = 'pending' | 'paused' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
-export type JobType = 'normalize-images' | 'template-thumbnail' | 'frame-thumbnail' | 'device-render' | 'health-check';
+export type JobType = 'template-thumbnail' | 'frame-thumbnail' | 'device-render' | 'health-check';
 
 export type JobResourceType = 'pluginData' | 'template' | 'frame' | 'device' | 'application';
 
@@ -16,15 +16,6 @@ export type JobSource =
     | 'deviceConfigure'
     | 'pluginTemplateUpsert'
     | 'scheduler';
-
-export type NormalizeImagesPayload = {
-    resourceType: 'pluginData' | 'template';
-    resourceId: string;
-    actorId: Id<'actors'>;
-    siteId?: Id<'sites'>;
-    source: JobSource;
-    nextJobs: Array<RenderOrThumbnailPayload>;
-};
 
 export type TemplateThumbnailPayload = {
     templateId: Id<'templates'>;
@@ -57,12 +48,6 @@ export type RenderOrThumbnailPayload =
     | { type: 'device-render'; payload: DeviceRenderPayload };
 
 export type WorkerJobPayload =
-    | {
-          jobStateId?: Id<'jobStates'>;
-          executionId?: Id<'jobLogs'>;
-          type: 'normalize-images';
-          payload: NormalizeImagesPayload;
-      }
     | {
           jobStateId?: Id<'jobStates'>;
           executionId?: Id<'jobLogs'>;

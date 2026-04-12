@@ -41,7 +41,7 @@ export async function recordAndEnqueueJob(input: {
                   {
                       actorId: input.actorId,
                       siteId: input.siteId,
-                      type: input.type as 'normalize-images' | 'template-thumbnail',
+                      type: input.type as 'template-thumbnail',
                       templateId: input.resourceId as Id<'templates'>,
                       source: input.source,
                       workKey,
@@ -75,31 +75,18 @@ export async function recordAndEnqueueJob(input: {
                       },
                       { token: input.token },
                   )
-                : input.resourceType === 'pluginData'
-                  ? await fetchMutation(
-                        api.jobs.pluginDataJobs.createResourceJob,
-                        {
-                            actorId: input.actorId,
-                            siteId: input.siteId,
-                            pluginDataId: input.resourceId as Id<'pluginData'>,
-                            source: input.source,
-                            workKey,
-                            payload: input.payload.payload,
-                        },
-                        { token: input.token },
-                    )
-                  : await fetchMutation(
-                        api.jobs.applicationJobs.createResourceJob,
-                        {
-                            actorId: input.actorId,
-                            siteId: input.siteId,
-                            applicationId: input.resourceId as Id<'applications'>,
-                            source: input.source,
-                            workKey,
-                            payload: input.payload.payload,
-                        },
-                        { token: input.token },
-                    );
+                : await fetchMutation(
+                      api.jobs.applicationJobs.createResourceJob,
+                      {
+                          actorId: input.actorId,
+                          siteId: input.siteId,
+                          applicationId: input.resourceId as Id<'applications'>,
+                          source: input.source,
+                          workKey,
+                          payload: input.payload.payload,
+                      },
+                      { token: input.token },
+                  );
 
     if (result.shouldEnqueue && result.executionId) {
         await enqueueWorkerJob(

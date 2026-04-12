@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { Id } from '@convex/dataModel';
 import { DataFieldsEditor } from '@/components/ui/data-fields-editor';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -10,7 +11,15 @@ import { ChevronRight } from 'lucide-react';
 
 const EMPTY_OBJ = {};
 
-export function ManualDataSection({ data, onChange }: { data: unknown; onChange: (data: unknown) => void }) {
+export function ManualDataSection({
+    data,
+    onChange,
+    siteId,
+}: {
+    data: unknown;
+    onChange: (data: unknown) => void;
+    siteId: Id<'sites'>;
+}) {
     // Normalize: null/undefined → empty object for the editor
     const normalizedData = data != null && typeof data === 'object' ? data : EMPTY_OBJ;
     const hasData =
@@ -90,7 +99,12 @@ export function ManualDataSection({ data, onChange }: { data: unknown; onChange:
                     </ButtonGroup>
                 </div>
                 {mode === 'form' ? (
-                    <DataFieldsEditor data={normalizedData} onChange={handleFormChange} disabled={false} />
+                    <DataFieldsEditor
+                        data={normalizedData}
+                        onChange={handleFormChange}
+                        disabled={false}
+                        siteId={siteId}
+                    />
                 ) : (
                     <div className="space-y-1">
                         <textarea

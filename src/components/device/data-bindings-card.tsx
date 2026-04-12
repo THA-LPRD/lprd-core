@@ -86,6 +86,7 @@ export function DataBindingsCard({
                             <ManualDataSection
                                 data={manualData[widget.id] ?? null}
                                 onChange={(data) => onManualDataChange(widget.id, data)}
+                                siteId={siteId}
                             />
                         </div>
                     );
