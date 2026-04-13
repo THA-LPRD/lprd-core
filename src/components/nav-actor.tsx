@@ -1,6 +1,6 @@
 'use client';
 
-import { BadgeCheck, ChevronsUpDown, LayoutDashboard, LogOut, Settings, Shield } from 'lucide-react';
+import { ChevronsUpDown, Inbox, LayoutDashboard, LogOut, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -27,7 +27,6 @@ function getInitials(name: string | undefined): string {
 export function NavActor({
     actor,
     canAccessAdmin,
-    onSettingsClick,
     onSignOut,
     context,
 }: {
@@ -37,7 +36,6 @@ export function NavActor({
         avatar?: string;
     };
     canAccessAdmin?: boolean;
-    onSettingsClick?: () => void;
     onSignOut?: () => void;
     context?: 'site' | 'admin';
 }) {
@@ -87,13 +85,13 @@ export function NavActor({
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                            <DropdownMenuItem onClick={onSettingsClick}>
+                            <DropdownMenuItem render={<Link href="/settings" />}>
                                 <Settings />
                                 Settings
                             </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <BadgeCheck />
-                                Account
+                            <DropdownMenuItem render={<Link href="/inbox" />}>
+                                <Inbox />
+                                Inbox
                             </DropdownMenuItem>
                         </DropdownMenuGroup>
                         {canAccessAdmin && (

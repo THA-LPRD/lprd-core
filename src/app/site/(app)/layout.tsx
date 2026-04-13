@@ -1,4 +1,4 @@
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppSidebar } from '@/components/site/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { DynamicBreadcrumbs } from '@/components/layout/breadcrumbs';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';

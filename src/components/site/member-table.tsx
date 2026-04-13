@@ -1,10 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { useMutation } from 'convex/react';
+import { useMutation, useQuery } from 'convex/react';
 import { api } from '@convex/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -22,15 +24,17 @@ import {
 } from '@/components/ui/dialog';
 import { TableCell, TableHead, TableRow } from '@/components/ui/table';
 import { DataTable, DataTableBody, DataTableHeader, DataTableRow } from '@/components/ui/data-table';
-import { MoreHorizontal, Shield, Trash2, User } from 'lucide-react';
+import { Clock, MoreHorizontal, Shield, Trash2, User, UserPlus, X } from 'lucide-react';
 import type { Id } from '@convex/dataModel';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { requestJson } from '@/lib/api-client';
 
 type Member = {
     actor: {
         _id: Id<'actors'>;
+        publicId: string;
         name?: string;
-        email?: string;
         avatarUrl?: string | null;
     } | null;
     role: 'siteAdmin' | 'user';
@@ -38,7 +42,7 @@ type Member = {
 
 type VisibleMember = Member & { actor: NonNullable<Member['actor']> };
 
-function getInitials(name?: string, email?: string): string {
+function getInitials(name?: string, fallback?: string): string {
     if (name) {
         const parts = name.split(' ');
         if (parts.length >= 2) {
@@ -46,8 +50,8 @@ function getInitials(name?: string, email?: string): string {
         }
         return name.slice(0, 2).toUpperCase();
     }
-    if (email) {
-        return email.slice(0, 2).toUpperCase();
+    if (fallback) {
+        return fallback.slice(0, 2).toUpperCase();
     }
     return '?';
 }
@@ -88,9 +92,13 @@ export function MemberTable({
 }) {
     const [memberToRemove, setMemberToRemove] = React.useState<VisibleMember | null>(null);
     const [isRemoving, setIsRemoving] = React.useState(false);
+    const [publicId, setPublicId] = React.useState('');
+    const [isInviting, setIsInviting] = React.useState(false);
+    const [revokingInviteId, setRevokingInviteId] = React.useState<Id<'siteInvites'> | null>(null);
 
     const updateMemberRole = useMutation(api.siteActors.updateMemberRole);
     const removeActor = useMutation(api.siteActors.removeActor);
+    const pendingInvites = useQuery(api.siteInvites.listForSite, canManage ? { siteId } : 'skip') ?? [];
 
     const visibleMembers = members.filter((member): member is VisibleMember => member.actor !== null);
     const adminCount = visibleMembers.filter((member) => member.role === 'siteAdmin').length;
@@ -110,8 +118,117 @@ export function MemberTable({
         }
     };
 
+    const handleInvite = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const trimmedPublicId = publicId.trim();
+        if (!trimmedPublicId) return;
+
+        setIsInviting(true);
+        try {
+            await requestJson<{ id: Id<'siteInvites'> }>(`/api/v2/sites/${siteId}/invites`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ publicId: trimmedPublicId }),
+            });
+            setPublicId('');
+            toast.success('Invite sent');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to send invite');
+        } finally {
+            setIsInviting(false);
+        }
+    };
+
+    const handleRevokeInvite = async (inviteId: Id<'siteInvites'>) => {
+        setRevokingInviteId(inviteId);
+        try {
+            await requestJson<{ ok: true }>(`/api/v2/sites/${siteId}/invites/${inviteId}/revoke`, { method: 'POST' });
+            toast.success('Invite revoked');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Failed to revoke invite');
+        } finally {
+            setRevokingInviteId(null);
+        }
+    };
+
     return (
         <>
+            {canManage && (
+                <div className="mb-6 grid gap-4">
+                    <form className="rounded-lg border p-4" onSubmit={(event) => void handleInvite(event)}>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="min-w-0 flex-1">
+                                <Label htmlFor="invite-public-id">Invite by public ID</Label>
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Users can find their public ID in settings.
+                                </p>
+                                <Input
+                                    id="invite-public-id"
+                                    value={publicId}
+                                    onChange={(event) => setPublicId(event.target.value)}
+                                    placeholder="actor public ID"
+                                    className="mt-2"
+                                />
+                            </div>
+                            <Button type="submit" disabled={isInviting || !publicId.trim()}>
+                                <UserPlus className="size-3.5" />
+                                {isInviting ? 'Inviting...' : 'Invite'}
+                            </Button>
+                        </div>
+                    </form>
+
+                    {pendingInvites.length > 0 && (
+                        <div className="rounded-lg border">
+                            <div className="flex items-center gap-2 border-b px-4 py-3">
+                                <Clock className="size-4 text-muted-foreground" />
+                                <p className="text-sm font-medium">Pending invites</p>
+                            </div>
+                            <div className="divide-y">
+                                {pendingInvites.map((item) => (
+                                    <div
+                                        key={item.invite._id}
+                                        className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                        <div className="flex min-w-0 items-center gap-3">
+                                            <Avatar className="size-8 shrink-0">
+                                                <AvatarImage
+                                                    src={item.targetActor?.avatarUrl ?? undefined}
+                                                    alt={item.targetActor?.name}
+                                                />
+                                                <AvatarFallback className="text-xs">
+                                                    {getInitials(item.targetActor?.name, item.targetActor?.publicId)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-medium">
+                                                    {item.targetActor?.name ?? 'Unknown user'}
+                                                </p>
+                                                <p className="truncate font-mono text-xs text-muted-foreground">
+                                                    {item.targetActor?.publicId ?? 'unresolved'}
+                                                </p>
+                                                <p className="truncate text-xs text-muted-foreground">
+                                                    Invited by {item.invitedByActor?.name ?? 'Unknown user'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={revokingInviteId === item.invite._id}
+                                            onClick={() => void handleRevokeInvite(item.invite._id)}
+                                        >
+                                            <X className="size-3.5" />
+                                            {revokingInviteId === item.invite._id ? 'Revoking...' : 'Revoke'}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <DataTable
                 rows={visibleMembers}
                 getRowKey={(m) => m.actor._id}
@@ -121,7 +238,7 @@ export function MemberTable({
                 <DataTableHeader>
                     <TableRow>
                         <TableHead>Member</TableHead>
-                        <TableHead className="w-64">Email</TableHead>
+                        <TableHead className="w-64">Public ID</TableHead>
                         <TableHead className="w-24">Role</TableHead>
                         {canManage && <TableHead className="w-10 text-right">Actions</TableHead>}
                     </TableRow>
@@ -132,7 +249,6 @@ export function MemberTable({
                             const isCurrentActor = member.actor._id === currentActorId;
                             const isOnlyAdmin = member.role === 'siteAdmin' && adminCount === 1;
                             const displayName = member.actor.name || 'Unnamed Actor';
-                            const email = member.actor.email || 'No email';
 
                             return (
                                 <>
@@ -144,7 +260,7 @@ export function MemberTable({
                                                     alt={displayName}
                                                 />
                                                 <AvatarFallback className="text-xs">
-                                                    {getInitials(member.actor.name, member.actor.email)}
+                                                    {getInitials(member.actor.name, member.actor.publicId)}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div className="min-w-0">
@@ -163,7 +279,9 @@ export function MemberTable({
                                         </div>
                                     </TableCell>
                                     <TableCell className="w-64 min-w-0">
-                                        <p className="truncate text-xs text-muted-foreground">{email}</p>
+                                        <p className="truncate font-mono text-xs text-muted-foreground">
+                                            {member.actor.publicId}
+                                        </p>
                                     </TableCell>
                                     <TableCell className="w-24">
                                         <RoleIndicator role={member.role} />
@@ -231,7 +349,7 @@ export function MemberTable({
                         <DialogTitle>Remove Member</DialogTitle>
                         <DialogDescription>
                             Are you sure you want to remove{' '}
-                            <strong>{memberToRemove?.actor?.name || memberToRemove?.actor?.email}</strong> from this
+                            <strong>{memberToRemove?.actor?.name || memberToRemove?.actor?.publicId}</strong> from this
                             site? They will lose access to all resources.
                         </DialogDescription>
                     </DialogHeader>

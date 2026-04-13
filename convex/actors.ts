@@ -10,6 +10,7 @@ import {
     deletePermissionGrantsForActor,
     hasSubjectPermissionGrantOnTarget,
     listPermissionGrantRowsForSubject,
+    replacePermissionGrantsForSourceTarget,
 } from './lib/permissionGrants';
 import { syncActorRolePermissionGrants } from './lib/permissionSync';
 
@@ -73,6 +74,25 @@ export async function getSiteActor(ctx: Ctx, actorId: Id<'actors'>, siteId: Id<'
         .query('siteActors')
         .withIndex('by_actor_and_site', (q) => q.eq('actorId', actorId).eq('siteId', siteId))
         .unique();
+}
+
+async function getActorOrganizationAvailability(ctx: Ctx, organizationId: Id<'organizations'>, actorId: Id<'actors'>) {
+    const [canView, canInvite] = await Promise.all([
+        hasSubjectPermissionGrantOnTarget(
+            ctx,
+            { subjectType: 'organization', subjectId: organizationId },
+            permissionCatalog.org.actor.view,
+            { targetType: 'actor', targetId: actorId },
+        ),
+        hasSubjectPermissionGrantOnTarget(
+            ctx,
+            { subjectType: 'organization', subjectId: organizationId },
+            permissionCatalog.org.actor.invite,
+            { targetType: 'actor', targetId: actorId },
+        ),
+    ]);
+
+    return { canView, canInvite };
 }
 
 function decodeOffsetCursor(cursor: string | null): number {
@@ -215,6 +235,27 @@ export const deleteFromWebhook = internalMutation({
             await ctx.db.delete(siteActor._id);
         }
 
+        const pendingInvites = await ctx.db
+            .query('siteInvites')
+            .withIndex('by_target_actor_and_status', (q) => q.eq('targetActorId', actor._id).eq('status', 'pending'))
+            .collect();
+        const now = Date.now();
+        for (const invite of pendingInvites) {
+            await ctx.db.patch(invite._id, {
+                status: 'declined',
+                respondedAt: now,
+                updatedAt: now,
+            });
+        }
+
+        const messages = await ctx.db
+            .query('systemMessages')
+            .withIndex('by_actor', (q) => q.eq('actorId', actor._id))
+            .collect();
+        for (const message of messages) {
+            await ctx.db.delete(message._id);
+        }
+
         await deletePermissionGrantsForActor(ctx, actor._id);
         await ctx.db.delete(actor._id);
     },
@@ -229,6 +270,29 @@ export const me = query({
         const authorization = await resolveAuthorization(ctx);
         if (!authorization) return null;
         return withAvatarUrl(ctx, authorization.actor);
+    },
+});
+
+export const getMyActorSettings = query({
+    args: {},
+    handler: async (ctx) => {
+        const authorization = await requireAuthorization(ctx);
+        const actor = await withAvatarUrl(ctx, authorization.actor);
+        const availability = actor.organizationId
+            ? await getActorOrganizationAvailability(ctx, actor.organizationId, actor._id)
+            : { canView: false, canInvite: false };
+
+        return {
+            actor: {
+                _id: actor._id,
+                publicId: actor.publicId,
+                name: actor.name,
+                email: actor.email,
+                avatarUrl: actor.avatarUrl,
+            },
+            canBeFoundInOrganization: availability.canView,
+            canBeInvitedInOrganization: availability.canInvite,
+        };
     },
 });
 
@@ -362,6 +426,36 @@ export const listForSiteSelection = query({
             isDone: end >= rows.length,
             continueCursor: encodeOffsetCursor(end),
         };
+    },
+});
+
+export const updateActorSettings = mutation({
+    args: {
+        actorId: v.id('actors'),
+        canBeFoundInOrganization: v.boolean(),
+        canBeInvitedInOrganization: v.boolean(),
+    },
+    handler: async (ctx, args) => {
+        const authorization = await requireAuthorization(ctx);
+        if (authorization.actor._id !== args.actorId && !authorization.can(permissionCatalog.platform.actor.manage)) {
+            throw new Error('Forbidden');
+        }
+
+        const targetActor = await ctx.db.get(args.actorId);
+        if (!targetActor) throw new Error('Actor not found');
+        if (targetActor.type !== 'user') throw new Error('Only human users can manage these settings');
+        if (!targetActor.organizationId) throw new Error('Organization required');
+
+        await replacePermissionGrantsForSourceTarget(
+            ctx,
+            { subjectType: 'organization', subjectId: targetActor.organizationId },
+            'manual',
+            { targetType: 'actor', targetId: targetActor._id },
+            [
+                ...(args.canBeFoundInOrganization ? [permissionCatalog.org.actor.view] : []),
+                ...(args.canBeInvitedInOrganization ? [permissionCatalog.org.actor.invite] : []),
+            ],
+        );
     },
 });
 

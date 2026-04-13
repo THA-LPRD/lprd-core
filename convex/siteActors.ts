@@ -84,28 +84,23 @@ export const attachActor = mutation({
         if (!actor) throw new Error('Actor not found');
 
         if (actor.type === 'user') {
-            if (!args.role) throw new Error('Human actors require a site role');
+            throw new Error('Human users must be invited before they can join a site');
         } else if (args.role) {
             throw new Error('Only human actors can be assigned a site role');
         }
 
         const existing = await getSiteActor(ctx, args.actorId, args.siteId);
         if (existing) {
-            if (actor.type === 'user') {
-                if (!existing.role) throw new Error('Human site actors require a role');
-                if (existing.role !== args.role) throw new Error('Member already exists with a different role');
-            } else if (existing.role) {
+            if (existing.role) {
                 throw new Error('Non-human site actors cannot have a role');
             }
 
             return existing._id;
         }
 
-        if (actor.type !== 'user') {
-            const availability = await getActorAvailabilityForSite(ctx, authorization.site, args.actorId);
-            if (!availability.canInvite) {
-                throw new Error('Actor cannot be added to this site');
-            }
+        const availability = await getActorAvailabilityForSite(ctx, authorization.site, args.actorId);
+        if (!availability.canInvite) {
+            throw new Error('Actor cannot be added to this site');
         }
 
         const siteActorId = await ctx.db.insert('siteActors', {
@@ -185,8 +180,8 @@ export const listBySite = query({
                     return {
                         actor: {
                             _id: memberActor._id,
+                            publicId: memberActor.publicId,
                             name: memberWithAvatar.name,
-                            email: memberWithAvatar.email,
                             avatarUrl: memberWithAvatar.avatarUrl,
                         },
                         role: siteActor.role!,

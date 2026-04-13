@@ -71,6 +71,18 @@ export const permissionGrantSource = v.union(
     v.literal('manual'),
 );
 
+export const systemMessageType = v.union(v.literal('siteInvite'));
+
+export const systemMessageFolder = v.union(v.literal('inbox'), v.literal('archive'), v.literal('deleted'));
+
+export const siteInviteStatus = v.union(
+    v.literal('pending'),
+    v.literal('accepted'),
+    v.literal('declined'),
+    v.literal('revoked'),
+    v.literal('expired'),
+);
+
 // Health check status (individual check result)
 export const healthCheckStatus = v.union(v.literal('healthy'), v.literal('unhealthy'), v.literal('error'));
 
@@ -340,6 +352,44 @@ export default defineSchema({
         .index('by_subject_and_source', ['subjectType', 'subjectId', 'source'])
         .index('by_subject_and_target', ['subjectType', 'subjectId', 'targetType', 'targetId'])
         .index('by_target', ['targetType', 'targetId']),
+
+    systemMessages: defineTable({
+        actorId: v.id('actors'),
+        type: systemMessageType,
+        folder: systemMessageFolder,
+        readAt: v.optional(v.number()),
+        title: v.string(),
+        body: v.optional(v.string()),
+        refTable: v.optional(v.string()),
+        refId: v.optional(v.string()),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+        archivedAt: v.optional(v.number()),
+        deletedAt: v.optional(v.number()),
+    })
+        .index('by_actor', ['actorId'])
+        .index('by_actor_and_folder', ['actorId', 'folder'])
+        .index('by_ref', ['refTable', 'refId']),
+
+    siteInvites: defineTable({
+        siteId: v.id('sites'),
+        organizationId: v.id('organizations'),
+        targetActorId: v.id('actors'),
+        invitedByActorId: v.optional(v.id('actors')),
+        status: siteInviteStatus,
+        messageId: v.optional(v.id('systemMessages')),
+        createdAt: v.number(),
+        updatedAt: v.number(),
+        respondedAt: v.optional(v.number()),
+        revokedAt: v.optional(v.number()),
+        expiresAt: v.optional(v.number()),
+    })
+        .index('by_site', ['siteId'])
+        .index('by_site_and_status', ['siteId', 'status'])
+        .index('by_target_actor', ['targetActorId'])
+        .index('by_target_actor_and_status', ['targetActorId', 'status'])
+        .index('by_site_and_target_actor_and_status', ['siteId', 'targetActorId', 'status'])
+        .index('by_message', ['messageId']),
 
     pluginProfiles: defineTable({
         applicationId: v.id('applications'),

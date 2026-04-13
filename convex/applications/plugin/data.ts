@@ -76,7 +76,6 @@ export const listEntries = query({
     },
 });
 
-
 export const storeWebhookDataForApplication = mutation({
     args: {
         sitePublicId: v.string(),

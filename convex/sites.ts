@@ -153,6 +153,19 @@ export const remove = mutation({
     handler: async (ctx, args) => {
         await requirePermission(ctx, permissionCatalog.org.site.manage, { siteId: args.id });
 
+        const pendingInvites = await ctx.db
+            .query('siteInvites')
+            .withIndex('by_site_and_status', (q) => q.eq('siteId', args.id).eq('status', 'pending'))
+            .collect();
+        const now = Date.now();
+        for (const invite of pendingInvites) {
+            await ctx.db.patch(invite._id, {
+                status: 'revoked',
+                revokedAt: now,
+                updatedAt: now,
+            });
+        }
+
         const siteActors = await ctx.db
             .query('siteActors')
             .withIndex('by_site', (q) => q.eq('siteId', args.id))

@@ -241,7 +241,6 @@ export const getRenderBundle = query({
     },
 });
 
-
 export const createThumbnailUploadUrl = mutation({
     args: { id: v.id('templates') },
     handler: async (ctx, args) => {
@@ -261,7 +260,6 @@ export const createThumbnailUploadUrl = mutation({
         return generateUploadUrl(ctx);
     },
 });
-
 
 export const storeThumbnailForJob = mutation({
     args: {
