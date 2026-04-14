@@ -1,0 +1,18 @@
+{
+  "name": "@workspace/shared",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "lint": "oxlint && biome lint .",
+    "lint:fix": "oxlint --fix && biome lint --write .",
+    "format": "biome format --write ."
+  },
+  "dependencies": {
+    "@workspace/backend": "workspace:*",
+    "jose": "^6.2.2"
+  },
+  "devDependencies": {
+    "@workspace/typescript-config": "workspace:*",
+    "@types/node": "^25.5.1"
+  }
+}

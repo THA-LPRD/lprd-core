@@ -1,0 +1,69 @@
+# Title: LPRD Core Stack
+# Description: Low Power Room Display — core app + worker
+
+services:
+  valkey:
+    image: valkey/valkey:9.0.2-alpine
+    container_name: valkey-lprd
+    command: --save 60 1 --loglevel warning
+    restart: always
+    # ports:
+    #   - '6379:6379'
+    healthcheck:
+      test: [ 'CMD-SHELL', 'valkey-cli ping | grep PONG' ]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+
+  lprd-core:
+    image: ghcr.io/tha-lprd/lprd-core:latest
+    container_name: lprd-core
+    restart: always
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+
+      # General
+      BASE_URL: ${BASE_URL:?Base URL is required}
+
+      # Convex
+      NEXT_PUBLIC_CONVEX_URL: ${NEXT_PUBLIC_CONVEX_URL:?Convex URL is required}
+      CONVEX_DEPLOY_KEY: ${CONVEX_DEPLOY_KEY:?Convex Deploy Key is required}
+
+      # WorkOS AuthKit
+      WORKOS_CLIENT_ID: ${WORKOS_CLIENT_ID:?WorkOS Client ID is required}
+      WORKOS_API_KEY: ${WORKOS_API_KEY:?WorkOS API Key is required}
+      WORKOS_AUTHKIT_DOMAIN: ${WORKOS_AUTHKIT_DOMAIN:?WorkOS AuthKit Domain is required}
+      WORKOS_COOKIE_PASSWORD: ${WORKOS_COOKIE_PASSWORD:?WorkOS Cookie Password is required}
+      NEXT_PUBLIC_WORKOS_REDIRECT_URI: ${NEXT_PUBLIC_WORKOS_REDIRECT_URI:?WorkOS Redirect URI is required}
+
+      # Redis
+      REDIS_HOST: valkey
+      REDIS_PORT: 6379
+
+  lprd-core-worker:
+    image: ghcr.io/tha-lprd/lprd-core-worker:latest
+    container_name: lprd-core-worker
+    restart: always
+    depends_on:
+      valkey:
+        condition: service_healthy
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+
+      # lprd-core
+      CORE_BASE_URL: ${CORE_BASE_URL:-http://lprd-core:3000}
+      WORKOS_AUTHKIT_DOMAIN: ${WORKOS_AUTHKIT_DOMAIN:?WorkOS AuthKit Domain is required}
+      WORKER_CLIENT_ID: ${WORKER_CLIENT_ID:?Worker Client ID is required}
+      WORKER_CLIENT_SECRET: ${WORKER_CLIENT_SECRET:?Worker Client Secret is required}
+
+      # Redis (internal, points to the valkey service)
+      REDIS_HOST: valkey
+      REDIS_PORT: 6379

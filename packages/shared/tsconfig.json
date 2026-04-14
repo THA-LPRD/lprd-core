@@ -1,0 +1,12 @@
+{
+  "extends": "@workspace/typescript-config/bun.json",
+  "compilerOptions": {
+    "paths": {
+      "@convex/lib/*": ["../backend/convex/lib/*"],
+      "@convex/*": ["../backend/convex/_generated/*"]
+    },
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

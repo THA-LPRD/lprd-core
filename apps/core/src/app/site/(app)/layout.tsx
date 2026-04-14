@@ -1,0 +1,22 @@
+import { AppSidebar } from '@/components/site/sidebar';
+import { Separator } from '@workspace/ui/components/separator';
+import { DynamicBreadcrumbs } from '@/components/layout/breadcrumbs';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@workspace/ui/components/sidebar';
+
+export default function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+    return (
+        <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className="min-w-0 overflow-hidden">
+                <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+                    <div className="flex items-center gap-2 px-4">
+                        <SidebarTrigger className="-ml-1" />
+                        <Separator orientation="vertical" className="mr-2 mt-1.5 data-[orientation=vertical]:h-4" />
+                        <DynamicBreadcrumbs />
+                    </div>
+                </header>
+                {children}
+            </SidebarInset>
+        </SidebarProvider>
+    );
+}

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "",
+    "css": "src/styles/globals.css",
+    "baseColor": "zinc",
+    "cssVariables": true,
+    "prefix": ""
+  },
+  "iconLibrary": "lucide",
+  "menuColor": "default",
+  "menuAccent": "subtle",
+  "aliases": {
+    "components": "@workspace/ui/components",
+    "utils": "@workspace/ui/lib/utils",
+    "ui": "@workspace/ui/components",
+    "lib": "@workspace/ui/lib",
+    "hooks": "@workspace/ui/hooks"
+  },
+  "registries": {
+    "@diceui": "https://diceui.com/r/{name}.json"
+  }
+}
