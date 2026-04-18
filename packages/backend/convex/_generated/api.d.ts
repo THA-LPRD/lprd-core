@@ -67,7 +67,11 @@ import type * as workos_userDeleted from "../workos/userDeleted.js";
 import type * as workos_userUpdated from "../workos/userUpdated.js";
 import type * as workos_utils from "../workos/utils.js";
 
-import type {ApiFromModules, FilterApi, FunctionReference,} from "convex/server";
+import type {
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
+} from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   actors: typeof actors;

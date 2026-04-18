@@ -3,18 +3,18 @@ import type { Metadata } from 'next';
 import { Inter_Tight, JetBrains_Mono } from 'next/font/google';
 import { ConvexClientProvider } from '@/components/ConvexClientProvider';
 import { ThemeProvider } from '@/components/theme-provider';
-import '@workspace/ui/globals.css';
+import './globals.css';
 
 const inter_tight = Inter_Tight({
     subsets: ['latin'],
     display: 'swap',
-    variable: '--font-sans',
+    variable: '--font-inter',
 });
 
 const jetbrains_mono = JetBrains_Mono({
     subsets: ['latin'],
     display: 'swap',
-    variable: '--font-mono',
+    variable: '--font-jetbrains-mono',
 });
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     return (
         <html lang="en" suppressHydrationWarning>
             <body
-                className={`${inter_tight.variable} ${jetbrains_mono.variable} font-sans antialiased h-screen w-screen flex overflow-hidden`}
+                className={`${inter_tight.variable} ${jetbrains_mono.variable} antialiased h-screen w-screen flex overflow-hidden`}
             >
                 <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
                     <ConvexClientProvider>{children}</ConvexClientProvider>

@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./globals.css": "./src/styles/globals.css",
+    "./globals.css": {
+      "style": "./src/styles/globals.css",
+      "default": "./src/styles/globals.css"
+    },
     "./postcss.config": "./postcss.config.mjs",
     "./components/*": "./src/components/*.tsx",
     "./lib/*": "./src/lib/*.ts",
