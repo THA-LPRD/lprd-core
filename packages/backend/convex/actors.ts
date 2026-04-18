@@ -31,6 +31,13 @@ async function getActorByExternalId(ctx: Ctx, externalId: string) {
         .unique();
 }
 
+async function getOrganizationByExternalId(ctx: Ctx, externalId: string) {
+    return ctx.db
+        .query('organizations')
+        .withIndex('by_externalId', (q) => q.eq('externalId', externalId))
+        .unique();
+}
+
 /**
  * Get current authenticated actor from context.
  * Returns null if not authenticated or actor not found.
@@ -201,6 +208,105 @@ export const upsertFromWebhook = internalMutation({
         if (!nextActor) throw new Error('Actor not found after create');
         await syncActorRolePermissionGrants(ctx, nextActor);
         return actorId;
+    },
+});
+
+export const setAppAdminForUser = internalMutation({
+    args: {
+        id: v.id('actors'),
+    },
+    handler: async (ctx, args) => {
+        const actor = await ctx.db.get(args.id);
+        if (!actor) throw new Error('Actor not found');
+        if (actor.type !== 'user') throw new Error('Only human users can be app admins');
+
+        await ctx.db.patch(actor._id, {
+            role: 'appAdmin',
+            status: 'active',
+            updatedAt: Date.now(),
+        });
+
+        const nextActor = await ctx.db.get(actor._id);
+        if (!nextActor) throw new Error('Actor not found after update');
+        await syncActorRolePermissionGrants(ctx, nextActor);
+        return actor._id;
+    },
+});
+
+export const applyOrgMemberFromWebhook = internalMutation({
+    args: {
+        userExternalId: v.string(),
+        organizationExternalId: v.string(),
+        status: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const actor = await getActorByExternalId(ctx, args.userExternalId);
+        if (!actor) return { synced: false, reason: 'actorNotFound' };
+        if (actor.type !== 'user') return { synced: false, reason: 'actorNotHuman' };
+
+        const organization = await getOrganizationByExternalId(ctx, args.organizationExternalId);
+        if (!organization) return { synced: false, reason: 'organizationNotFound' };
+
+        const active = args.status === 'active';
+        if (active && actor.organizationId !== organization._id) {
+            await ctx.db.patch(actor._id, {
+                organizationId: organization._id,
+                updatedAt: Date.now(),
+            });
+        } else if (!active && actor.organizationId === organization._id) {
+            await ctx.db.patch(actor._id, {
+                organizationId: undefined,
+                updatedAt: Date.now(),
+            });
+        }
+
+        const nextActor = await ctx.db.get(actor._id);
+        if (!nextActor) throw new Error('Actor not found after membership update');
+        await syncActorRolePermissionGrants(ctx, nextActor);
+
+        return { synced: true, active };
+    },
+});
+
+export const deleteOrgMemberFromWebhook = internalMutation({
+    args: {
+        userExternalId: v.string(),
+        organizationExternalId: v.string(),
+    },
+    handler: async (ctx, args) => {
+        const actor = await getActorByExternalId(ctx, args.userExternalId);
+        if (!actor) return { synced: false, reason: 'actorNotFound' };
+        if (actor.type !== 'user') return { synced: false, reason: 'actorNotHuman' };
+
+        const organization = await getOrganizationByExternalId(ctx, args.organizationExternalId);
+        if (!organization) {
+            if (actor.organizationId) {
+                const currentOrganization = await ctx.db.get(actor.organizationId);
+                if (!currentOrganization) {
+                    await ctx.db.patch(actor._id, {
+                        organizationId: undefined,
+                        updatedAt: Date.now(),
+                    });
+                    const nextActor = await ctx.db.get(actor._id);
+                    if (!nextActor) throw new Error('Actor not found after dangling membership delete');
+                    await syncActorRolePermissionGrants(ctx, nextActor);
+                    return { synced: true, removed: true };
+                }
+            }
+            return { synced: false, reason: 'organizationNotFound' };
+        }
+        if (actor.organizationId !== organization._id) return { synced: true, removed: false };
+
+        await ctx.db.patch(actor._id, {
+            organizationId: undefined,
+            updatedAt: Date.now(),
+        });
+
+        const nextActor = await ctx.db.get(actor._id);
+        if (!nextActor) throw new Error('Actor not found after membership delete');
+        await syncActorRolePermissionGrants(ctx, nextActor);
+
+        return { synced: true, removed: true };
     },
 });
 

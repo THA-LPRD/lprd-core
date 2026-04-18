@@ -32,6 +32,7 @@ import type * as lib_applications from "../lib/applications.js";
 import type * as lib_authz from "../lib/authz.js";
 import type * as lib_deviceLogs from "../lib/deviceLogs.js";
 import type * as lib_deviceWakePolicy from "../lib/deviceWakePolicy.js";
+import type * as lib_env from "../lib/env.js";
 import type * as lib_permissionGrants from "../lib/permissionGrants.js";
 import type * as lib_permissionSync from "../lib/permissionSync.js";
 import type * as lib_permissions_catalog from "../lib/permissions/catalog.js";
@@ -54,19 +55,19 @@ import type * as systemMessages from "../systemMessages.js";
 import type * as templates_crud from "../templates/crud.js";
 import type * as templates_global from "../templates/global.js";
 import type * as workos_helpers from "../workos/helpers.js";
+import type * as workos_index from "../workos/index.js";
 import type * as workos_orgCreated from "../workos/orgCreated.js";
 import type * as workos_orgDeleted from "../workos/orgDeleted.js";
+import type * as workos_orgMemberCreated from "../workos/orgMemberCreated.js";
+import type * as workos_orgMemberDeleted from "../workos/orgMemberDeleted.js";
+import type * as workos_orgMemberUpdated from "../workos/orgMemberUpdated.js";
 import type * as workos_orgUpdated from "../workos/orgUpdated.js";
 import type * as workos_userCreated from "../workos/userCreated.js";
 import type * as workos_userDeleted from "../workos/userDeleted.js";
 import type * as workos_userUpdated from "../workos/userUpdated.js";
 import type * as workos_utils from "../workos/utils.js";
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type {ApiFromModules, FilterApi, FunctionReference,} from "convex/server";
 
 declare const fullApi: ApiFromModules<{
   actors: typeof actors;
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authz": typeof lib_authz;
   "lib/deviceLogs": typeof lib_deviceLogs;
   "lib/deviceWakePolicy": typeof lib_deviceWakePolicy;
+  "lib/env": typeof lib_env;
   "lib/permissionGrants": typeof lib_permissionGrants;
   "lib/permissionSync": typeof lib_permissionSync;
   "lib/permissions/catalog": typeof lib_permissions_catalog;
@@ -115,8 +117,12 @@ declare const fullApi: ApiFromModules<{
   "templates/crud": typeof templates_crud;
   "templates/global": typeof templates_global;
   "workos/helpers": typeof workos_helpers;
+  "workos/index": typeof workos_index;
   "workos/orgCreated": typeof workos_orgCreated;
   "workos/orgDeleted": typeof workos_orgDeleted;
+  "workos/orgMemberCreated": typeof workos_orgMemberCreated;
+  "workos/orgMemberDeleted": typeof workos_orgMemberDeleted;
+  "workos/orgMemberUpdated": typeof workos_orgMemberUpdated;
   "workos/orgUpdated": typeof workos_orgUpdated;
   "workos/userCreated": typeof workos_userCreated;
   "workos/userDeleted": typeof workos_userDeleted;

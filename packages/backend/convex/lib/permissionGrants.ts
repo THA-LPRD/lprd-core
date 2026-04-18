@@ -131,6 +131,20 @@ export async function deletePermissionGrantsForSourceTarget(
     }
 }
 
+export async function deletePermissionGrantsForSubjectSource(
+    ctx: MutationCtx,
+    subject: GrantSubject,
+    source: PermissionGrantSource,
+) {
+    const existing = await listPermissionGrantRowsForSubject(ctx, subject);
+
+    for (const grant of existing) {
+        if (grant.source === source) {
+            await ctx.db.delete(grant._id);
+        }
+    }
+}
+
 export async function deletePermissionGrantsForActor(ctx: MutationCtx, actorId: Id<'actors'>) {
     const bySubject = await listPermissionGrantRowsForSubject(ctx, { subjectType: 'actor', subjectId: actorId });
     const byTarget = await ctx.db

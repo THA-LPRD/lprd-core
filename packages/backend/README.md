@@ -28,20 +28,24 @@ bunx convex dev
 
 ## Env vars
 
-| Key                                   | Default | Description                                                                    |
-|---------------------------------------|---------|--------------------------------------------------------------------------------|
-| `CONVEX_DEPLOYMENT`                   | —       | Convex deployment ID (e.g. `dev://your-deployment-id`)                         |
-| `WORKOS_CLIENT_ID`                    | —       | WorkOS AuthKit client ID                                                       |
-| `WORKOS_API_KEY`                      | —       | WorkOS AuthKit API key                                                         |
-| `WORKOS_AUTHKIT_DOMAIN`               | —       | WorkOS AuthKit domain                                                          |
-| `WORKOS_WEBHOOK_USERS_PATH_SECRET`    | —       | URL path secret for user webhook routes (generate with `openssl rand -hex 32`) |
-| `WORKOS_WEBHOOK_ORGS_PATH_SECRET`     | —       | URL path secret for org webhook routes                                         |
-| `WORKOS_WEBHOOK_USERS_CREATED_SECRET` | —       | WorkOS signature secret for `user.created` events                              |
-| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET` | —       | WorkOS signature secret for `user.updated` events                              |
-| `WORKOS_WEBHOOK_USERS_DELETED_SECRET` | —       | WorkOS signature secret for `user.deleted` events                              |
-| `WORKOS_WEBHOOK_ORGS_CREATED_SECRET`  | —       | WorkOS signature secret for `organization.created` events                      |
-| `WORKOS_WEBHOOK_ORGS_UPDATED_SECRET`  | —       | WorkOS signature secret for `organization.updated` events                      |
-| `WORKOS_WEBHOOK_ORGS_DELETED_SECRET`  | —       | WorkOS signature secret for `organization.deleted` events                      |
+| Key                                     | Default | Description                                                                    |
+|-----------------------------------------|---------|--------------------------------------------------------------------------------|
+| `CONVEX_DEPLOYMENT`                     | —       | Convex deployment ID (e.g. `dev://your-deployment-id`)                         |
+| `WORKOS_CLIENT_ID`                      | —       | WorkOS AuthKit client ID                                                       |
+| `WORKOS_API_KEY`                        | —       | WorkOS AuthKit API key                                                         |
+| `WORKOS_AUTHKIT_DOMAIN`                 | —       | WorkOS AuthKit domain                                                          |
+| `WORKOS_WEBHOOK_USERS_PATH_SECRET`      | —       | URL path secret for user webhook routes (generate with `openssl rand -hex 32`) |
+| `WORKOS_WEBHOOK_ORGS_PATH_SECRET`       | —       | URL path secret for org webhook routes                                         |
+| `WORKOS_WEBHOOK_ORG_MEM_PATH_SECRET`    | —       | URL path secret for organization membership webhook routes                     |
+| `WORKOS_WEBHOOK_USERS_CREATED_SECRET`   | —       | WorkOS signature secret for `user.created` events                              |
+| `WORKOS_WEBHOOK_USERS_UPDATED_SECRET`   | —       | WorkOS signature secret for `user.updated` events                              |
+| `WORKOS_WEBHOOK_USERS_DELETED_SECRET`   | —       | WorkOS signature secret for `user.deleted` events                              |
+| `WORKOS_WEBHOOK_ORGS_CREATED_SECRET`    | —       | WorkOS signature secret for `organization.created` events                      |
+| `WORKOS_WEBHOOK_ORGS_UPDATED_SECRET`    | —       | WorkOS signature secret for `organization.updated` events                      |
+| `WORKOS_WEBHOOK_ORGS_DELETED_SECRET`    | —       | WorkOS signature secret for `organization.deleted` events                      |
+| `WORKOS_WEBHOOK_ORG_MEM_CREATED_SECRET` | —       | WorkOS signature secret for `organization_membership.created` events           |
+| `WORKOS_WEBHOOK_ORG_MEM_UPDATED_SECRET` | —       | WorkOS signature secret for `organization_membership.updated` events           |
+| `WORKOS_WEBHOOK_ORG_MEM_DELETED_SECRET` | —       | WorkOS signature secret for `organization_membership.deleted` events           |
 
 ## WorkOS webhook routes
 
@@ -49,9 +53,9 @@ Configured in `convex/http.ts`:
 
 - User events: `/api/v2/user/webhook/{create|update|deleted}-<PATH_SECRET>`
 - Org events: `/api/v2/org/webhook/{created|updated|deleted}-<PATH_SECRET>`
+- Organization membership events: `/api/v2/org-member/webhook/{created|updated|deleted}-<PATH_SECRET>`
 
 ## Related docs
 
 - Monorepo overview: `README.md`
 - Backend coding conventions: `packages/backend/AGENTS.md`
-

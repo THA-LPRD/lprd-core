@@ -1,6 +1,13 @@
 import type { Doc } from '../_generated/dataModel';
 import type { MutationCtx } from '../_generated/server';
 import {
+    deletePermissionGrantsForSourceTarget,
+    deletePermissionGrantsForSubjectSource,
+    listActorPermissionGrantRows,
+    normalizePermissionGrantRows,
+    replacePermissionGrantsForSourceTarget,
+} from './permissionGrants';
+import {
     getActorRoleDefaultPermissions,
     getActorRoleMaxPermissions,
     getServiceAccountDefaultPermissions,
@@ -10,12 +17,6 @@ import {
     normalizeApplicationPermissions,
     type Permission,
 } from './permissions';
-import {
-    deletePermissionGrantsForSourceTarget,
-    listActorPermissionGrantRows,
-    normalizePermissionGrantRows,
-    replacePermissionGrantsForSourceTarget,
-} from './permissionGrants';
 
 function assertPermissionsWithinMax(permissions: readonly Permission[], maxPermissions: readonly Permission[]) {
     for (const permission of permissions) {
@@ -27,14 +28,7 @@ function assertPermissionsWithinMax(permissions: readonly Permission[], maxPermi
 
 export async function syncActorRolePermissionGrants(ctx: MutationCtx, actor: Doc<'actors'>) {
     const subject = { subjectType: 'actor' as const, subjectId: actor._id };
-    await deletePermissionGrantsForSourceTarget(ctx, subject, 'actorRole', { targetType: 'platform', targetId: null });
-
-    if (actor.organizationId) {
-        await deletePermissionGrantsForSourceTarget(ctx, subject, 'actorRole', {
-            targetType: 'organization',
-            targetId: actor.organizationId,
-        });
-    }
+    await deletePermissionGrantsForSubjectSource(ctx, subject, 'actorRole');
 
     const permissions = getActorRoleDefaultPermissions(actor.role, actor.type);
     if (permissions.length === 0) return;

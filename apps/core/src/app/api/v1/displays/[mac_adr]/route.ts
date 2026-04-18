@@ -1,6 +1,6 @@
-import {internal} from '@convex/api';
-import {NextResponse} from 'next/server';
-import {createLegacyDeviceConvexClient} from '@/lib/legacy-device-convex';
+import { internal } from '@convex/api';
+import { NextResponse } from 'next/server';
+import { createLegacyDeviceConvexClient } from '@/lib/legacy-device-convex';
 
 /**
  * GET /api/v1/displays/:mac
