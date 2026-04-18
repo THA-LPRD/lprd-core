@@ -11,7 +11,16 @@ import * as React from 'react';
 import { AssetPicker } from '@/components/asset/asset-picker';
 import { jsonToRows, rowsToJson, type SimpleRow } from '@/lib/template-data';
 
+type Row = SimpleRow & { id: string };
+
 const IMG_FUNC_RE = /^img\((.+)\)$/;
+
+function makeRow(key: string, value: string): Row {
+    return { id: crypto.randomUUID(), key, value };
+}
+function attachIds(rows: SimpleRow[]): Row[] {
+    return rows.map((r) => makeRow(r.key, r.value));
+}
 
 function AssetPreview({ storageId, siteId }: { storageId: string; siteId: Id<'sites'> }) {
     const assets = useQuery(api.siteAssets.list, { siteId });
@@ -45,19 +54,19 @@ export function DataFieldsEditor({
     disabled: boolean;
     siteId?: Id<'sites'>;
 }) {
-    const [rows, setRows] = React.useState<SimpleRow[]>(() => jsonToRows(data));
+    const [rows, setRows] = React.useState<Row[]>(() => attachIds(jsonToRows(data)));
     const lastEmitted = React.useRef<string>(JSON.stringify(data));
     const [pickerOpenIndex, setPickerOpenIndex] = React.useState<number | null>(null);
 
     React.useEffect(() => {
         const serialized = JSON.stringify(data);
         if (serialized !== lastEmitted.current) {
-            setRows(jsonToRows(data));
+            setRows(attachIds(jsonToRows(data)));
             lastEmitted.current = serialized;
         }
     }, [data]);
 
-    const emit = (next: SimpleRow[]) => {
+    const emit = (next: Row[]) => {
         setRows(next);
         const result = rowsToJson(next);
         lastEmitted.current = JSON.stringify(result);
@@ -81,7 +90,7 @@ export function DataFieldsEditor({
     };
 
     const addRow = () => {
-        const next = [...rows, { key: '', value: '' }];
+        const next = [...rows, makeRow('', '')];
         setRows(next);
         const result = rowsToJson(next);
         lastEmitted.current = JSON.stringify(result);
@@ -107,7 +116,7 @@ export function DataFieldsEditor({
                 const imgMatch = IMG_FUNC_RE.exec(row.value);
                 const storageId = imgMatch ? imgMatch[1] : null;
                 return (
-                    <div key={`${row.key}:${row.value}`} className="flex flex-col gap-1">
+                    <div key={row.id} className="flex flex-col gap-1">
                         <div className="flex items-start gap-1.5">
                             <Input
                                 value={row.key}
