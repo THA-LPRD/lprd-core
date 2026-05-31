@@ -317,7 +317,7 @@ export const saveManualData = mutation({
             savedWidgetIds.add(widgetId);
 
             if (existing) {
-                await ctx.db.patch(existing._id, { data, receivedAt: now });
+                await ctx.db.patch(existing._id, { data, ttlSeconds: 0, expiresAt: 0, receivedAt: now });
             } else {
                 await ctx.db.insert('pluginData', {
                     applicationId: pluginId,
@@ -326,7 +326,7 @@ export const saveManualData = mutation({
                     entry,
                     contentType: 'application/json',
                     data,
-                    ttlSeconds: 3600,
+                    ttlSeconds: 0,
                     expiresAt: 0,
                     receivedAt: now,
                 });

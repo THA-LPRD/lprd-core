@@ -5,6 +5,14 @@ import { getSiteActor } from '../../actors';
 import { requireAuthorization, resolveAuthorization } from '../../lib/authz';
 import { permissionCatalog } from '../../lib/permissions';
 
+function getExpiresAtFromTtl(now: number, ttlSeconds: number) {
+    if (ttlSeconds === 0) {
+        return 0;
+    }
+
+    return now + ttlSeconds * 1000;
+}
+
 /**
  * List active plugins that have topics and are enabled for the given site.
  * Used by the device config UI plugin picker.
@@ -117,7 +125,7 @@ export const storeWebhookDataForApplication = mutation({
                 contentType: args.contentType,
                 data: args.data,
                 ttlSeconds: args.ttlSeconds,
-                expiresAt: now + args.ttlSeconds * 1000,
+                expiresAt: getExpiresAtFromTtl(now, args.ttlSeconds),
                 receivedAt: now,
             });
             id = existing._id;
@@ -130,7 +138,7 @@ export const storeWebhookDataForApplication = mutation({
                 contentType: args.contentType,
                 data: args.data,
                 ttlSeconds: args.ttlSeconds,
-                expiresAt: now + args.ttlSeconds * 1000,
+                expiresAt: getExpiresAtFromTtl(now, args.ttlSeconds),
                 receivedAt: now,
             });
         }

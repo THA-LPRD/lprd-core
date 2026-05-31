@@ -137,10 +137,10 @@ export const getWakePlan = internalQuery({
             } else if (hasStaleData) {
                 freshness = { kind: 'stale' };
             } else {
-                freshness = {
-                    kind: 'fresh',
-                    secondsUntilExpiry: minRemainingSeconds === Infinity ? null : minRemainingSeconds,
-                };
+                freshness =
+                    minRemainingSeconds === Infinity
+                        ? { kind: 'unbound' }
+                        : { kind: 'fresh', secondsUntilExpiry: minRemainingSeconds };
             }
         }
 
