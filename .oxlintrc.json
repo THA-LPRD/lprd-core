@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "react"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {},
+  "env": {
+    "builtin": true
+  },
+  "ignorePatterns": [
+    "**/.next/**",
+    "**/.turbo/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/convex/_generated/**",
+    "Example-Templates/**",
+    ".agents/**",
+    ".claude/**",
+    "next-env.d.ts"
+  ]
+}

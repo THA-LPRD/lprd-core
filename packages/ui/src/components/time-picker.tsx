@@ -1631,7 +1631,8 @@ function TimePickerColumnItem(props: TimePickerColumnItemProps) {
 
             itemRef.current?.focus();
         },
-        // biome-ignore lint/correctness/useExhaustiveDependencies: itemProps is the rest-prop bag forwarded by this polymorphic item.
+        // itemProps is the rest-prop bag forwarded by this polymorphic item.
+        // oxlint-disable-next-line
         [itemProps],
     );
 
@@ -1701,7 +1702,8 @@ function TimePickerColumnItem(props: TimePickerColumnItemProps) {
                 });
             }
         },
-        // biome-ignore lint/correctness/useExhaustiveDependencies: itemProps is the rest-prop bag forwarded by this polymorphic item.
+        // itemProps is the rest-prop bag forwarded by this polymorphic item.
+        // oxlint-disable-next-line
         [itemProps, columnContext, groupContext, value],
     );
 
@@ -2100,7 +2102,8 @@ function TimePickerClear(props: ButtonProps) {
             if (disabled || readOnly) return;
             store.setState('value', '');
         },
-        // biome-ignore lint/correctness/useExhaustiveDependencies: clearProps is the rest-prop bag forwarded by this polymorphic button.
+        // clearProps is the rest-prop bag forwarded by this polymorphic button.
+        // oxlint-disable-next-line
         [clearProps, disabled, readOnly, store],
     );
 

@@ -11,6 +11,7 @@ Next.js is stateless and request-scoped — it cannot run long-lived or periodic
 - **Periodic work**: Things that are trivial in a traditional long-running server but impossible in stateless Next.js — health-check polling, background timers, scheduled jobs. Worker runs the scheduler loop.
 
 Come here to:
+
 - Add new job types
 - Change rendering logic or Playwright behavior
 - Change health-check scheduling intervals
@@ -23,8 +24,8 @@ Run from `apps/worker`:
 - `bun dev` - run worker with watch mode (avoid unless user asks)
 - `bun start` - run worker once
 - `bun typecheck` - TypeScript checks
-- `bun lint` - Oxlint + Biome lint checks
-- `bun lint:fix` - apply autofixable Oxlint + Biome fixes
+- `bun lint` - Oxlint + Oxfmt checks
+- `bun lint:fix` - apply autofixable Oxlint fixes and Oxfmt formatting
 
 ## Runtime model
 

@@ -6,9 +6,9 @@
     "dev": "bun --watch run src/index.ts",
     "start": "bun run src/index.ts",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint && biome lint .",
-    "lint:fix": "oxlint --fix && biome lint --write .",
-    "format": "biome format --write ."
+    "lint": "oxlint && oxfmt --check",
+    "lint:fix": "oxlint --fix && oxfmt",
+    "format": "oxfmt"
   },
   "dependencies": {
     "bullmq": "^5.73.0",

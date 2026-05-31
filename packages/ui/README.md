@@ -39,4 +39,3 @@ bunx shadcn@latest add <component-name>
 
 - Monorepo overview: `README.md`
 - UI conventions: `packages/ui/AGENTS.md`
-

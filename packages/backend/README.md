@@ -29,7 +29,7 @@ bunx convex dev
 ## Env vars
 
 | Key                                     | Default | Description                                                                    |
-|-----------------------------------------|---------|--------------------------------------------------------------------------------|
+| --------------------------------------- | ------- | ------------------------------------------------------------------------------ |
 | `CONVEX_DEPLOYMENT`                     | —       | Convex deployment ID (e.g. `dev://your-deployment-id`)                         |
 | `WORKOS_CLIENT_ID`                      | —       | WorkOS AuthKit client ID                                                       |
 | `WORKOS_API_KEY`                        | —       | WorkOS AuthKit API key                                                         |

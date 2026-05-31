@@ -11,6 +11,7 @@ Convex functions here handle atomicity and consistency: keeping related tables i
 **Key rule — where mutations live:** UI components do not call Convex mutations directly, except for trivially simple updates or cases where optimistic writes give meaningful UX benefit. Writes go through core's API layer (`/api/v2/...`). The endpoint owns the orchestration: auth, input validation, coordinating multiple Convex calls, triggering side effects (job dispatch, file uploads, external calls). This makes flows self-documenting (feature → API path → resource → handler) and prevents orchestration from being scattered across UI files.
 
 Come here to:
+
 - Change schema (`convex/schema.ts`)
 - Add or modify queries, mutations, and actions
 - Update permissions or authorization rules (`convex/lib/permissions/`)
@@ -31,8 +32,8 @@ Run from `packages/backend`:
 - `bun dev` - start Convex dev server (avoid unless user asks)
 - `bun setup` - run Convex dev until success
 - `bun typecheck` - typecheck Convex TS project
-- `bun lint` - Oxlint + Biome lint checks
-- `bun lint:fix` - apply autofixable Oxlint + Biome fixes
+- `bun lint` - Oxlint + Oxfmt checks
+- `bun lint:fix` - apply autofixable Oxlint fixes and Oxfmt formatting
 
 ## Code organization
 

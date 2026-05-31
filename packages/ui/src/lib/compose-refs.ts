@@ -55,7 +55,8 @@ function composeRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
  * Accepts callback refs and RefObject(s)
  */
 function useComposedRefs<T>(...refs: PossibleRef<T>[]): React.RefCallback<T> {
-    // biome-ignore lint/correctness/useExhaustiveDependencies: refs is the variadic dependency list for this composition helper.
+    // refs is the variadic dependency list for this composition helper.
+    // oxlint-disable-next-line
     return React.useCallback((node: T) => composeRefs(...refs)(node), refs);
 }
 

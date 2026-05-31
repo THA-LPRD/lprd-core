@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "lint": "oxlint && biome lint .",
-    "lint:fix": "oxlint --fix && biome lint --write .",
-    "format": "biome format --write ."
+    "lint": "oxlint && oxfmt --check",
+    "lint:fix": "oxlint --fix && oxfmt",
+    "format": "oxfmt"
   },
   "dependencies": {
     "@workspace/backend": "workspace:*",

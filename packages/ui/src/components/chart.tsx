@@ -1,4 +1,5 @@
-// biome-ignore-all lint/security/noDangerouslySetInnerHtml: shadcn chart injects generated CSS variables for chart colors.
+// shadcn chart injects generated CSS variables for chart colors.
+// oxlint-disable
 'use client';
 
 import * as React from 'react';

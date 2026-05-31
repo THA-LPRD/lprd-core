@@ -1023,7 +1023,8 @@ function ColorPickerEyeDropper(props: React.ComponentProps<typeof Button>) {
 // --- ColorPickerFormatSelect ---
 
 interface ColorPickerFormatSelectProps
-    extends Omit<React.ComponentProps<typeof Select>, 'value' | 'onValueChange'>,
+    extends
+        Omit<React.ComponentProps<typeof Select>, 'value' | 'onValueChange'>,
         Pick<React.ComponentProps<typeof SelectTrigger>, 'size' | 'className'> {}
 
 function ColorPickerFormatSelect(props: ColorPickerFormatSelectProps) {

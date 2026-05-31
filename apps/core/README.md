@@ -28,7 +28,7 @@ bun dev
 ## Env vars
 
 | Key                               | Default                          | Description                                                                   |
-|-----------------------------------|----------------------------------|-------------------------------------------------------------------------------|
+| --------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
 | `NEXT_PUBLIC_CONVEX_URL`          | —                                | Convex deployment URL                                                         |
 | `CONVEX_DEPLOY_KEY`               | —                                | Convex admin key, used by legacy display API routes that call Convex directly |
 | `BASE_URL`                        | —                                | Public app origin used by AuthKit callback redirects                          |
@@ -39,7 +39,7 @@ bun dev
 | `NEXT_PUBLIC_WORKOS_REDIRECT_URI` | `http://localhost:3000/callback` | OAuth callback URL                                                            |
 | `REDIS_HOST`                      | `127.0.0.1`                      | Redis/Valkey host                                                             |
 | `REDIS_PORT`                      | `6379`                           | Redis/Valkey port                                                             |
-| `REDIS_PASSWORD`                  | *(unset)*                        | Redis/Valkey password, optional                                               |
+| `REDIS_PASSWORD`                  | _(unset)_                        | Redis/Valkey password, optional                                               |
 
 ## Related docs
 

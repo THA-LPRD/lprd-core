@@ -9,6 +9,7 @@ Workspace guide for `packages/ui` (component library).
 Contrast with `apps/core/src/components/`: those are page-specific components built for a particular feature (device grid, template editor, frame picker, etc.). A component in `packages/ui` could appear on any page or in any app; a component in `apps/core/src/components/` is built for one specific use. Do not blur this line.
 
 Come here when:
+
 - Building something reusable that could appear on multiple pages
 - Adding a new shadcn component
 - Fixing visual consistency in base components or the design token layer
@@ -22,9 +23,9 @@ UI library only — no business logic, no data fetching, no side effects.
 - **Empty states**: `src/empty.tsx` has presets (`SiteNotFound`, `AccessDenied`, etc.)
 - **Form fields**: Use `Field`, `FieldLabel`, `FieldGroup` from `src/field.tsx`
 - **Base-UI**: Use the `render` prop instead of Radix's `asChild`:
-  ```tsx
-  <SidebarMenuButton render={<div />}>Content</SidebarMenuButton>
-  ```
+    ```tsx
+    <SidebarMenuButton render={<div />}>Content</SidebarMenuButton>
+    ```
 - **Styling**: Tailwind v4 classes + CSS variables in `src/styles.css`
 
 ## Adding components

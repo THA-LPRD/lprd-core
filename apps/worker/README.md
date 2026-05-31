@@ -33,17 +33,16 @@ bun dev
 ## Env vars
 
 | Key                     | Default                 | Description                                             |
-|-------------------------|-------------------------|---------------------------------------------------------|
+| ----------------------- | ----------------------- | ------------------------------------------------------- |
 | `CORE_BASE_URL`         | `http://localhost:3000` | Base URL of the core app, used for job status callbacks |
 | `WORKOS_AUTHKIT_DOMAIN` | —                       | WorkOS AuthKit domain, used for M2M token exchange      |
 | `WORKER_CLIENT_ID`      | —                       | WorkOS M2M client ID for worker auth                    |
 | `WORKER_CLIENT_SECRET`  | —                       | WorkOS M2M client secret for worker auth                |
 | `REDIS_HOST`            | `127.0.0.1`             | Redis/Valkey host                                       |
 | `REDIS_PORT`            | `6379`                  | Redis/Valkey port                                       |
-| `REDIS_PASSWORD`        | *(unset)*               | Redis/Valkey password, optional                         |
+| `REDIS_PASSWORD`        | _(unset)_               | Redis/Valkey password, optional                         |
 
 ## Related docs
 
 - Monorepo overview: `README.md`
 - Worker coding conventions: `apps/worker/AGENTS.md`
-

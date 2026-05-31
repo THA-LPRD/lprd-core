@@ -6,9 +6,9 @@
     "dev": "convex dev",
     "setup": "convex dev --until-success",
     "typecheck": "tsc --noEmit -p convex",
-    "lint": "oxlint && biome lint .",
-    "lint:fix": "oxlint --fix && biome lint --write .",
-    "format": "biome format --write ."
+    "lint": "oxlint && oxfmt --check",
+    "lint:fix": "oxlint --fix && oxfmt",
+    "format": "oxfmt"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",

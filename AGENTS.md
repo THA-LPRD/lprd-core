@@ -16,9 +16,9 @@ Always use `bun`.
 
 - `bun dev` - run workspace `dev` tasks with Turborepo (avoid unless user asks)
 - `bun typecheck` - run TypeScript type checks across workspaces
-- `bun lint` - Oxlint + Biome checks across workspaces
-- `bun lint:fix` - apply autofixable Oxlint + Biome fixes across workspaces
-- `bun format` - format repository files with Biome across workspaces
+- `bun lint` - Oxlint + Oxfmt checks across workspaces
+- `bun lint:fix` - apply autofixable Oxlint fixes and Oxfmt formatting across workspaces
+- `bun format` - format repository files with Oxfmt across workspaces
 
 Do not run `bun run build` unless explicitly asked (CI-only).
 

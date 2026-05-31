@@ -53,7 +53,8 @@ function Popover({ onOpenChange, ...props }: PopoverPrimitive.Root.Props) {
 }
 
 /** Marks a child element as the positioning anchor for the popover. */
-// biome-ignore lint/suspicious/noExplicitAny: mirrors the shadcn as-child element pattern, where child props are intentionally unconstrained.
+// Mirrors the shadcn as-child element pattern, where child props are intentionally unconstrained.
+// oxlint-disable-next-line
 function PopoverAnchor({ children }: { children: React.ReactElement<any>; asChild?: boolean }) {
     const ctx = React.useContext(PopoverContext);
     const childRef = children.props.ref as React.Ref<Element> | undefined;
@@ -83,7 +84,7 @@ function PopoverPopupInner({
     className,
     ...props
 }: React.ComponentProps<'div'> & { onOpenAutoFocus?: (event: Event) => void }) {
-    // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally fires once when the popup mounts/open.
+    // Intentionally fires once when the popup mounts/open.
     React.useLayoutEffect(() => {
         if (!onOpenAutoFocus) return;
         let defaultPrevented = false;
@@ -96,6 +97,7 @@ function PopoverPopupInner({
         } as Event;
         onOpenAutoFocus(syntheticEvent);
         void defaultPrevented;
+        // oxlint-disable-next-line
     }, []); // Intentionally fires only on mount (popup open).
 
     return (

@@ -31,4 +31,3 @@ No dev server needed; this is a library package.
 
 - Monorepo overview: `README.md`
 - Shared package conventions: `packages/shared/AGENTS.md`
-

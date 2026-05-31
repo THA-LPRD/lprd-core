@@ -7,6 +7,7 @@ Workspace guide for `apps/core` (Next.js frontend + API route handlers).
 `apps/core` is the product. It serves the user-facing UI, owns the REST API surface that external plugins talk to, and dispatches all async jobs to the worker queue. Without core there is no user, no session, no feature — every other workspace exists to support it.
 
 Come here to:
+
 - Add or change user-facing UI features and pages
 - Add or change REST API endpoints (`src/app/api/v2/`)
 - Handle plugin webhook callbacks from the API side
@@ -19,8 +20,8 @@ Run from `apps/core`:
 
 - `bun dev` - Next.js dev server (avoid unless user asks)
 - `bun typecheck` - TypeScript checks
-- `bun lint` - Oxlint + Biome lint checks
-- `bun lint:fix` - apply autofixable Oxlint + Biome fixes
+- `bun lint` - Oxlint + Oxfmt checks
+- `bun lint:fix` - apply autofixable Oxlint fixes and Oxfmt formatting
 
 ## Architecture boundaries
 

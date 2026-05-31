@@ -13,9 +13,9 @@
     "./hooks/*": "./src/hooks/*.ts"
   },
   "scripts": {
-    "lint": "oxlint && biome lint .",
-    "lint:fix": "oxlint --fix && biome lint --write .",
-    "format": "biome format --write .",
+    "lint": "oxlint && oxfmt --check",
+    "lint:fix": "oxlint --fix && oxfmt",
+    "format": "oxfmt",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
