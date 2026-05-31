@@ -4,7 +4,7 @@ LPRD Core now runs as a Turborepo with separate workspaces for the web app, work
 
 ## Workspace docs
 
-- `apps/core` - Next.js 16 app (`apps/core/README.md`)
+- `apps/web` - Next.js 16 app (`apps/web/README.md`)
 - `apps/worker` - BullMQ + Playwright worker (`apps/worker/README.md`)
 - `packages/backend` - Convex schema/functions + webhooks (`packages/backend/README.md`)
 - `packages/shared` - shared API/auth/render types
@@ -22,7 +22,7 @@ bun install
 2. Copy env files and fill in values (see each workspace's `README.md` for variable reference):
 
 ```bash
-cp apps/core/.env.example apps/core/.env.local
+cp apps/web/.env.example apps/web/.env.local
 cp apps/worker/.env.example apps/worker/.env
 cp packages/backend/.env.example packages/backend/.env
 ```

@@ -6,9 +6,9 @@ Workspace guide for `packages/backend` (Convex backend).
 
 `packages/backend` is the single source of truth for all data, data integrity, and permissions. All domain state lives here — schema, queries, mutations, real-time subscriptions, and WorkOS identity syncing via webhooks.
 
-Convex functions here handle atomicity and consistency: keeping related tables in sync within a single transaction (e.g. `jobStates` + `jobLogs` + `device.latestJob`), enforcing valid state transitions (only pending jobs can be started, only failed jobs can be retried), and permission checks at the data layer. They are not where orchestration logic lives — that belongs in core's API endpoints.
+Convex functions here handle atomicity and consistency: keeping related tables in sync within a single transaction (e.g. `jobStates` + `jobLogs` + `device.latestJob`), enforcing valid state transitions (only pending jobs can be started, only failed jobs can be retried), and permission checks at the data layer. They are not where orchestration logic lives — that belongs in the web app's API endpoints.
 
-**Key rule — where mutations live:** UI components do not call Convex mutations directly, except for trivially simple updates or cases where optimistic writes give meaningful UX benefit. Writes go through core's API layer (`/api/v2/...`). The endpoint owns the orchestration: auth, input validation, coordinating multiple Convex calls, triggering side effects (job dispatch, file uploads, external calls). This makes flows self-documenting (feature → API path → resource → handler) and prevents orchestration from being scattered across UI files.
+**Key rule — where mutations live:** UI components do not call Convex mutations directly, except for trivially simple updates or cases where optimistic writes give meaningful UX benefit. Writes go through the web app's API layer (`/api/v2/...`). The endpoint owns the orchestration: auth, input validation, coordinating multiple Convex calls, triggering side effects (job dispatch, file uploads, external calls). This makes flows self-documenting (feature → API path → resource → handler) and prevents orchestration from being scattered across UI files.
 
 Come here to:
 
@@ -44,7 +44,7 @@ Run from `packages/backend`:
 
 ## Auth independence
 
-Convex is a separate trust boundary from `apps/core`. Every query, mutation, and action must verify permissions for itself — never assume that because a request reached Convex it was already validated by the API layer. Core cannot know what Convex will accept, and Convex cannot know what core already checked. Each enforces independently.
+Convex is a separate trust boundary from `apps/web`. Every query, mutation, and action must verify permissions for itself — never assume that because a request reached Convex it was already validated by the API layer. The web app cannot know what Convex will accept, and Convex cannot know what the web app already checked. Each enforces independently.
 
 ## Function and API conventions
 
@@ -55,5 +55,5 @@ Convex is a separate trust boundary from `apps/core`. Every query, mutation, and
 
 ## Monorepo coordination
 
-- `apps/core` and `apps/worker` consume generated API/contracts; communicate schema or payload changes in the same PR.
+- `apps/web` and `apps/worker` consume generated API/contracts; communicate schema or payload changes in the same PR.
 - If you change backend payload shape, update `packages/shared` types as needed.

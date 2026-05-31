@@ -6,7 +6,7 @@ Workspace guide for `packages/ui` (component library).
 
 `packages/ui` is the design system — pure, reusable, page-agnostic UI components. Most come from shadcn/ui; a few are custom. These components are not aware of the product domain.
 
-Contrast with `apps/core/src/components/`: those are page-specific components built for a particular feature (device grid, template editor, frame picker, etc.). A component in `packages/ui` could appear on any page or in any app; a component in `apps/core/src/components/` is built for one specific use. Do not blur this line.
+Contrast with `apps/web/src/components/`: those are page-specific components built for a particular feature (device grid, template editor, frame picker, etc.). A component in `packages/ui` could appear on any page or in any app; a component in `apps/web/src/components/` is built for one specific use. Do not blur this line.
 
 Come here when:
 

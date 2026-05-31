@@ -24,6 +24,6 @@ fi
 echo "Fixing file permissions..."
 chown -R bun:bun /app
 
-echo "Starting lprd-core on port ${PORT:-3000}..."
-cd /app/apps/core
+echo "Starting lprd-web on port ${PORT:-3000}..."
+cd /app/apps/web
 exec gosu bun node server.js

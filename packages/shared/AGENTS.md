@@ -4,13 +4,13 @@ Workspace guide for `packages/shared` (shared types and utilities).
 
 ## Purpose
 
-`packages/shared` is the contract layer between `apps/core` and `apps/worker`. It exists to prevent type drift and duplication across the two apps.
+`packages/shared` is the contract layer between `apps/web` and `apps/worker`. It exists to prevent type drift and duplication across the two apps.
 
-If both core and worker need to know about something — job payload shapes, render target selectors, auth token helpers, base fetch utilities — it lives here. Neither app duplicates it. Come here before adding any type or utility that both workspaces would otherwise define independently.
+If both web and worker need to know about something — job payload shapes, render target selectors, auth token helpers, base fetch utilities — it lives here. Neither app duplicates it. Come here before adding any type or utility that both workspaces would otherwise define independently.
 
 ## Ownership model
 
-This package is a **read-only runtime library** for `apps/core` and `apps/worker`:
+This package is a **read-only runtime library** for `apps/web` and `apps/worker`:
 
 - Do **not** add file-system I/O, network calls (except pure auth token exchange), or side effects.
 - Do **not** import from app or worker workspaces; this creates circular dependencies.
@@ -29,7 +29,7 @@ This package is a **read-only runtime library** for `apps/core` and `apps/worker
 
 When you modify:
 
-- Job type definitions in `src/jobs/types.ts` → update `apps/core` and `apps/worker` references
+- Job type definitions in `src/jobs/types.ts` → update `apps/web` and `apps/worker` references
 - Render constants → update renders in both app and worker
 - Auth error mappings → test against WorkOS webhook/OAuth flows in app + worker
 

@@ -1,4 +1,4 @@
-# apps/core
+# apps/web
 
 Next.js 16 app workspace for LPRD Core.
 
@@ -15,13 +15,13 @@ From repo root:
 
 ```bash
 bun install
-cp apps/core/.env.example apps/core/.env.local
+cp apps/web/.env.example apps/web/.env.local
 ```
 
 Then start the app:
 
 ```bash
-cd apps/core
+cd apps/web
 bun dev
 ```
 
@@ -44,4 +44,4 @@ bun dev
 ## Related docs
 
 - Monorepo overview: `README.md`
-- App/route conventions for agents: `apps/core/AGENTS.md`
+- App/route conventions for agents: `apps/web/AGENTS.md`

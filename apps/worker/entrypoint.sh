@@ -24,6 +24,6 @@ fi
 echo "Fixing file permissions..."
 chown -R bun:bun /app
 
-echo "Starting lprd-core-worker..."
+echo "Starting worker..."
 cd /app/apps/worker
 exec gosu bun bun run src/index.ts

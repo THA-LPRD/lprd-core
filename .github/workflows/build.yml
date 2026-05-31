@@ -36,12 +36,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - app: core
+          - app: web
             target: runner
-            image: lprd-core
+            image: web
           - app: worker
             target: runner
-            image: lprd-core-worker
+            image: worker
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -49,8 +49,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Validate core Docker build variables
-        if: matrix.app == 'core'
+      - name: Validate web Docker build variables
+        if: matrix.app == 'web'
         run: |
           if [ -z "${{ vars.NEXT_PUBLIC_CONVEX_URL }}" ]; then
             echo "::error::NEXT_PUBLIC_CONVEX_URL is required as an Actions variable."

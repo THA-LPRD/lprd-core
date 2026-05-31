@@ -2,7 +2,7 @@ FROM oven/bun:1.3.12-debian AS deps
 WORKDIR /app
 
 COPY package.json bun.lock turbo.json ./
-COPY apps/core/package.json ./apps/core/package.json
+COPY apps/web/package.json ./apps/web/package.json
 COPY apps/worker/package.json ./apps/worker/package.json
 COPY packages/backend/package.json ./packages/backend/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
@@ -11,7 +11,7 @@ COPY packages/ui/package.json ./packages/ui/package.json
 RUN bun install --frozen-lockfile
 
 
-# ==================== Runner (lprd-core-worker) ====================
+# ==================== Runner (worker) ====================
 FROM oven/bun:1.3.12-debian AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

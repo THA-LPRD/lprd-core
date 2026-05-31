@@ -2,7 +2,7 @@ FROM oven/bun:1.3.12-debian AS deps
 WORKDIR /app
 
 COPY package.json bun.lock turbo.json ./
-COPY apps/core/package.json ./apps/core/package.json
+COPY apps/web/package.json ./apps/web/package.json
 COPY apps/worker/package.json ./apps/worker/package.json
 COPY packages/backend/package.json ./packages/backend/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
@@ -22,17 +22,17 @@ ENV NEXT_PUBLIC_CONVEX_URL=$NEXT_PUBLIC_CONVEX_URL \
     NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/core/node_modules ./apps/core/node_modules
+COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/packages/backend/node_modules ./packages/backend/node_modules
 COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY --from=deps /app/packages/ui/node_modules ./packages/ui/node_modules
 COPY . .
 
-RUN mkdir -p apps/core/public
-RUN bunx turbo run build --filter=@workspace/core
+RUN mkdir -p apps/web/public
+RUN bunx turbo run build --filter=@workspace/web
 
 
-# ==================== Runner (lprd-core) ====================
+# ==================== Runner (lprd-web) ====================
 FROM oven/bun:1.3.12-debian AS runner
 
 ARG PUID=1000
@@ -51,11 +51,11 @@ ENV NODE_ENV=production \
     PUID=${PUID} \
     PGID=${PGID}
 
-COPY --from=builder --chown=bun:bun /app/apps/core/.next/standalone ./
-COPY --from=builder --chown=bun:bun /app/apps/core/.next/static ./apps/core/.next/static
-COPY --from=builder --chown=bun:bun /app/apps/core/public ./apps/core/public
+COPY --from=builder --chown=bun:bun /app/apps/web/.next/standalone ./
+COPY --from=builder --chown=bun:bun /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder --chown=bun:bun /app/apps/web/public ./apps/web/public
 
-COPY apps/core/entrypoint.sh /entrypoint.sh
+COPY apps/web/entrypoint.sh /entrypoint.sh
 RUN chmod 755 /entrypoint.sh
 
 EXPOSE 3000

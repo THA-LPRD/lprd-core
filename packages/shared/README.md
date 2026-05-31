@@ -1,6 +1,6 @@
 # packages/shared
 
-Shared runtime types and utilities used across `apps/core` and `apps/worker`.
+Shared runtime types and utilities used across `apps/web` and `apps/worker`.
 
 ## What lives here
 
@@ -15,7 +15,7 @@ Shared runtime types and utilities used across `apps/core` and `apps/worker`.
 
 This package holds **shared types and pure utilities only** — no side effects, no external service calls (except within auth token exchange, which is isolated).
 
-Dependencies from here should only flow into `apps/core` and `apps/worker`, never back out.
+Dependencies from here should only flow into `apps/web` and `apps/worker`, never back out.
 
 ## Local development
 
