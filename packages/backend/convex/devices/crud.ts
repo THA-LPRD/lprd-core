@@ -124,7 +124,19 @@ export const getById = query({
             nextUrl = await ctx.storage.getUrl(device.next.storageId);
         }
 
-        return { ...device, lastUrl, currentUrl, nextUrl };
+        const latestConfigFetch = await ctx.db
+            .query('deviceAccessLogs')
+            .withIndex('by_device_type_and_time', (q) => q.eq('deviceId', device._id).eq('type', 'config_fetch'))
+            .order('desc')
+            .take(1);
+
+        return {
+            ...device,
+            lastUrl,
+            currentUrl,
+            nextUrl,
+            latestConfigFetch: latestConfigFetch[0] ?? null,
+        };
     },
 });
 

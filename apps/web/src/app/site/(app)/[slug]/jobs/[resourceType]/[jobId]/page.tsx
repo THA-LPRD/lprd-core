@@ -16,6 +16,7 @@ import {
     DataTableRow,
 } from '@workspace/ui/components/data-table';
 import { RelativeTime } from '@workspace/ui/components/relative-time';
+import { formatElapsedMilliseconds, formatTimestamp } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
 const resourceTypes = ['template', 'frame', 'device'] as const;
@@ -59,11 +60,7 @@ function JobDuration({ startedAt, finishedAt }: { startedAt?: number | null; fin
     const [now] = React.useState(() => Date.now());
     if (!startedAt) return <span className="text-xs text-muted-foreground">—</span>;
     const ms = (finishedAt ?? now) - startedAt;
-    let label: string;
-    if (ms < 1_000) label = `${ms}ms`;
-    else if (ms < 60_000) label = `${(ms / 1_000).toFixed(1)}s`;
-    else label = `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1_000)}s`;
-    return <span className="font-mono text-xs text-muted-foreground">{label}</span>;
+    return <span className="font-mono text-xs text-muted-foreground">{formatElapsedMilliseconds(ms)}</span>;
 }
 
 type Execution = ReturnType<typeof usePaginatedQuery<typeof api.jobs.templateJobs.listExecutions>>['results'][number];
@@ -100,25 +97,19 @@ function ExecutionDetailPanel({ execution }: { execution: Execution }) {
                 )}
 
                 <dt className="text-muted-foreground">Created</dt>
-                <dd className="min-w-0 text-foreground select-text">
-                    {new Date(execution.createdAt).toLocaleString()}
-                </dd>
+                <dd className="min-w-0 text-foreground select-text">{formatTimestamp(execution.createdAt)}</dd>
 
                 {execution.startedAt && (
                     <>
                         <dt className="text-muted-foreground">Started</dt>
-                        <dd className="min-w-0 text-foreground select-text">
-                            {new Date(execution.startedAt).toLocaleString()}
-                        </dd>
+                        <dd className="min-w-0 text-foreground select-text">{formatTimestamp(execution.startedAt)}</dd>
                     </>
                 )}
 
                 {execution.finishedAt && (
                     <>
                         <dt className="text-muted-foreground">Finished</dt>
-                        <dd className="min-w-0 text-foreground select-text">
-                            {new Date(execution.finishedAt).toLocaleString()}
-                        </dd>
+                        <dd className="min-w-0 text-foreground select-text">{formatTimestamp(execution.finishedAt)}</dd>
                     </>
                 )}
 
@@ -184,23 +175,19 @@ function JobSummaryCard({ job }: { job: Job }) {
                 )}
 
                 <dt className="text-muted-foreground">Created</dt>
-                <dd className="min-w-0 text-foreground select-text">{new Date(job.createdAt).toLocaleString()}</dd>
+                <dd className="min-w-0 text-foreground select-text">{formatTimestamp(job.createdAt)}</dd>
 
                 {job.startedAt && (
                     <>
                         <dt className="text-muted-foreground">Started</dt>
-                        <dd className="min-w-0 text-foreground select-text">
-                            {new Date(job.startedAt).toLocaleString()}
-                        </dd>
+                        <dd className="min-w-0 text-foreground select-text">{formatTimestamp(job.startedAt)}</dd>
                     </>
                 )}
 
                 {job.finishedAt && (
                     <>
                         <dt className="text-muted-foreground">Finished</dt>
-                        <dd className="min-w-0 text-foreground select-text">
-                            {new Date(job.finishedAt).toLocaleString()}
-                        </dd>
+                        <dd className="min-w-0 text-foreground select-text">{formatTimestamp(job.finishedAt)}</dd>
                     </>
                 )}
 

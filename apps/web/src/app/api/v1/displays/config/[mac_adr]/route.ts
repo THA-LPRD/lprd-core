@@ -76,6 +76,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ mac_
             responseStatus: hasImage ? 'ok' : 'no_content',
             imageChanged: result.hasNext,
             bindingData: result.hasNext ? bindingData : undefined,
+            validForSeconds: wakePlan.validForSeconds,
+            validForReason: wakePlan.reason,
         });
 
         return NextResponse.json({

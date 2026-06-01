@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@work
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table';
 import { Badge } from '@workspace/ui/components/badge';
 import type { Id } from '@convex/dataModel';
+import { formatTimestamp } from '@/lib/date';
 
 export function PluginHealthCard({ pluginId }: { pluginId: Id<'applications'> }) {
     const {
@@ -63,7 +64,7 @@ export function PluginHealthCard({ pluginId }: { pluginId: Id<'applications'> })
                                         {check.errorMessage ?? '-'}
                                     </TableCell>
                                     <TableCell className="text-muted-foreground">
-                                        {new Date(check.checkedAt).toLocaleString()}
+                                        {formatTimestamp(check.checkedAt)}
                                     </TableCell>
                                 </TableRow>
                             ))}

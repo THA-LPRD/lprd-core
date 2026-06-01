@@ -13,6 +13,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@workspace
 import { ConfirmActionDialog } from '@/components/application/confirm-action-dialog';
 import { ReissueTokenDialog } from '@/components/application/reissue-dialog';
 import { ApplicationStatusBadge, PluginHealthBadge } from '@/components/application/status-badge';
+import { formatTimestamp } from '@/lib/date';
 
 type ApplicationWithOrganization = Doc<'applications'> & { organizationName?: string };
 
@@ -147,7 +148,7 @@ export function ApplicationDetailsCard({
                         </div>
                         <div>
                             <dt className="text-muted-foreground">Created</dt>
-                            <dd className="mt-1">{new Date(application.createdAt).toLocaleDateString()}</dd>
+                            <dd className="mt-1">{formatTimestamp(application.createdAt, 'dateOnly')}</dd>
                         </div>
                     </dl>
                 </CardContent>

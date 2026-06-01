@@ -15,11 +15,23 @@ import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSite } from '@/providers/site-provider';
-import { formatDate, formatRelativeTime } from '@/lib/date';
+import { formatDate, formatDurationSeconds, formatRelativeTime } from '@/lib/date';
+
+const WAKE_REASON_LABELS = {
+    fresh_data: 'fresh data',
+    stale_data: 'stale data',
+    missing_data: 'missing data',
+    unbound: 'unbound',
+    off_hours: 'off hours',
+} as const;
 
 export function DeviceDetail({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
     const [previewTab, setPreviewTab] = React.useState<'last' | 'current' | 'queued'>('current');
+    const plannedNextUpdate =
+        device.latestConfigFetch?.validForSeconds === undefined
+            ? null
+            : device.latestConfigFetch.accessedAt + device.latestConfigFetch.validForSeconds * 1000;
 
     const { site, permissions } = useSite();
 
@@ -191,6 +203,36 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Last Seen</p>
                                 <p className="text-sm">{formatRelativeTime(device.lastSeen)}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Planned Next Update</p>
+                                <p className="text-sm">
+                                    {plannedNextUpdate ? formatDate(plannedNextUpdate) : 'Unknown'}
+                                </p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Last Display Instruction</p>
+                                {device.latestConfigFetch?.validForSeconds !== undefined ? (
+                                    <div className="text-sm">
+                                        <p>
+                                            Sleep for{' '}
+                                            <span className="font-mono tabular-nums">
+                                                {formatDurationSeconds(device.latestConfigFetch.validForSeconds)}
+                                            </span>
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            TTL decision:{' '}
+                                            {device.latestConfigFetch.validForReason
+                                                ? WAKE_REASON_LABELS[device.latestConfigFetch.validForReason]
+                                                : 'No reason recorded'}{' '}
+                                            at {formatDate(device.latestConfigFetch.accessedAt)}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No config fetch recorded</p>
+                                )}
                             </div>
 
                             <div>

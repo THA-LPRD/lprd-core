@@ -24,6 +24,11 @@ export type DeviceData = {
         jobId?: string;
         updatedAt: number;
     };
+    latestConfigFetch?: {
+        accessedAt: number;
+        validForSeconds?: number;
+        validForReason?: 'fresh_data' | 'stale_data' | 'missing_data' | 'unbound' | 'off_hours';
+    } | null;
     frameId?: Id<'frames'>;
     dataBindings?: Binding[];
     wakePolicy?: DeviceWakePolicy;

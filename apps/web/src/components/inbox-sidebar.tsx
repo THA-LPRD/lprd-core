@@ -20,6 +20,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@workspace/ui/components/sidebar';
+import { formatTimestamp } from '@/lib/date';
 import { cn } from '@/lib/utils';
 
 export type InboxFolder = 'inbox' | 'archive' | 'deleted';
@@ -38,15 +39,6 @@ const inviteStatusLabels = {
     revoked: 'Revoked',
     expired: 'Expired',
 } as const;
-
-function formatTimestamp(value: number) {
-    return new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    }).format(new Date(value));
-}
 
 export function getInboxFolderLabel(folder: InboxFolder) {
     return folders.find((item) => item.id === folder)?.label ?? 'Inbox';
@@ -172,7 +164,7 @@ export function InboxSidebar() {
                                                     {message.title}
                                                 </span>
                                                 <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                                                    {formatTimestamp(message.createdAt)}
+                                                    {formatTimestamp(message.createdAt, 'short')}
                                                 </span>
                                             </div>
                                             <div className="flex min-w-0 items-center gap-2">

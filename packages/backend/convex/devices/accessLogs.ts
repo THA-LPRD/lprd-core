@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 import { internalMutation, query } from '../_generated/server';
 import { resolveAuthorization } from '../lib/authz';
 import { permissionCatalog } from '../lib/permissions';
-import { deviceLogStatus, deviceLogType } from '../schema';
+import { deviceLogStatus, deviceLogType, deviceWakeReason } from '../schema';
 
 // ---------------------------------------------------------------------------
 // Internal mutations — called from Next.js API routes
@@ -45,6 +45,8 @@ export const logWithSnapshot = internalMutation({
         responseStatus: deviceLogStatus,
         imageChanged: v.boolean(),
         bindingData: v.optional(v.any()),
+        validForSeconds: v.optional(v.number()),
+        validForReason: v.optional(deviceWakeReason),
     },
     handler: async (ctx, args) => {
         const now = Date.now();
@@ -55,6 +57,8 @@ export const logWithSnapshot = internalMutation({
             ipAddress: args.ipAddress,
             responseStatus: args.responseStatus,
             imageChanged: args.imageChanged,
+            validForSeconds: args.validForSeconds,
+            validForReason: args.validForReason,
             accessedAt: now,
         });
 

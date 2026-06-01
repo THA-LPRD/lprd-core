@@ -29,6 +29,14 @@ export const deviceLogStatus = v.union(
     v.literal('error'),
 );
 
+export const deviceWakeReason = v.union(
+    v.literal('fresh_data'),
+    v.literal('stale_data'),
+    v.literal('missing_data'),
+    v.literal('unbound'),
+    v.literal('off_hours'),
+);
+
 // Device API version
 export const deviceApiVersion = v.union(v.literal('v1'), v.literal('v2'));
 
@@ -305,10 +313,13 @@ export default defineSchema({
         ipAddress: v.optional(v.string()),
         responseStatus: deviceLogStatus,
         imageChanged: v.boolean(),
+        validForSeconds: v.optional(v.number()),
+        validForReason: v.optional(deviceWakeReason),
         accessedAt: v.number(),
     })
         .index('by_device', ['deviceId'])
         .index('by_device_and_time', ['deviceId', 'accessedAt'])
+        .index('by_device_type_and_time', ['deviceId', 'type', 'accessedAt'])
         .index('by_mac', ['macAddress']),
 
     deviceDataSnapshots: defineTable({

@@ -6,20 +6,13 @@ import { ChartContainer } from '@workspace/ui/components/chart';
 import { useQuery } from 'convex/react';
 import { Bar, BarChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import { LOG_TYPE_CHART_COLOR, LOG_TYPE_LABELS } from '@/lib/deviceLogs';
+import { formatCalendarDay } from '@/lib/date';
 
 type DayStats = {
     date: string;
     total: number;
     byType: Record<string, number>;
 };
-
-function formatDate(dateStr: string) {
-    return new Date(`${dateStr}T12:00:00Z`).toLocaleDateString(undefined, {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-    });
-}
 
 function CustomTooltip({
     active,
@@ -36,7 +29,7 @@ function CustomTooltip({
 
     return (
         <div className="bg-popover border rounded-lg shadow-md p-3 text-sm min-w-[160px]">
-            <p className="font-medium mb-2">{formatDate(label as string)}</p>
+            <p className="font-medium mb-2">{formatCalendarDay(label as string)}</p>
             <p className="text-muted-foreground mb-1">
                 {stats.total} request{stats.total !== 1 ? 's' : ''}
             </p>
@@ -75,9 +68,7 @@ export function DeviceActivityChart({ deviceId }: { deviceId: Id<'devices'> }) {
                     dataKey="date"
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(v: string) =>
-                        new Date(`${v}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short' })
-                    }
+                    tickFormatter={(v: string) => formatCalendarDay(v, 'weekday')}
                     tick={{ fontSize: 11 }}
                 />
                 <YAxis tickLine={false} axisLine={false} allowDecimals={false} tick={{ fontSize: 11 }} width={32} />

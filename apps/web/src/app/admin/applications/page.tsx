@@ -12,6 +12,7 @@ import { CreateApplicationDialog } from '@/components/application/create-dialog'
 import { ApplicationListFilter, useApplicationFilters } from '@/components/application/list-filter';
 import { ApplicationStatusBadge } from '@/components/application/status-badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@workspace/ui/components/table';
+import { formatTimestamp } from '@/lib/date';
 
 export default function AdminApplicationsPage() {
     const router = useRouter();
@@ -106,7 +107,7 @@ export default function AdminApplicationsPage() {
                                             {application.permissions?.join(', ') || '-'}
                                         </TableCell>
                                         <TableCell className="text-sm text-muted-foreground">
-                                            {new Date(application.createdAt).toLocaleDateString()}
+                                            {formatTimestamp(application.createdAt, 'dateOnly')}
                                         </TableCell>
                                     </TableRow>
                                 ))}

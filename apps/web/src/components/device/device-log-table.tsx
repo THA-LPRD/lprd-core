@@ -11,19 +11,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ImageIcon } from 'lucide-react';
 import type { DeviceLogStatus, DeviceLogType } from '@/lib/deviceLogs';
 import { LOG_STATUS_LABELS, LOG_STATUS_VARIANTS, LOG_TYPE_LABELS, LOG_TYPE_VARIANTS } from '@/lib/deviceLogs';
+import { formatDurationSeconds, formatTimestamp } from '@/lib/date';
 
 type LogTypeFilter = DeviceLogType | 'all';
 type LogStatusFilter = DeviceLogStatus | 'all';
 
-function formatTimestamp(ts: number) {
-    return new Date(ts).toLocaleString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-    });
-}
+const WAKE_REASON_LABELS = {
+    fresh_data: 'Fresh data',
+    stale_data: 'Stale data',
+    missing_data: 'Missing data',
+    unbound: 'Unbound',
+    off_hours: 'Off hours',
+} as const;
 
 export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
     const [typeFilter, setTypeFilter] = React.useState<LogTypeFilter>('all');
@@ -75,7 +74,7 @@ export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
             </div>
 
             {/* Table */}
-            <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto rounded-lg border">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -83,13 +82,14 @@ export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
                             <TableHead>Type</TableHead>
                             <TableHead>IP Address</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>TTL sent</TableHead>
                             <TableHead className="w-8" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                                     {status === 'LoadingFirstPage' ? 'Loading…' : 'No log entries found'}
                                 </TableCell>
                             </TableRow>
@@ -97,7 +97,7 @@ export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
                             filtered.map((entry) => (
                                 <TableRow key={entry._id}>
                                     <TableCell className="font-mono text-sm tabular-nums whitespace-nowrap">
-                                        {formatTimestamp(entry.accessedAt)}
+                                        {formatTimestamp(entry.accessedAt, 'compactWithSeconds')}
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant={LOG_TYPE_VARIANTS[entry.type]}>
@@ -111,6 +111,22 @@ export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
                                         <Badge variant={LOG_STATUS_VARIANTS[entry.responseStatus]}>
                                             {LOG_STATUS_LABELS[entry.responseStatus]}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-sm whitespace-nowrap">
+                                        {entry.validForSeconds === undefined ? (
+                                            <span className="text-muted-foreground">—</span>
+                                        ) : (
+                                            <div className="flex flex-col">
+                                                <span className="font-mono tabular-nums">
+                                                    {formatDurationSeconds(entry.validForSeconds)}
+                                                </span>
+                                                {entry.validForReason && (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {WAKE_REASON_LABELS[entry.validForReason]}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </TableCell>
                                     <TableCell>
                                         {entry.imageChanged && (
