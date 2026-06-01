@@ -30,7 +30,7 @@ export function DynamicBreadcrumbs() {
         const site = sites?.find((o) => o.slug === siteSlug);
         const siteName = site?.name ?? siteSlug;
 
-        items.push({ label: siteName, href: `/site/${siteSlug}/devices` });
+        items.push({ label: siteName, href: `/site/${siteSlug}` });
 
         if (segments[2] === 'devices') {
             if (segments[3]) {
