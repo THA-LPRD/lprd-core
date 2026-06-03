@@ -4,13 +4,14 @@
  * Frontend imports via `@/lib/deviceLogs`.
  */
 
-export type DeviceLogType = 'existence_check' | 'config_fetch' | 'image_fetch';
+export type DeviceLogType = 'existence_check' | 'config_fetch' | 'image_fetch' | 'status_report';
 export type DeviceLogStatus = 'ok' | 'no_content' | 'unauthorized' | 'not_found' | 'error';
 
 export const LOG_TYPE_LABELS: Record<DeviceLogType, string> = {
     existence_check: 'Existence',
     config_fetch: 'Config',
     image_fetch: 'Image',
+    status_report: 'Status',
 };
 
 export const LOG_STATUS_LABELS: Record<DeviceLogStatus, string> = {
@@ -26,6 +27,7 @@ export const LOG_TYPE_VARIANTS: Record<DeviceLogType, 'default' | 'secondary' | 
     existence_check: 'secondary',
     config_fetch: 'outline',
     image_fetch: 'default',
+    status_report: 'outline',
 };
 
 /** Badge variant for each log status. */
@@ -42,4 +44,5 @@ export const LOG_TYPE_CHART_COLOR: Record<DeviceLogType, string> = {
     existence_check: 'var(--chart-3)',
     config_fetch: 'var(--chart-1)',
     image_fetch: 'var(--chart-2)',
+    status_report: 'var(--chart-4)',
 };

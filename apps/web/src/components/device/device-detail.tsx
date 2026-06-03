@@ -11,7 +11,7 @@ import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { Button } from '@workspace/ui/components/button';
 import { Badge } from '@workspace/ui/components/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@workspace/ui/components/card';
-import { ArrowLeft, Image as ImageIcon, Settings } from 'lucide-react';
+import { ArrowLeft, Battery, Image as ImageIcon, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSite } from '@/providers/site-provider';
@@ -25,6 +25,27 @@ const WAKE_REASON_LABELS = {
     off_hours: 'off hours',
 } as const;
 
+function formatBatterySummary(device: DeviceData) {
+    const battery = device.latestBatteryStatus;
+    if (!battery) return null;
+    if (!battery.present) {
+        return {
+            title: 'No gauge detected',
+            detail: `Reported ${formatRelativeTime(battery.reportedAt)}`,
+        };
+    }
+    if ('error' in battery) {
+        return {
+            title: battery.error,
+            detail: `Gauge read failed ${formatRelativeTime(battery.reportedAt)}`,
+        };
+    }
+    return {
+        title: `${battery.stateOfChargePercent.toFixed(1)}%`,
+        detail: `${battery.voltageV.toFixed(3)} V, reported ${formatRelativeTime(battery.reportedAt)}`,
+    };
+}
+
 export function DeviceDetail({ device }: { device: DeviceData }) {
     const params = useParams<{ slug: string; id: string }>();
     const [previewTab, setPreviewTab] = React.useState<'last' | 'current' | 'queued'>('current');
@@ -37,6 +58,7 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
 
     const frames = useQuery(api.frames.listBySite, site ? { siteId: site._id } : 'skip');
     const assignedFrame = frames?.find((f) => f._id === device.frameId);
+    const batterySummary = formatBatterySummary(device);
 
     return (
         <div className="p-6 overflow-auto h-full">
@@ -203,6 +225,21 @@ export function DeviceDetail({ device }: { device: DeviceData }) {
                             <div>
                                 <p className="text-sm font-medium text-muted-foreground">Last Seen</p>
                                 <p className="text-sm">{formatRelativeTime(device.lastSeen)}</p>
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-muted-foreground">Battery</p>
+                                {batterySummary ? (
+                                    <div className="flex items-start gap-2 text-sm">
+                                        <Battery className="size-4 mt-0.5 text-muted-foreground" />
+                                        <div>
+                                            <p className="font-mono tabular-nums">{batterySummary.title}</p>
+                                            <p className="text-xs text-muted-foreground">{batterySummary.detail}</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">No battery status reported</p>
+                                )}
                             </div>
 
                             <div>

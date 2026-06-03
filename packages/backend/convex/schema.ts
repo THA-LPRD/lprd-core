@@ -18,7 +18,12 @@ export const siteActorRole = v.union(v.literal('siteAdmin'), v.literal('user'));
 export const deviceStatus = v.union(v.literal('pending'), v.literal('active'));
 
 // Device access log type
-export const deviceLogType = v.union(v.literal('existence_check'), v.literal('config_fetch'), v.literal('image_fetch'));
+export const deviceLogType = v.union(
+    v.literal('existence_check'),
+    v.literal('config_fetch'),
+    v.literal('image_fetch'),
+    v.literal('status_report'),
+);
 
 // Device access log status
 export const deviceLogStatus = v.union(
@@ -190,6 +195,24 @@ export const deviceWakePolicy = v.object({
     offHoursWindows: v.array(deviceOffHoursWindow),
 });
 
+export const deviceBatteryStatus = v.union(
+    v.object({
+        present: v.literal(false),
+        reportedAt: v.number(),
+    }),
+    v.object({
+        present: v.literal(true),
+        voltageV: v.number(),
+        stateOfChargePercent: v.number(),
+        reportedAt: v.number(),
+    }),
+    v.object({
+        present: v.literal(true),
+        error: v.string(),
+        reportedAt: v.number(),
+    }),
+);
+
 // Device render reference
 export const deviceRender = v.object({
     storageId: v.id('_storage'),
@@ -300,6 +323,7 @@ export default defineSchema({
         current: v.optional(deviceRender),
         next: v.optional(deviceRender),
         latestJob: v.optional(latestJobState),
+        latestBatteryStatus: v.optional(deviceBatteryStatus),
         createdAt: v.number(),
         updatedAt: v.number(),
     })
@@ -315,6 +339,7 @@ export default defineSchema({
         imageChanged: v.boolean(),
         validForSeconds: v.optional(v.number()),
         validForReason: v.optional(deviceWakeReason),
+        batteryStatus: v.optional(deviceBatteryStatus),
         accessedAt: v.number(),
     })
         .index('by_device', ['deviceId'])

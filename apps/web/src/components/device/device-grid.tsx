@@ -12,6 +12,22 @@ type Device = {
     status: 'pending' | 'active';
     lastSeen?: number;
     currentUrl?: string | null;
+    latestBatteryStatus?:
+        | {
+              present: false;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              voltageV: number;
+              stateOfChargePercent: number;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              error: string;
+              reportedAt: number;
+          };
     createdAt: number;
     updatedAt: number;
 };

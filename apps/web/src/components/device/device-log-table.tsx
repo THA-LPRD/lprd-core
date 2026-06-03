@@ -24,6 +24,30 @@ const WAKE_REASON_LABELS = {
     off_hours: 'Off hours',
 } as const;
 
+function formatChargePercent(entry: {
+    batteryStatus?:
+        | { present: false; reportedAt: number }
+        | { present: true; voltageV: number; stateOfChargePercent: number; reportedAt: number }
+        | { present: true; error: string; reportedAt: number };
+}) {
+    const battery = entry.batteryStatus;
+    if (!battery) return null;
+    if (!battery.present) return 'No gauge';
+    if ('error' in battery) return battery.error;
+    return `${battery.stateOfChargePercent.toFixed(1)}%`;
+}
+
+function formatVoltage(entry: {
+    batteryStatus?:
+        | { present: false; reportedAt: number }
+        | { present: true; voltageV: number; stateOfChargePercent: number; reportedAt: number }
+        | { present: true; error: string; reportedAt: number };
+}) {
+    const battery = entry.batteryStatus;
+    if (!battery?.present || 'error' in battery) return null;
+    return `${battery.voltageV.toFixed(3)} V`;
+}
+
 export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
     const [typeFilter, setTypeFilter] = React.useState<LogTypeFilter>('all');
     const [statusFilter, setStatusFilter] = React.useState<LogStatusFilter>('all');
@@ -83,61 +107,77 @@ export function DeviceLogTable({ deviceId }: { deviceId: Id<'devices'> }) {
                             <TableHead>IP Address</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>TTL sent</TableHead>
+                            <TableHead>Charge</TableHead>
+                            <TableHead>Voltage</TableHead>
                             <TableHead className="w-8" />
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {filtered.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                                     {status === 'LoadingFirstPage' ? 'Loading…' : 'No log entries found'}
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filtered.map((entry) => (
-                                <TableRow key={entry._id}>
-                                    <TableCell className="font-mono text-sm tabular-nums whitespace-nowrap">
-                                        {formatTimestamp(entry.accessedAt, 'compactWithSeconds')}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={LOG_TYPE_VARIANTS[entry.type]}>
-                                            {LOG_TYPE_LABELS[entry.type]}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="font-mono text-sm text-muted-foreground">
-                                        {entry.ipAddress ?? '—'}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={LOG_STATUS_VARIANTS[entry.responseStatus]}>
-                                            {LOG_STATUS_LABELS[entry.responseStatus]}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-sm whitespace-nowrap">
-                                        {entry.validForSeconds === undefined ? (
-                                            <span className="text-muted-foreground">—</span>
-                                        ) : (
-                                            <div className="flex flex-col">
-                                                <span className="font-mono tabular-nums">
-                                                    {formatDurationSeconds(entry.validForSeconds)}
-                                                </span>
-                                                {entry.validForReason && (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {WAKE_REASON_LABELS[entry.validForReason]}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
-                                    </TableCell>
-                                    <TableCell>
-                                        {entry.imageChanged && (
-                                            <Badge variant="outline" className="gap-1 text-blue-500 border-blue-500/40">
-                                                <ImageIcon className="size-3" />
-                                                image updated
+                            filtered.map((entry) => {
+                                const chargePercent = formatChargePercent(entry);
+                                const voltage = formatVoltage(entry);
+
+                                return (
+                                    <TableRow key={entry._id}>
+                                        <TableCell className="font-mono text-sm tabular-nums whitespace-nowrap">
+                                            {formatTimestamp(entry.accessedAt, 'compactWithSeconds')}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={LOG_TYPE_VARIANTS[entry.type]}>
+                                                {LOG_TYPE_LABELS[entry.type]}
                                             </Badge>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm text-muted-foreground">
+                                            {entry.ipAddress ?? '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={LOG_STATUS_VARIANTS[entry.responseStatus]}>
+                                                {LOG_STATUS_LABELS[entry.responseStatus]}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-sm whitespace-nowrap">
+                                            {entry.validForSeconds === undefined ? (
+                                                <span className="text-muted-foreground">—</span>
+                                            ) : (
+                                                <div className="flex flex-col">
+                                                    <span className="font-mono tabular-nums">
+                                                        {formatDurationSeconds(entry.validForSeconds)}
+                                                    </span>
+                                                    {entry.validForReason && (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {WAKE_REASON_LABELS[entry.validForReason]}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm tabular-nums whitespace-nowrap">
+                                            {chargePercent ?? <span className="text-muted-foreground">—</span>}
+                                        </TableCell>
+                                        <TableCell className="font-mono text-sm tabular-nums whitespace-nowrap">
+                                            {voltage ?? <span className="text-muted-foreground">—</span>}
+                                        </TableCell>
+                                        <TableCell>
+                                            {entry.imageChanged && (
+                                                <Badge
+                                                    variant="outline"
+                                                    className="gap-1 text-blue-500 border-blue-500/40"
+                                                >
+                                                    <ImageIcon className="size-3" />
+                                                    image updated
+                                                </Badge>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })
                         )}
                     </TableBody>
                 </Table>

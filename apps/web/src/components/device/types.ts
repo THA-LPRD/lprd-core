@@ -29,6 +29,22 @@ export type DeviceData = {
         validForSeconds?: number;
         validForReason?: 'fresh_data' | 'stale_data' | 'missing_data' | 'unbound' | 'off_hours';
     } | null;
+    latestBatteryStatus?:
+        | {
+              present: false;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              voltageV: number;
+              stateOfChargePercent: number;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              error: string;
+              reportedAt: number;
+          };
     frameId?: Id<'frames'>;
     dataBindings?: Binding[];
     wakePolicy?: DeviceWakePolicy;

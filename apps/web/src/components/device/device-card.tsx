@@ -5,7 +5,7 @@ import { Card, CardContent } from '@workspace/ui/components/card';
 import { Badge } from '@workspace/ui/components/badge';
 import { JobStatusBadge } from '@/components/jobs/job-status-badge';
 import { DeviceStatusDot } from './device-status-dot';
-import { Monitor } from 'lucide-react';
+import { Battery, Monitor } from 'lucide-react';
 import { formatRelativeTime } from '@/lib/date';
 import { buildEntitySlug } from '@/lib/slug';
 import type { Id } from '@convex/dataModel';
@@ -26,11 +26,37 @@ type Device = {
         jobId?: string;
         updatedAt: number;
     };
+    latestBatteryStatus?:
+        | {
+              present: false;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              voltageV: number;
+              stateOfChargePercent: number;
+              reportedAt: number;
+          }
+        | {
+              present: true;
+              error: string;
+              reportedAt: number;
+          };
     createdAt: number;
     updatedAt: number;
 };
 
+function formatBatteryLabel(device: Device) {
+    const battery = device.latestBatteryStatus;
+    if (!battery) return null;
+    if (!battery.present) return 'No gauge';
+    if ('error' in battery) return `Battery: ${battery.error}`;
+    return `${battery.stateOfChargePercent.toFixed(1)}%`;
+}
+
 export function DeviceCard({ device, siteSlug }: { device: Device; siteSlug: string }) {
+    const batteryLabel = formatBatteryLabel(device);
+
     return (
         <Link href={`/site/${siteSlug}/devices/${buildEntitySlug(device.name, device._id)}`}>
             <Card className="hover:bg-accent/50 transition-colors cursor-pointer overflow-hidden">
@@ -67,8 +93,15 @@ export function DeviceCard({ device, siteSlug }: { device: Device; siteSlug: str
                         </div>
                     )}
 
-                    {/* Last seen */}
-                    <p className="text-xs text-muted-foreground">{formatRelativeTime(device.lastSeen)}</p>
+                    <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">{formatRelativeTime(device.lastSeen)}</p>
+                        {batteryLabel && (
+                            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <Battery className="size-3.5" />
+                                {batteryLabel}
+                            </span>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
         </Link>

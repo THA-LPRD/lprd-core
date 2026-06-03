@@ -3,7 +3,7 @@ import { v } from 'convex/values';
 import { internalMutation, query } from '../_generated/server';
 import { resolveAuthorization } from '../lib/authz';
 import { permissionCatalog } from '../lib/permissions';
-import { deviceLogStatus, deviceLogType, deviceWakeReason } from '../schema';
+import { deviceBatteryStatus, deviceLogStatus, deviceLogType, deviceWakeReason } from '../schema';
 
 // ---------------------------------------------------------------------------
 // Internal mutations — called from Next.js API routes
@@ -68,6 +68,40 @@ export const logWithSnapshot = internalMutation({
                 logId,
                 data: args.bindingData,
                 createdAt: now,
+            });
+        }
+    },
+});
+
+/**
+ * Record a v1 device status report and update the device's latest battery state.
+ */
+export const logStatusReport = internalMutation({
+    args: {
+        deviceId: v.id('devices'),
+        macAddress: v.string(),
+        ipAddress: v.optional(v.string()),
+        responseStatus: deviceLogStatus,
+        batteryStatus: deviceBatteryStatus,
+    },
+    handler: async (ctx, args) => {
+        const now = Date.now();
+
+        await ctx.db.insert('deviceAccessLogs', {
+            deviceId: args.deviceId,
+            macAddress: args.macAddress,
+            type: 'status_report',
+            ipAddress: args.ipAddress,
+            responseStatus: args.responseStatus,
+            imageChanged: false,
+            batteryStatus: args.batteryStatus,
+            accessedAt: now,
+        });
+
+        if (args.responseStatus === 'ok') {
+            await ctx.db.patch(args.deviceId, {
+                lastSeen: now,
+                latestBatteryStatus: args.batteryStatus,
             });
         }
     },
