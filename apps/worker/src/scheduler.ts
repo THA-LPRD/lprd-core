@@ -1,43 +1,65 @@
-import { Queue, Worker } from 'bullmq';
-import { config } from '@worker/config';
+import { generateRequestId, withLogFields, withLoggedSpan, withRequestLogContext } from '@workspace/observability';
+import { AppClient } from '@worker/app-client';
+import type { WorkerServices } from '@worker/worker';
+import type { WorkerConfigShape } from '@worker/config';
 import { enqueueWorkerJob } from '@/lib/queue';
-import type { HealthCheckPayload } from '@shared/jobs';
+import type { HealthCheckPayload, WorkerJobPayload } from '@shared/jobs';
 import { makeWorkKey } from '@shared/jobs';
-import { workerRequestJson } from '@worker/app-client';
+import { Effect, type ManagedRuntime } from 'effect';
+import { Queue, Worker } from 'bullmq';
 
-const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
-    connection: config.redis,
-});
+type SchedulerRuntime = ManagedRuntime.ManagedRuntime<WorkerServices, unknown>;
 
-export async function startScheduler() {
+function enqueueDueHealthChecks(queue: Queue<WorkerJobPayload>, requestId: string) {
+    const program = Effect.gen(function* () {
+        const appClient = yield* AppClient;
+        const duePlugins = yield* appClient.requestJson<HealthCheckPayload[]>(
+            '/api/v2/applications/health-checks/due',
+            {
+                requestId,
+                retry: 'transient',
+            },
+        );
+
+        for (const plugin of duePlugins) {
+            yield* enqueueWorkerJob(
+                queue,
+                {
+                    type: 'health-check',
+                    payload: {
+                        applicationId: plugin.applicationId,
+                        actorId: plugin.actorId,
+                        siteId: plugin.siteId,
+                        baseUrl: plugin.baseUrl,
+                    },
+                },
+                makeWorkKey('health-check', plugin.applicationId),
+            );
+        }
+    });
+
+    return withRequestLogContext(
+        withLogFields(withLoggedSpan('scheduler.poll')(program), { 'job.type': 'health-check' }),
+        { requestId },
+    );
+}
+
+export async function startScheduler(
+    runtime: SchedulerRuntime,
+    config: WorkerConfigShape,
+    appJobsQueue: Queue<WorkerJobPayload>,
+) {
+    const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
+        connection: config.redis,
+    });
+
     await schedulerQueue.upsertJobScheduler('poll-due-plugins', {
         every: config.scheduler.intervalMs,
     });
 
     const worker = new Worker(
         config.healthCheck.schedulerQueueName,
-        async () => {
-            const duePlugins = await workerRequestJson<HealthCheckPayload[]>('/api/v2/applications/health-checks/due');
-
-            if (duePlugins.length === 0) {
-                return;
-            }
-
-            for (const plugin of duePlugins) {
-                await enqueueWorkerJob(
-                    {
-                        type: 'health-check',
-                        payload: {
-                            applicationId: plugin.applicationId,
-                            actorId: plugin.actorId,
-                            siteId: plugin.siteId,
-                            baseUrl: plugin.baseUrl,
-                        },
-                    },
-                    makeWorkKey('health-check', plugin.applicationId),
-                );
-            }
-        },
+        () => runtime.runPromise(enqueueDueHealthChecks(appJobsQueue, generateRequestId())),
         { connection: config.redis },
     );
 

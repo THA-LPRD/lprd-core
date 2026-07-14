@@ -16,6 +16,7 @@ import type * as applications_plugin_registration from "../applications/plugin/r
 import type * as applications_plugin_sites from "../applications/plugin/sites.js";
 import type * as applications_provision from "../applications/provision.js";
 import type * as authorization from "../authorization.js";
+import type * as crons from "../crons.js";
 import type * as devices_accessLogs from "../devices/accessLogs.js";
 import type * as devices_crud from "../devices/crud.js";
 import type * as devices_render from "../devices/render.js";
@@ -28,6 +29,7 @@ import type * as jobs_frameJobs from "../jobs/frameJobs.js";
 import type * as jobs_jobStateMappers from "../jobs/jobStateMappers.js";
 import type * as jobs_templateJobs from "../jobs/templateJobs.js";
 import type * as jobs_types from "../jobs/types.js";
+import type * as jobs_watchdog from "../jobs/watchdog.js";
 import type * as lib_applications from "../lib/applications.js";
 import type * as lib_authz from "../lib/authz.js";
 import type * as lib_deviceLogs from "../lib/deviceLogs.js";
@@ -82,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   "applications/plugin/sites": typeof applications_plugin_sites;
   "applications/provision": typeof applications_provision;
   authorization: typeof authorization;
+  crons: typeof crons;
   "devices/accessLogs": typeof devices_accessLogs;
   "devices/crud": typeof devices_crud;
   "devices/render": typeof devices_render;
@@ -94,6 +97,7 @@ declare const fullApi: ApiFromModules<{
   "jobs/jobStateMappers": typeof jobs_jobStateMappers;
   "jobs/templateJobs": typeof jobs_templateJobs;
   "jobs/types": typeof jobs_types;
+  "jobs/watchdog": typeof jobs_watchdog;
   "lib/applications": typeof lib_applications;
   "lib/authz": typeof lib_authz;
   "lib/deviceLogs": typeof lib_deviceLogs;

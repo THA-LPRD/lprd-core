@@ -1,40 +1,73 @@
-import { config } from '@worker/config';
+import { makeLoggerLayer } from '@workspace/observability';
+import { AppClient, AppClientLive } from '@worker/app-client';
+import { WorkerConfig, WorkerConfigLive, type WorkerConfigShape } from '@worker/config';
+import { FailureReporter, FailureReporterLive } from '@worker/failure-reporter';
+import { createAppJobsQueue } from '@/lib/queue';
+import { Renderer, RendererLive } from '@worker/renderer';
 import { startScheduler } from '@worker/scheduler';
 import { startWorker } from '@worker/worker';
+import { Effect, Layer, ManagedRuntime } from 'effect';
 
-function validateConfig() {
-    if (!config.app.workerClientId || !config.app.workerClientSecret) {
-        throw new Error('WORKER_CLIENT_ID and WORKER_CLIENT_SECRET environment variables are required');
-    }
-    if (!config.app.baseUrl) {
-        throw new Error('CORE_BASE_URL or NEXT_PUBLIC_APP_URL environment variable is required');
-    }
-    if (!config.app.workosAuthkitDomain) {
-        throw new Error('WORKOS_AUTHKIT_DOMAIN environment variable is required');
-    }
-}
+const appClientLayer = AppClientLive.pipe(Layer.provide(WorkerConfigLive));
+const rendererLayer = RendererLive.pipe(Layer.provide(appClientLayer));
+const failureReporterLayer = FailureReporterLive.pipe(Layer.provide(appClientLayer));
+const workerLayer = Layer.mergeAll(
+    WorkerConfigLive,
+    appClientLayer,
+    rendererLayer,
+    failureReporterLayer,
+    makeLoggerLayer(),
+);
+
+type WorkerRuntime = ManagedRuntime.ManagedRuntime<WorkerConfig | AppClient | Renderer | FailureReporter, unknown>;
 
 async function main() {
-    validateConfig();
-    console.log('[worker] Starting health check worker...');
+    const runtime: WorkerRuntime = ManagedRuntime.make(workerLayer);
+    let config: WorkerConfigShape;
 
-    const { worker: schedulerWorker, queue: schedulerQueue } = await startScheduler();
-    const healthWorker = startWorker();
-
-    console.log('[worker] Scheduler and health check worker running');
-
-    async function shutdown() {
-        console.log('\n[worker] Shutting down...');
-        await Promise.all([schedulerWorker.close(), healthWorker.close(), schedulerQueue.close()]);
-        console.log('[worker] Shutdown complete');
-        process.exit(0);
+    try {
+        config = await runtime.runPromise(WorkerConfig);
+    } catch (error) {
+        await runtime.dispose();
+        throw error;
     }
 
-    process.on('SIGINT', shutdown);
-    process.on('SIGTERM', shutdown);
+    await runtime.runPromise(Effect.log('Starting health check worker'));
+    const appJobsQueue = createAppJobsQueue(config);
+
+    try {
+        const { worker: schedulerWorker, queue: schedulerQueue } = await startScheduler(runtime, config, appJobsQueue);
+        const healthWorker = startWorker(runtime, config);
+        await runtime.runPromise(Effect.log('Scheduler and health check worker running'));
+
+        let shuttingDown = false;
+        const shutdown = async () => {
+            if (shuttingDown) return;
+            shuttingDown = true;
+            await runtime.runPromise(Effect.log('Shutting down...'));
+            await Promise.all([
+                schedulerWorker.close(),
+                healthWorker.close(),
+                schedulerQueue.close(),
+                appJobsQueue.close(),
+            ]);
+            await runtime.dispose();
+            process.exit(0);
+        };
+
+        process.once('SIGINT', shutdown);
+        process.once('SIGTERM', shutdown);
+    } catch (error) {
+        await appJobsQueue.close();
+        await runtime.dispose();
+        throw error;
+    }
 }
 
-main().catch((err) => {
-    console.error('[worker] Fatal error:', err);
-    process.exit(1);
+main().catch((error) => {
+    void Effect.runPromise(
+        Effect.logError(`Fatal startup error: ${error instanceof Error ? error.message : String(error)}`).pipe(
+            Effect.provide(makeLoggerLayer()),
+        ),
+    ).finally(() => process.exit(1));
 });

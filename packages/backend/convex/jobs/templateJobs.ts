@@ -259,6 +259,7 @@ export const start = mutation({
 export const fail = mutation({
     args: { id: v.id('jobStates'), errorMessage: v.string() },
     handler: async (ctx, args) => {
+        // Intentionally unguarded: manual/watchdog recovery can fail stranded running jobs; cancel/pause require pending.
         const state = await ctx.db.get(args.id);
         if (!state) throw new Error('Job not found');
         if (state.resourceType !== 'template') throw new Error('Job does not target a template');

@@ -188,6 +188,7 @@ export const start = mutation({
 export const fail = mutation({
     args: { id: v.id('jobStates'), errorMessage: v.string() },
     handler: async (ctx, args) => {
+        // Intentionally unguarded: manual/watchdog recovery can fail stranded running jobs; cancel/pause require pending.
         const job = await ctx.db.get(args.id);
         if (!job || job.resourceType !== 'application' || job.type !== 'health-check') throw new Error('Job not found');
         const execution = job.currentExecutionId ? await ctx.db.get(job.currentExecutionId) : null;

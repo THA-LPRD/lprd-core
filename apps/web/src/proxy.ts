@@ -17,6 +17,7 @@ export default authkitProxy({
             // not via AuthKit session cookies. They must be listed here so the middleware
             // doesn't redirect Bearer requests to the login page.
             '/api/v2/applications/:applicationId/health-check',
+            '/api/v2/applications/health-checks/due',
             '/api/v2/applications/jobs/:jobId/start',
             '/api/v2/applications/jobs/:jobId/fail',
             '/api/v2/devices/:deviceId/render',

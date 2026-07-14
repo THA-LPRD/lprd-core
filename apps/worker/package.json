@@ -11,8 +11,10 @@
     "format": "oxfmt"
   },
   "dependencies": {
+    "@workspace/observability": "workspace:*",
     "bullmq": "^5.73.0",
     "convex": "^1.34.1",
+    "effect": "catalog:",
     "ioredis": "^5.10.1",
     "jose": "^6.2.2",
     "playwright": "^1.59.1"

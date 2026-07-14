@@ -550,6 +550,7 @@ export default defineSchema({
         .index('by_site', ['siteId'])
         .index('by_workKey', ['workKey'])
         .index('by_resource', ['resourceType', 'resourceId'])
+        .index('by_status_and_updatedAt', ['status', 'updatedAt'])
         .index('by_site_and_resourceType_and_updatedAt', ['siteId', 'resourceType', 'updatedAt']),
 
     jobLogs: defineTable({
