@@ -35,6 +35,9 @@ export const listByPlugin = query({
 export const listDueForHealthCheck = query({
     args: {},
     handler: async (ctx) => {
+        // Temporarily disabled to avoid excessive recurring Convex reads.
+        if (Date.now() >= 0) return [];
+        
         await requirePermission(ctx, permissionCatalog.org.actor.serviceAccount.healthCheck.read);
 
         const now = Date.now();
