@@ -10,6 +10,11 @@ import { Queue, Worker } from 'bullmq';
 
 type SchedulerRuntime = ManagedRuntime.ManagedRuntime<WorkerServices, unknown>;
 
+const JOB_RETENTION = {
+    removeOnComplete: { count: 100 },
+    removeOnFail: { age: 7 * 24 * 3600, count: 1000 },
+} as const;
+
 function enqueueDueHealthChecks(queue: Queue<WorkerJobPayload>, requestId: string) {
     const program = Effect.gen(function* () {
         const appClient = yield* AppClient;
@@ -51,16 +56,22 @@ export async function startScheduler(
 ) {
     const schedulerQueue = new Queue(config.healthCheck.schedulerQueueName, {
         connection: config.redis,
+        defaultJobOptions: JOB_RETENTION,
     });
 
-    await schedulerQueue.upsertJobScheduler('poll-due-plugins', {
-        every: config.scheduler.intervalMs,
-    });
+    await schedulerQueue.upsertJobScheduler(
+        'poll-due-plugins',
+        { every: config.scheduler.intervalMs },
+        { name: 'poll-due-plugins', opts: JOB_RETENTION },
+    );
 
     const worker = new Worker(
         config.healthCheck.schedulerQueueName,
         () => runtime.runPromise(enqueueDueHealthChecks(appJobsQueue, generateRequestId())),
-        { connection: config.redis },
+        {
+            connection: config.redis,
+            ...JOB_RETENTION,
+        },
     );
 
     return { worker, queue: schedulerQueue };
