@@ -33,7 +33,7 @@ export class AppClient extends Context.Service<
     }
 >()('AppClient') {}
 
-const defaultRetrySchedule = Schedule.exponential(500).pipe(Schedule.take(2));
+const defaultRetrySchedule = Schedule.exponential(500).pipe(Schedule.upTo({ times: 2 }));
 
 function errorMessage(error: unknown): string {
     return error instanceof Error ? error.message : String(error);

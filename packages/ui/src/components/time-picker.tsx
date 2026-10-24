@@ -548,7 +548,6 @@ function TimePickerInputGroup(props: DivProps) {
         invalid,
         segmentPlaceholder,
         inputGroupRef,
-        triggerRef,
         inputGroupClickAction,
         openOnFocus,
     } = useTimePickerContext(INPUT_GROUP_NAME);
@@ -599,13 +598,13 @@ function TimePickerInputGroup(props: DivProps) {
                 return;
             }
 
-            if (triggerRef.current?.contains(target)) {
+            if (target.closest('[data-slot="time-picker-trigger"]')) {
                 return;
             }
 
             event.preventDefault();
         },
-        [onPointerDownProp, disabled, readOnly, triggerRef],
+        [onPointerDownProp, disabled, readOnly],
     );
 
     const onClick = React.useCallback(
@@ -619,7 +618,7 @@ function TimePickerInputGroup(props: DivProps) {
                 return;
             }
 
-            if (triggerRef.current?.contains(target)) {
+            if (target.closest('[data-slot="time-picker-trigger"]')) {
                 return;
             }
 
@@ -628,9 +627,7 @@ function TimePickerInputGroup(props: DivProps) {
             } else {
                 const activeElement = document.activeElement;
                 const isInputAlreadyFocused =
-                    activeElement &&
-                    activeElement.tagName === 'INPUT' &&
-                    inputGroupRef.current?.contains(activeElement);
+                    activeElement && activeElement.tagName === 'INPUT' && event.currentTarget.contains(activeElement);
 
                 if (isInputAlreadyFocused) {
                     if (openOnFocus && !store.getState().open) {
@@ -641,16 +638,16 @@ function TimePickerInputGroup(props: DivProps) {
                 }
 
                 for (const segment of SEGMENTS) {
-                    const inputRef = inputRefsMap.current.get(segment);
-                    if (inputRef?.current) {
-                        inputRef.current.focus();
-                        inputRef.current.select();
+                    const input = event.currentTarget.querySelector<InputElement>(`input[data-segment="${segment}"]`);
+                    if (input) {
+                        input.focus();
+                        input.select();
                         break;
                     }
                 }
             }
         },
-        [onClickProp, disabled, readOnly, inputGroupClickAction, store, triggerRef, inputGroupRef, openOnFocus],
+        [onClickProp, disabled, readOnly, inputGroupClickAction, store, openOnFocus],
     );
 
     const inputGroupContextValue = React.useMemo<TimePickerInputGroupContextValue>(
@@ -777,12 +774,12 @@ function TimePickerInput(props: TimePickerInputProps) {
     const [isEditing, setIsEditing] = React.useState(false);
     const [pendingDigit, setPendingDigit] = React.useState<string | null>(null);
 
-    React.useEffect(() => {
-        if (!isEditing) {
-            setEditValue(getSegmentValue());
-            setPendingDigit(null);
-        }
-    }, [getSegmentValue, isEditing]);
+    // While not editing, keep the edit buffer in sync with the current value.
+    const segmentValue = getSegmentValue();
+    if (!isEditing && (editValue !== segmentValue || pendingDigit !== null)) {
+        setEditValue(segmentValue);
+        setPendingDigit(null);
+    }
 
     const updateTimeValue = React.useCallback(
         (newSegmentValue: string | undefined, shouldCreateIfEmpty = false) => {
@@ -1316,13 +1313,14 @@ function TimePickerInput(props: TimePickerInputProps) {
         ],
     );
 
-    const displayValue = isEditing ? editValue : getSegmentValue();
+    const displayValue = isEditing ? editValue : segmentValue;
 
     const segmentWidth = segment ? `var(--time-picker-${segment}-input-width)` : '2ch';
 
     return (
         <input
             type="text"
+            data-segment={segment}
             inputMode={segment === 'period' ? 'text' : 'numeric'}
             autoComplete="off"
             autoCorrect="off"

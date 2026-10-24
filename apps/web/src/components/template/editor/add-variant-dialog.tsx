@@ -31,13 +31,16 @@ export function AddVariantDialog({
     const [w, setW] = React.useState(3);
     const [h, setH] = React.useState(2);
 
-    React.useEffect(() => {
+    // Reset form when dialog opens
+    const [wasOpen, setWasOpen] = React.useState(open);
+    if (open !== wasOpen) {
+        setWasOpen(open);
         if (open) {
             setVariantType('content');
             setW(3);
             setH(2);
         }
-    }, [open]);
+    }
 
     const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();

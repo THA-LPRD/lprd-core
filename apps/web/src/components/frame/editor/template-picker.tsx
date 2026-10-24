@@ -73,13 +73,19 @@ export function TemplatePicker({
     );
     const [draftColor, setDraftColor] = React.useState(backgroundColor ?? '#ffffff');
 
-    // Reset tab and draft color when dialog opens
-    React.useEffect(() => {
+    // Reset tab and draft color when dialog opens or its inputs change
+    const [resetSource, setResetSource] = React.useState({ open, hasBackgroundTemplate, backgroundColor });
+    if (
+        open !== resetSource.open ||
+        hasBackgroundTemplate !== resetSource.hasBackgroundTemplate ||
+        backgroundColor !== resetSource.backgroundColor
+    ) {
+        setResetSource({ open, hasBackgroundTemplate, backgroundColor });
         if (open) {
             setActiveTab(hasBackgroundTemplate ? 'template' : 'color');
             setDraftColor(backgroundColor ?? '#ffffff');
         }
-    }, [open, hasBackgroundTemplate, backgroundColor]);
+    }
 
     // Build list of matching template+variant pairs
     const options = React.useMemo(() => {

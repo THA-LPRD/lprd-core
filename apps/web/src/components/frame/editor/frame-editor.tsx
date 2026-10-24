@@ -52,7 +52,6 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
     const [backgroundColor, setBackgroundColor] = React.useState<string | undefined>(frame.backgroundColor);
     const [foreground, setForeground] = React.useState<LayerRef | undefined>(frame.foreground);
     const [selectedWidgetId, setSelectedWidgetId] = React.useState<string | null>(null);
-    const [isDirty, setIsDirty] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [showAddWidget, setShowAddWidget] = React.useState(false);
     const [pickerTarget, setPickerTarget] = React.useState<PickerTarget | null>(null);
@@ -90,16 +89,15 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
         return map;
     }, [templates]);
 
-    // Track dirty state
-    React.useEffect(() => {
-        const changed =
+    const isDirty = React.useMemo(
+        () =>
             name !== frame.name ||
             JSON.stringify(widgets) !== JSON.stringify(frame.widgets) ||
             JSON.stringify(background) !== JSON.stringify(frame.background) ||
             backgroundColor !== frame.backgroundColor ||
-            JSON.stringify(foreground) !== JSON.stringify(frame.foreground);
-        setIsDirty(changed);
-    }, [name, widgets, background, backgroundColor, foreground, frame]);
+            JSON.stringify(foreground) !== JSON.stringify(frame.foreground),
+        [name, widgets, background, backgroundColor, foreground, frame],
+    );
 
     const selectedWidget = selectedWidgetId ? (widgets.find((w) => w.id === selectedWidgetId) ?? null) : null;
 

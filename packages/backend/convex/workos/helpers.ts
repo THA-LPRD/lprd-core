@@ -13,14 +13,18 @@ export const verifyWebhook = internalAction({
         signature: v.string(),
         secret: v.string(),
     },
+    returns: v.null(),
     handler: async (_ctx, args) => {
         const workos = new WorkOS(process.env.WORKOS_API_KEY);
 
-        return workos.webhooks.constructEvent({
-            payload: JSON.parse(args.payload),
+        // Throws on an invalid signature. The parsed event contains Dates, which
+        // Convex cannot return, so callers parse the verified payload themselves.
+        await workos.webhooks.constructEvent({
+            payload: args.payload,
             sigHeader: args.signature,
             secret: args.secret,
         });
+        return null;
     },
 });
 

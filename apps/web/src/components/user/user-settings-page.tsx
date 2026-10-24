@@ -31,11 +31,12 @@ export function UserSettingsPage() {
     const [canBeInvited, setCanBeInvited] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
 
-    React.useEffect(() => {
-        if (!settings) return;
+    const [syncedSettings, setSyncedSettings] = React.useState<typeof settings>(undefined);
+    if (settings && settings !== syncedSettings) {
+        setSyncedSettings(settings);
         setCanBeFound(settings.canBeFoundInOrganization);
         setCanBeInvited(settings.canBeInvitedInOrganization);
-    }, [settings]);
+    }
 
     const hasChanges =
         !!settings &&

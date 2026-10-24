@@ -11,10 +11,6 @@ export function useRenderReadiness(layerKeys: string[]) {
     const renderKey = React.useMemo(() => layerKeys.join('\u0000'), [layerKeys]);
     const [state, setState] = React.useState<RenderState>(() => ({ key: renderKey, renderedLayers: new Set() }));
 
-    React.useEffect(() => {
-        setState({ key: renderKey, renderedLayers: new Set() });
-    }, [renderKey]);
-
     const markLayerRendered = React.useCallback(
         (layerKey: string) => {
             setState((previous) => {

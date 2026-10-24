@@ -29,12 +29,15 @@ export function TemplateForm({ open, onOpenChangeAction, onSubmitAction }: Templ
     const [description, setDescription] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-    React.useEffect(() => {
+    // Reset form when dialog opens
+    const [wasOpen, setWasOpen] = React.useState(open);
+    if (open !== wasOpen) {
+        setWasOpen(open);
         if (open) {
             setName('');
             setDescription('');
         }
-    }, [open]);
+    }
 
     const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();

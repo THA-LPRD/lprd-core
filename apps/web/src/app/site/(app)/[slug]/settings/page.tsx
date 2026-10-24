@@ -52,10 +52,12 @@ export default function SiteSettingsPage() {
     const updateSite = useMutation(api.sites.update);
     const deleteSite = useMutation(api.sites.remove);
 
-    React.useEffect(() => {
+    const [syncedSite, setSyncedSite] = React.useState({ name: site.name, deviceWakePolicy: site.deviceWakePolicy });
+    if (site.name !== syncedSite.name || site.deviceWakePolicy !== syncedSite.deviceWakePolicy) {
+        setSyncedSite({ name: site.name, deviceWakePolicy: site.deviceWakePolicy });
         setSiteName(site.name);
         setDeviceWakePolicy(site.deviceWakePolicy);
-    }, [site.name, site.deviceWakePolicy]);
+    }
 
     const hasGeneralChanges = siteName !== site.name;
     const hasWakePolicyChanges = JSON.stringify(site.deviceWakePolicy) !== JSON.stringify(deviceWakePolicy);
