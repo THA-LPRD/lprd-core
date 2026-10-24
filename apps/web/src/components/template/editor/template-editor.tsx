@@ -48,6 +48,7 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
         }
     }, [sampleDataJson]);
 
+    // Track dirty state
     const isDirty = React.useMemo(
         () =>
             name !== template.name ||

@@ -28,9 +28,9 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
     }>({});
 
     React.useLayoutEffect(() => {
-        if (!control || typeof window === 'undefined') return;
+        if (!control) return;
 
-        // ResizeObserver reports the initial size on observe(), before paint.
+        if (typeof window === 'undefined') return;
 
         const resizeObserver = new ResizeObserver((entries) => {
             if (!Array.isArray(entries) || !entries.length) return;

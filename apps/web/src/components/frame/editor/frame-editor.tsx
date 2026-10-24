@@ -89,6 +89,7 @@ export function FrameEditor({ frame, siteSlug }: { frame: FrameDoc; siteSlug: st
         return map;
     }, [templates]);
 
+    // Track dirty state
     const isDirty = React.useMemo(
         () =>
             name !== frame.name ||

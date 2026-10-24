@@ -60,7 +60,7 @@ export function CreateApplicationDialog({
     const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
-    const [selectedOrganizationId, setSelectedOrganizationId] = React.useState<Id<'organizations'> | ''>('');
+    const [selectedOrganizationId, setOrganizationId] = React.useState<Id<'organizations'> | ''>('');
     const [scopePushData, setScopePushData] = React.useState(true);
     const [scopeCreateTemplate, setScopeCreateTemplate] = React.useState(true);
     const [isCreating, setIsCreating] = React.useState(false);
@@ -196,7 +196,7 @@ export function CreateApplicationDialog({
                             <Select
                                 value={organizationId || undefined}
                                 onValueChange={(value) =>
-                                    setSelectedOrganizationId((value as Id<'organizations'> | null) ?? '')
+                                    setOrganizationId((value as Id<'organizations'> | null) ?? '')
                                 }
                             >
                                 <SelectTrigger className="w-full">

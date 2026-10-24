@@ -31,7 +31,6 @@ export function AddVariantDialog({
     const [w, setW] = React.useState(3);
     const [h, setH] = React.useState(2);
 
-    // Reset form when dialog opens
     const [wasOpen, setWasOpen] = React.useState(open);
     if (open !== wasOpen) {
         setWasOpen(open);

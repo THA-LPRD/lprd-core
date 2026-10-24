@@ -53,7 +53,6 @@ export function AddWidgetDialog({
     const [h, setH] = React.useState(3);
     const [error, setError] = React.useState('');
 
-    // Reset form when dialog opens
     const [wasOpen, setWasOpen] = React.useState(open);
     if (open !== wasOpen) {
         setWasOpen(open);

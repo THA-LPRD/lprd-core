@@ -29,7 +29,6 @@ export function TemplateForm({ open, onOpenChangeAction, onSubmitAction }: Templ
     const [description, setDescription] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-    // Reset form when dialog opens
     const [wasOpen, setWasOpen] = React.useState(open);
     if (open !== wasOpen) {
         setWasOpen(open);

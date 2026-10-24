@@ -774,7 +774,6 @@ function TimePickerInput(props: TimePickerInputProps) {
     const [isEditing, setIsEditing] = React.useState(false);
     const [pendingDigit, setPendingDigit] = React.useState<string | null>(null);
 
-    // While not editing, keep the edit buffer in sync with the current value.
     const segmentValue = getSegmentValue();
     if (!isEditing && (editValue !== segmentValue || pendingDigit !== null)) {
         setEditValue(segmentValue);
@@ -1313,7 +1312,7 @@ function TimePickerInput(props: TimePickerInputProps) {
         ],
     );
 
-    const displayValue = isEditing ? editValue : segmentValue;
+    const displayValue = isEditing ? editValue : getSegmentValue();
 
     const segmentWidth = segment ? `var(--time-picker-${segment}-input-width)` : '2ch';
 

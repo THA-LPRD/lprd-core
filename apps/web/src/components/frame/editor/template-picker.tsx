@@ -73,7 +73,7 @@ export function TemplatePicker({
     );
     const [draftColor, setDraftColor] = React.useState(backgroundColor ?? '#ffffff');
 
-    // Reset tab and draft color when dialog opens or its inputs change
+    // Reset tab and draft color when dialog opens
     const [resetSource, setResetSource] = React.useState({ open, hasBackgroundTemplate, backgroundColor });
     if (
         open !== resetSource.open ||

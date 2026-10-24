@@ -603,6 +603,7 @@ function FileUpload(props: FileUploadProps) {
             dataTransfer.items.add(file);
         }
 
+        // Intentional DOM ref mutation in the drop and paste handlers.
         inputElement.files = dataTransfer.files;
         inputElement.dispatchEvent(new Event('change', { bubbles: true }));
     }, []);
