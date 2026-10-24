@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.12-debian AS deps
+FROM oven/bun:1.4.4-debian AS deps
 WORKDIR /app
 
 COPY package.json bun.lock turbo.json ./
@@ -13,7 +13,7 @@ RUN bun install --frozen-lockfile
 
 
 # ==================== Runner (worker) ====================
-FROM oven/bun:1.3.12-debian AS runner
+FROM oven/bun:1.4.4-debian AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gosu \

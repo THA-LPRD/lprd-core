@@ -1,8 +1,10 @@
-import { createAvatar } from '@dicebear/core';
-import { glass } from '@dicebear/collection';
+import { Avatar, Style } from '@dicebear/core';
+import glassDefinition from '@dicebear/styles/glass.json' with { type: 'json' };
 import { internal } from '../_generated/api';
 import type { Id } from '../_generated/dataModel';
 import type { ActionCtx } from '../_generated/server';
+
+const glass = new Style(glassDefinition);
 
 export async function verifyAndParse(request: Request, ctx: ActionCtx, secretEnvVar: string) {
     const bodyText = await request.text();
@@ -34,7 +36,7 @@ export async function storeAvatar(ctx: ActionCtx, email: string, profilePictureU
         }
     }
 
-    const avatar = createAvatar(glass, { seed: email });
+    const avatar = new Avatar(glass, { seed: email });
     const svg = avatar.toString();
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     return await ctx.storage.store(blob);

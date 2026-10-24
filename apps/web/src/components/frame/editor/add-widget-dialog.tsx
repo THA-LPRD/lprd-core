@@ -53,13 +53,15 @@ export function AddWidgetDialog({
     const [h, setH] = React.useState(3);
     const [error, setError] = React.useState('');
 
-    React.useEffect(() => {
+    const [wasOpen, setWasOpen] = React.useState(open);
+    if (open !== wasOpen) {
+        setWasOpen(open);
         if (open) {
             setW(5);
             setH(3);
             setError('');
         }
-    }, [open]);
+    }
 
     const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();

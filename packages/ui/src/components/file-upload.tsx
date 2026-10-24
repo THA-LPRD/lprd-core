@@ -14,6 +14,7 @@ import {
 import * as React from 'react';
 import { cn } from '../lib/utils';
 import { useAsRef } from '../hooks/use-as-ref';
+import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
 import { useLazyRef } from '../hooks/use-lazy-ref';
 import { useDirection } from './direction';
 
@@ -100,6 +101,7 @@ type Store = {
     getState: () => StoreState;
     dispatch: (action: StoreAction) => void;
     subscribe: (listener: () => void) => () => void;
+    setValueChangeHandler: (handler: ((files: File[]) => void) | undefined) => void;
 };
 
 const StoreContext = React.createContext<Store | null>(null);
@@ -140,7 +142,8 @@ interface FileUploadContextValue {
     labelId: string;
     disabled: boolean;
     dir: Direction;
-    inputRef: React.RefObject<HTMLInputElement | null>;
+    openFilePicker: () => void;
+    setInputFiles: (files: File[]) => void;
     urlCache: WeakMap<File, string>;
 }
 
@@ -183,6 +186,151 @@ interface FileUploadProps extends Omit<
     invalid?: boolean;
     multiple?: boolean;
     required?: boolean;
+}
+
+interface CreateStoreOptions {
+    files: Map<File, FileState>;
+    invalid: boolean;
+    listeners: Set<() => void>;
+    urlCache: WeakMap<File, string>;
+}
+
+function createStore({ files, invalid, listeners, urlCache }: CreateStoreOptions): Store {
+    let onValueChange: ((files: File[]) => void) | undefined;
+    let state: StoreState = {
+        files,
+        dragOver: false,
+        invalid: invalid,
+    };
+
+    function reducer(state: StoreState, action: StoreAction): StoreState {
+        switch (action.type) {
+            case 'ADD_FILES': {
+                for (const file of action.files) {
+                    files.set(file, {
+                        file,
+                        progress: 0,
+                        status: 'idle',
+                    });
+                }
+
+                onValueChange?.(Array.from(files.values()).map((fileState) => fileState.file));
+                return { ...state, files };
+            }
+
+            case 'SET_FILES': {
+                const newFileSet = new Set(action.files);
+                for (const existingFile of files.keys()) {
+                    if (!newFileSet.has(existingFile)) {
+                        files.delete(existingFile);
+                    }
+                }
+
+                for (const file of action.files) {
+                    const existingState = files.get(file);
+                    if (!existingState) {
+                        files.set(file, {
+                            file,
+                            progress: 0,
+                            status: 'idle',
+                        });
+                    }
+                }
+                return { ...state, files };
+            }
+
+            case 'SET_PROGRESS': {
+                const fileState = files.get(action.file);
+                if (fileState) {
+                    files.set(action.file, {
+                        ...fileState,
+                        progress: action.progress,
+                        status: 'uploading',
+                    });
+                }
+                return { ...state, files };
+            }
+
+            case 'SET_SUCCESS': {
+                const fileState = files.get(action.file);
+                if (fileState) {
+                    files.set(action.file, {
+                        ...fileState,
+                        progress: 100,
+                        status: 'success',
+                    });
+                }
+                return { ...state, files };
+            }
+
+            case 'SET_ERROR': {
+                const fileState = files.get(action.file);
+                if (fileState) {
+                    files.set(action.file, {
+                        ...fileState,
+                        error: action.error,
+                        status: 'error',
+                    });
+                }
+                return { ...state, files };
+            }
+
+            case 'REMOVE_FILE': {
+                const cachedUrl = urlCache.get(action.file);
+                if (cachedUrl) {
+                    URL.revokeObjectURL(cachedUrl);
+                    urlCache.delete(action.file);
+                }
+
+                files.delete(action.file);
+
+                onValueChange?.(Array.from(files.values()).map((fileState) => fileState.file));
+                return { ...state, files };
+            }
+
+            case 'SET_DRAG_OVER': {
+                return { ...state, dragOver: action.dragOver };
+            }
+
+            case 'SET_INVALID': {
+                return { ...state, invalid: action.invalid };
+            }
+
+            case 'CLEAR': {
+                for (const file of files.keys()) {
+                    const cachedUrl = urlCache.get(file);
+                    if (cachedUrl) {
+                        URL.revokeObjectURL(cachedUrl);
+                        urlCache.delete(file);
+                    }
+                }
+
+                files.clear();
+                onValueChange?.([]);
+                return { ...state, files, invalid: false };
+            }
+
+            default:
+                return state;
+        }
+    }
+
+    return {
+        getState: () => state,
+        dispatch: (action) => {
+            state = reducer(state, action);
+            for (const listener of listeners) {
+                listener();
+            }
+        },
+        subscribe: (listener) => {
+            listeners.add(listener);
+            return () => listeners.delete(listener);
+        },
+        setValueChangeHandler: (handler) => {
+            onValueChange = handler;
+        },
+    };
 }
 
 function FileUpload(props: FileUploadProps) {
@@ -233,148 +381,14 @@ function FileUpload(props: FileUploadProps) {
         onUpload,
     });
 
-    const store = React.useMemo<Store>(() => {
-        let state: StoreState = {
-            files,
-            dragOver: false,
-            invalid: invalid,
-        };
+    const store = React.useMemo(
+        () => createStore({ files, invalid, listeners, urlCache }),
+        [listeners, files, invalid, urlCache],
+    );
 
-        function reducer(state: StoreState, action: StoreAction): StoreState {
-            switch (action.type) {
-                case 'ADD_FILES': {
-                    for (const file of action.files) {
-                        files.set(file, {
-                            file,
-                            progress: 0,
-                            status: 'idle',
-                        });
-                    }
-
-                    if (propsRef.current.onValueChange) {
-                        const fileList = Array.from(files.values()).map((fileState) => fileState.file);
-                        propsRef.current.onValueChange(fileList);
-                    }
-                    return { ...state, files };
-                }
-
-                case 'SET_FILES': {
-                    const newFileSet = new Set(action.files);
-                    for (const existingFile of files.keys()) {
-                        if (!newFileSet.has(existingFile)) {
-                            files.delete(existingFile);
-                        }
-                    }
-
-                    for (const file of action.files) {
-                        const existingState = files.get(file);
-                        if (!existingState) {
-                            files.set(file, {
-                                file,
-                                progress: 0,
-                                status: 'idle',
-                            });
-                        }
-                    }
-                    return { ...state, files };
-                }
-
-                case 'SET_PROGRESS': {
-                    const fileState = files.get(action.file);
-                    if (fileState) {
-                        files.set(action.file, {
-                            ...fileState,
-                            progress: action.progress,
-                            status: 'uploading',
-                        });
-                    }
-                    return { ...state, files };
-                }
-
-                case 'SET_SUCCESS': {
-                    const fileState = files.get(action.file);
-                    if (fileState) {
-                        files.set(action.file, {
-                            ...fileState,
-                            progress: 100,
-                            status: 'success',
-                        });
-                    }
-                    return { ...state, files };
-                }
-
-                case 'SET_ERROR': {
-                    const fileState = files.get(action.file);
-                    if (fileState) {
-                        files.set(action.file, {
-                            ...fileState,
-                            error: action.error,
-                            status: 'error',
-                        });
-                    }
-                    return { ...state, files };
-                }
-
-                case 'REMOVE_FILE': {
-                    const cachedUrl = urlCache.get(action.file);
-                    if (cachedUrl) {
-                        URL.revokeObjectURL(cachedUrl);
-                        urlCache.delete(action.file);
-                    }
-
-                    files.delete(action.file);
-
-                    if (propsRef.current.onValueChange) {
-                        const fileList = Array.from(files.values()).map((fileState) => fileState.file);
-                        propsRef.current.onValueChange(fileList);
-                    }
-                    return { ...state, files };
-                }
-
-                case 'SET_DRAG_OVER': {
-                    return { ...state, dragOver: action.dragOver };
-                }
-
-                case 'SET_INVALID': {
-                    return { ...state, invalid: action.invalid };
-                }
-
-                case 'CLEAR': {
-                    for (const file of files.keys()) {
-                        const cachedUrl = urlCache.get(file);
-                        if (cachedUrl) {
-                            URL.revokeObjectURL(cachedUrl);
-                            urlCache.delete(file);
-                        }
-                    }
-
-                    files.clear();
-                    if (propsRef.current.onValueChange) {
-                        propsRef.current.onValueChange([]);
-                    }
-                    return { ...state, files, invalid: false };
-                }
-
-                default:
-                    return state;
-            }
-        }
-
-        return {
-            getState: () => state,
-            dispatch: (action) => {
-                // Closure variable inside useMemo, not render state.
-                state = reducer(state, action);
-                for (const listener of listeners) {
-                    listener();
-                }
-            },
-            subscribe: (listener) => {
-                listeners.add(listener);
-                return () => listeners.delete(listener);
-            },
-        };
-    }, [listeners, files, invalid, propsRef, urlCache]);
+    useIsomorphicLayoutEffect(() => {
+        store.setValueChangeHandler(onValueChange);
+    }, [store, onValueChange]);
 
     const acceptTypes = React.useMemo(() => accept?.split(',').map((t) => t.trim()) ?? null, [accept]);
 
@@ -576,6 +590,24 @@ function FileUpload(props: FileUploadProps) {
         [onFilesChange],
     );
 
+    const openFilePicker = React.useCallback(() => {
+        inputRef.current?.click();
+    }, []);
+
+    const setInputFiles = React.useCallback((files: File[]) => {
+        const inputElement = inputRef.current;
+        if (!inputElement) return;
+
+        const dataTransfer = new DataTransfer();
+        for (const file of files) {
+            dataTransfer.items.add(file);
+        }
+
+        // Intentional DOM ref mutation in the drop and paste handlers.
+        inputElement.files = dataTransfer.files;
+        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+    }, []);
+
     const contextValue = React.useMemo<FileUploadContextValue>(
         () => ({
             dropzoneId,
@@ -584,10 +616,11 @@ function FileUpload(props: FileUploadProps) {
             labelId,
             dir,
             disabled,
-            inputRef,
+            openFilePicker,
+            setInputFiles,
             urlCache,
         }),
-        [dropzoneId, inputId, listId, labelId, dir, disabled, urlCache],
+        [dropzoneId, inputId, listId, labelId, dir, disabled, openFilePicker, setInputFiles, urlCache],
     );
 
     const element = useRender({
@@ -657,19 +690,9 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
     const dragOver = useStore((state) => state.dragOver);
     const invalid = useStore((state) => state.invalid);
 
-    const propsRef = useAsRef({
-        onClick: onClickProp,
-        onDragOver: onDragOverProp,
-        onDragEnter: onDragEnterProp,
-        onDragLeave: onDragLeaveProp,
-        onDrop: onDropProp,
-        onPaste: onPasteProp,
-        onKeyDown: onKeyDownProp,
-    });
-
     const onClick = React.useCallback(
         (event: React.MouseEvent<HTMLDivElement>) => {
-            propsRef.current.onClick?.(event);
+            onClickProp?.(event);
 
             if (event.defaultPrevented) return;
 
@@ -678,39 +701,39 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
             const isFromTrigger = target instanceof HTMLElement && target.closest('[data-slot="file-upload-trigger"]');
 
             if (!isFromTrigger) {
-                context.inputRef.current?.click();
+                context.openFilePicker();
             }
         },
-        [context.inputRef, propsRef],
+        [context, onClickProp],
     );
 
     const onDragOver = React.useCallback(
         (event: React.DragEvent<HTMLDivElement>) => {
-            propsRef.current.onDragOver?.(event);
+            onDragOverProp?.(event);
 
             if (event.defaultPrevented) return;
 
             event.preventDefault();
             store.dispatch({ type: 'SET_DRAG_OVER', dragOver: true });
         },
-        [store, propsRef],
+        [store, onDragOverProp],
     );
 
     const onDragEnter = React.useCallback(
         (event: React.DragEvent<HTMLDivElement>) => {
-            propsRef.current.onDragEnter?.(event);
+            onDragEnterProp?.(event);
 
             if (event.defaultPrevented) return;
 
             event.preventDefault();
             store.dispatch({ type: 'SET_DRAG_OVER', dragOver: true });
         },
-        [store, propsRef],
+        [store, onDragEnterProp],
     );
 
     const onDragLeave = React.useCallback(
         (event: React.DragEvent<HTMLDivElement>) => {
-            propsRef.current.onDragLeave?.(event);
+            onDragLeaveProp?.(event);
 
             if (event.defaultPrevented) return;
 
@@ -722,37 +745,26 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
             event.preventDefault();
             store.dispatch({ type: 'SET_DRAG_OVER', dragOver: false });
         },
-        [store, propsRef],
+        [store, onDragLeaveProp],
     );
 
     const onDrop = React.useCallback(
         (event: React.DragEvent<HTMLDivElement>) => {
-            propsRef.current.onDrop?.(event);
+            onDropProp?.(event);
 
             if (event.defaultPrevented) return;
 
             event.preventDefault();
             store.dispatch({ type: 'SET_DRAG_OVER', dragOver: false });
 
-            const files = Array.from(event.dataTransfer.files);
-            const inputElement = context.inputRef.current;
-            if (!inputElement) return;
-
-            const dataTransfer = new DataTransfer();
-            for (const file of files) {
-                dataTransfer.items.add(file);
-            }
-
-            // Intentional DOM ref mutation in the drop handler.
-            inputElement.files = dataTransfer.files;
-            inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+            context.setInputFiles(Array.from(event.dataTransfer.files));
         },
-        [store, context.inputRef, propsRef],
+        [store, context, onDropProp],
     );
 
     const onPaste = React.useCallback(
         (event: React.ClipboardEvent<HTMLDivElement>) => {
-            propsRef.current.onPaste?.(event);
+            onPasteProp?.(event);
 
             if (event.defaultPrevented) return;
 
@@ -775,31 +787,21 @@ function FileUploadDropzone(props: FileUploadDropzoneProps) {
 
             if (files.length === 0) return;
 
-            const inputElement = context.inputRef.current;
-            if (!inputElement) return;
-
-            const dataTransfer = new DataTransfer();
-            for (const file of files) {
-                dataTransfer.items.add(file);
-            }
-
-            // Intentional DOM ref mutation in the paste handler.
-            inputElement.files = dataTransfer.files;
-            inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+            context.setInputFiles(files);
         },
-        [store, context.inputRef, propsRef],
+        [store, context, onPasteProp],
     );
 
     const onKeyDown = React.useCallback(
         (event: React.KeyboardEvent<HTMLDivElement>) => {
-            propsRef.current.onKeyDown?.(event);
+            onKeyDownProp?.(event);
 
             if (!event.defaultPrevented && (event.key === 'Enter' || event.key === ' ')) {
                 event.preventDefault();
-                context.inputRef.current?.click();
+                context.openFilePicker();
             }
         },
-        [context.inputRef, propsRef],
+        [context, onKeyDownProp],
     );
 
     return useRender({
@@ -844,22 +846,17 @@ function FileUploadTrigger(props: FileUploadTriggerProps) {
 
     const context = useFileUploadContext(TRIGGER_NAME);
 
-    const propsRef = useAsRef({
-        onClick: onClickProp,
-    });
-
     const onClick = React.useCallback(
         (event: React.MouseEvent<HTMLButtonElement>) => {
-            propsRef.current.onClick?.(event);
+            onClickProp?.(event);
 
             if (event.defaultPrevented) return;
 
-            context.inputRef.current?.click();
+            context.openFilePicker();
         },
-        [context.inputRef, propsRef],
+        [context, onClickProp],
     );
 
-    // onClick only reads inputRef inside the callback, never during render.
     return useRender({
         defaultTagName: 'button',
         props: mergeProps<'button'>(

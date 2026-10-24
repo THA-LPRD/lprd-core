@@ -20,22 +20,7 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
     const isCheckInput = React.useMemo(() => type === 'checkbox' || type === 'radio' || type === 'switch', [type]);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
-    const prevValueRef = React.useRef<{
-        value: T | boolean | undefined;
-        previous: T | boolean | undefined;
-    }>({
-        value: isCheckInput ? checked : value,
-        previous: isCheckInput ? checked : value,
-    });
-
-    const prevValue = React.useMemo(() => {
-        const currentValue = isCheckInput ? checked : value;
-        if (prevValueRef.current.value !== currentValue) {
-            prevValueRef.current.previous = prevValueRef.current.value;
-            prevValueRef.current.value = currentValue;
-        }
-        return prevValueRef.current.previous;
-    }, [isCheckInput, value, checked]);
+    const prevValueRef = React.useRef<T | boolean | undefined>(isCheckInput ? checked : value);
 
     const [controlSize, setControlSize] = React.useState<{
         width?: number;
@@ -43,15 +28,7 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
     }>({});
 
     React.useLayoutEffect(() => {
-        if (!control) {
-            setControlSize({});
-            return;
-        }
-
-        setControlSize({
-            width: control.offsetWidth,
-            height: control.offsetHeight,
-        });
+        if (!control) return;
 
         if (typeof window === 'undefined') return;
 
@@ -91,6 +68,8 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
         const propertyKey = isCheckInput ? 'checked' : 'value';
         const eventType = isCheckInput ? 'click' : 'input';
         const currentValue = isCheckInput ? checked : value;
+        const prevValue = prevValueRef.current;
+        prevValueRef.current = currentValue;
 
         const serializedCurrentValue = isCheckInput
             ? checked
@@ -107,12 +86,12 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
             setter.call(input, serializedCurrentValue);
             input.dispatchEvent(event);
         }
-    }, [prevValue, value, checked, bubbles, isCheckInput]);
+    }, [value, checked, bubbles, isCheckInput]);
 
     const composedStyle = React.useMemo<React.CSSProperties>(() => {
         return {
             ...style,
-            ...(controlSize.width !== undefined && controlSize.height !== undefined ? controlSize : {}),
+            ...(control && controlSize.width !== undefined && controlSize.height !== undefined ? controlSize : {}),
             border: 0,
             clip: 'rect(0 0 0 0)',
             clipPath: 'inset(50%)',
@@ -124,7 +103,7 @@ function VisuallyHiddenInput<T = InputValue>(props: VisuallyHiddenInputProps<T>)
             whiteSpace: 'nowrap',
             width: '1px',
         };
-    }, [style, controlSize]);
+    }, [style, control, controlSize]);
 
     return (
         <input

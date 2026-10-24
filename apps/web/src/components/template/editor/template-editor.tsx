@@ -36,7 +36,6 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     const [variants, setVariants] = React.useState<TemplateVariant[]>(template.variants);
     const [preferredVariantIndex, setPreferredVariantIndex] = React.useState(template.preferredVariantIndex);
     const [activeVariantIndex, setActiveVariantIndex] = React.useState(0);
-    const [isDirty, setIsDirty] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [showAddVariant, setShowAddVariant] = React.useState(false);
 
@@ -50,15 +49,15 @@ export function TemplateEditor({ template, siteSlug }: { template: TemplateDoc; 
     }, [sampleDataJson]);
 
     // Track dirty state
-    React.useEffect(() => {
-        const changed =
+    const isDirty = React.useMemo(
+        () =>
             name !== template.name ||
             templateHtml !== template.templateHtml ||
             JSON.stringify(variants) !== JSON.stringify(template.variants) ||
             preferredVariantIndex !== template.preferredVariantIndex ||
-            sampleDataJson !== (template.sampleData ? JSON.stringify(template.sampleData, null, 2) : '{}');
-        setIsDirty(changed);
-    }, [name, templateHtml, sampleDataJson, variants, preferredVariantIndex, template]);
+            sampleDataJson !== (template.sampleData ? JSON.stringify(template.sampleData, null, 2) : '{}'),
+        [name, templateHtml, sampleDataJson, variants, preferredVariantIndex, template],
+    );
 
     const activeVariant = variants[activeVariantIndex] ?? variants[0] ?? DEFAULT_VARIANT;
 

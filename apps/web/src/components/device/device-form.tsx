@@ -38,14 +38,16 @@ export function DeviceForm({ open, onOpenChange, onSubmit, initialData, mode }: 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Reset form when dialog opens
-    React.useEffect(() => {
+    const [resetSource, setResetSource] = React.useState({ open, initialData });
+    if (open !== resetSource.open || initialData !== resetSource.initialData) {
+        setResetSource({ open, initialData });
         if (open) {
             setName(initialData?.name ?? '');
             setDescription(initialData?.description ?? '');
             setTags(initialData?.tags ?? []);
             setStatus(initialData?.status ?? 'pending');
         }
-    }, [open, initialData]);
+    }
 
     const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();

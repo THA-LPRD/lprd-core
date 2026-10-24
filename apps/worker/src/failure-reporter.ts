@@ -16,8 +16,10 @@ export class FailureReporter extends Context.Service<
 >()('FailureReporter') {}
 
 const deliveryRetrySchedule = Schedule.exponential(1_000).pipe(
-    Schedule.take(9),
-    Schedule.modifyDelay((_, delay) => Effect.succeed(Duration.millis(Math.min(Duration.toMillis(delay), 30_000)))),
+    Schedule.upTo({ times: 9 }),
+    Schedule.modifyDelay(({ duration }) =>
+        Effect.succeed(Duration.millis(Math.min(Duration.toMillis(duration), 30_000))),
+    ),
 );
 
 export const FailureReporterLive = Layer.effect(

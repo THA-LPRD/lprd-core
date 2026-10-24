@@ -60,20 +60,16 @@ export function CreateApplicationDialog({
     const [type, setType] = React.useState<'plugin' | 'internal'>('plugin');
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
-    const [organizationId, setOrganizationId] = React.useState<Id<'organizations'> | ''>('');
+    const [selectedOrganizationId, setOrganizationId] = React.useState<Id<'organizations'> | ''>('');
     const [scopePushData, setScopePushData] = React.useState(true);
     const [scopeCreateTemplate, setScopeCreateTemplate] = React.useState(true);
     const [isCreating, setIsCreating] = React.useState(false);
     const [credentials, setCredentials] = React.useState<ProvisionedCredentials | null>(null);
     const [copied, setCopied] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
+    const organizationId = selectedOrganizationId || organizations?.[0]?._id || '';
     const selectedOrganizationName =
         organizations?.find((organization) => organization._id === organizationId)?.name ?? '';
-
-    React.useEffect(() => {
-        if (!open || organizations === undefined) return;
-        setOrganizationId((current) => current || organizations[0]?._id || '');
-    }, [open, organizations]);
 
     const handleCreate = async () => {
         if (!name.trim() || !organizationId) return;
