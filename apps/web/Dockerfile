@@ -1,4 +1,4 @@
-FROM oven/bun:1.3.12-debian AS deps
+FROM oven/bun:1.4.4-debian AS deps
 WORKDIR /app
 
 COPY package.json bun.lock turbo.json ./
@@ -13,7 +13,7 @@ RUN bun install --frozen-lockfile
 
 
 # ==================== Build stage ====================
-FROM oven/bun:1.3.12-debian AS builder
+FROM oven/bun:1.4.4-debian AS builder
 WORKDIR /app
 
 ARG NEXT_PUBLIC_CONVEX_URL
@@ -34,7 +34,7 @@ RUN bunx turbo run build --filter=@workspace/web
 
 
 # ==================== Runner (lprd-web) ====================
-FROM oven/bun:1.3.12-debian AS runner
+FROM oven/bun:1.4.4-debian AS runner
 
 ARG PUID=1000
 ARG PGID=1000
